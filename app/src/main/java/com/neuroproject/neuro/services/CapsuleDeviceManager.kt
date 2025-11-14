@@ -2,6 +2,7 @@ package com.neuroproject.neuro.services
 
 import android.util.Log
 import com.neuroproject.neuro.models.BaselineValues
+import com.neuroproject.neuro.models.CapsuleInitializedState
 import com.neuroproject.neuro.models.DeviceConnectionState
 import com.neuroproject.neuro.models.DeviceInfo
 import kotlinx.coroutines.CoroutineScope
@@ -109,7 +110,13 @@ class CapsuleDeviceManager @Inject constructor(){
     var stageCalibrationProgress: (stage: Int) -> Unit = { }
 
 
-    var isCapsuleInited = false
+    var initializeStateChanged: (state: CapsuleInitializedState) -> Unit = {}
+
+
+    fun onCapsuleStateChanged(state: Int){
+        initializeStateChanged(CapsuleInitializedState.entries[state])
+    }
+
 
     fun initCapsule() {
         scope.launch {

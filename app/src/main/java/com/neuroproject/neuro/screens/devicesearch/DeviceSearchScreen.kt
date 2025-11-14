@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.screens.devicesearch
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,11 +53,11 @@ fun DeviceSearchScreen(
     var connectionDeviceId by remember { mutableStateOf("") }
     val foundedSensors = vm.foundDevices.collectAsState()
     val connectionState = vm.deviceState.collectAsState()
-    val licenceState = vm.licenceState.collectAsState()
 
-    LaunchedEffect(licenceState.value) {
+    LaunchedEffect(connectionState.value) { // вызывается каждый раз когда меняется состояние подключения
         connectionDeviceId = ""
-        if (connectionState.value == DeviceConnectionState.connected && licenceState.value)
+        Log.d("Aboba", "LaunchedEffect")
+        if (connectionState.value == DeviceConnectionState.connected)
             onDeviceConnected()
     }
 
@@ -97,7 +98,7 @@ fun DeviceSearchScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Статус поиска
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -167,7 +168,6 @@ fun DeviceSearchScreen(
                             onClick = {
                                 connectionDeviceId = device.id
                                 vm.connect(device.id)
-                                onDeviceConnected()
                             },
                             enabled = connectionState.value == DeviceConnectionState.disconnected
                         )

@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
+import com.neuroproject.neuro.models.CapsuleInitializedState
 import com.neuroproject.neuro.models.DeviceConnectionState
 import com.neuroproject.neuro.models.DeviceInfo
 import com.neuroproject.neuro.services.CapsuleDeviceManager
@@ -26,24 +27,35 @@ class DeviceSearchScreenViewModel @Inject constructor(dm: CapsuleDeviceManager) 
 
     private val scope = CoroutineScope(EmptyCoroutineContext)
     private val _foundDevices = MutableStateFlow<Array<DeviceInfo>>(emptyArray())
-    private val _connectionState = MutableStateFlow(DeviceConnectionState.disconnected)
+
+    private val _initState = MutableStateFlow<CapsuleInitializedState>(CapsuleInitializedState.NonInitialized);
 
     val foundDevices = _foundDevices.asStateFlow()
-    val deviceState = _connectionState.asStateFlow() //dm.connectionState
-    val licenceState = dm.licenseState
+    val deviceState = dm.connectionState
 
     val capsuleDM: CapsuleDeviceManager = dm
 
     init {
-        if (deviceState.value == DeviceConnectionState.connected && licenceState.value)
+        if (deviceState.value == DeviceConnectionState.connected)
         {}
         else {
+
            //коллбэк на подключение
+            capsuleDM.initializeStateChanged = {state ->
+                scope.launch { _initState.emit(state) }
+                when (state) {
+                    CapsuleInitializedState.Initialized ->  capsuleDM.startSearch()
+                    CapsuleInitializedState.NonInitialized -> Log.d("Search", "Capsule is not init")
+                }
+            }
+
             capsuleDM.devicesFound = {
                 scope.launch {
                     _foundDevices.emit(it)
                 }
             }
+
+
             capsuleDM.initCapsule()
         }
     }
