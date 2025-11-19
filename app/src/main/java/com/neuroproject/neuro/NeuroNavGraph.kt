@@ -49,7 +49,8 @@ fun NeuroNavGraph(
                 modifier = Modifier.safeDrawingPadding(),
                 onBackPressed = {
                     navActions.navigateBack()
-                }
+                },
+                vm = hiltViewModel()
             )
         }
 

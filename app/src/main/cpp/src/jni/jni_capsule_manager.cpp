@@ -29,9 +29,14 @@ clCNFBCalibrator calibrator = nullptr; // объект для калибровк
 clCPhysiologicalStates physioStates = nullptr; // объект для получения физиологических метрик
 clCNFB nfb = nullptr; //калибровка для получения уникальной метрики(вроде)
 clCCardio cardio = nullptr; // объект для получения кардио метрик
-clCMEMS MEMS = nullptr; // объект для получения значений акселерометра и гироскопа
+clCMEMS mems = nullptr; // объект для получения значений акселерометра и гироскопа
+clCProductivity productivity = nullptr; // Объект для получения значений продуктивности
+clCPhysiologicalStates ps = nullptr; // Объект для получения физиологический значений
+clCEmotions emotions = nullptr; // Объект для получения эмоциональных значений
+clCIndividualNFBCalibrationStage stage = clCIndividualNFBCalibrationStage_1; // состояние калибровки
 //также надо добавить некоторые другие метрики(как RAW и RAW filthered)
 JavaVM* javaVM = nullptr;
+
 
 // java объекты
 jobject javaCapsule;
@@ -40,6 +45,8 @@ jclass deviceInfo;
 
 // callbacks
 
+
+// При изменении состояния подключения
 void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_DEBUG", "Connection State Changed: %d", state);
 
@@ -71,6 +78,8 @@ void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noex
     }
 }
 
+
+// При ошибке соединения или работы с устройством
 void onDeviceError(clCDevice, const char* error) noexcept {
     __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Device error: %s", error);
 
@@ -91,7 +100,8 @@ void onDeviceError(clCDevice, const char* error) noexcept {
         }
 }
 
-void onDeviceList(clCDeviceLocator clClocator, clCDeviceInfoList devices, clCDeviceLocator_FailReason fail_reason) noexcept {
+// Получение списка устройств
+void onDeviceList(clCDeviceLocator, clCDeviceInfoList devices, clCDeviceLocator_FailReason fail_reason) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Locator event");
     // device connected
     if (device != nullptr) {
@@ -143,8 +153,9 @@ void onDeviceList(clCDeviceLocator clClocator, clCDeviceInfoList devices, clCDev
     env->CallVoidMethod(javaCapsule, fun, sensorsArray);
 }
 
-void onDeviceResistanceUpdate(clCDevice device, clCResistance resistance) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES", "Resistances: %d", clCResistance_GetCount(resistance));
+// При получение новых значений сопротивления
+void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_RESISTANCE", "Resistances: %d", clCResistance_GetCount(resistance));
     double o1 = clCResistance_GetValue(resistance, 0);
     double o2 = clCResistance_GetValue(resistance, 3);
     double t3 = clCResistance_GetValue(resistance, 1);
@@ -158,10 +169,154 @@ void onDeviceResistanceUpdate(clCDevice device, clCResistance resistance) noexce
                         static_cast<jdouble>(t4));
 }
 
+// при получение данных сердцебиения
+void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept{
+    JNIEnv* env = nullptr;
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "HeartRate: %f", cardioData->heartRate);
+}
+
+// при окончании калибровки устройства
+void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
+    if (data == nullptr || data->failReason != clC_IndividualNFBCalibrationFailReason_None) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Calibration failed");
+        switch (data->failReason) {
+            case clC_IndividualNFBCalibrationFailReason_TooManyArtifacts:
+                __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Too many artifacts");
+                break;
+            case clC_IndividualNFBCalibrationFailReason_PeakIsABorder:
+                __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Alpha peak matches one of the alpha range borders");
+                break;
+            default:
+                __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Reason unknown");
+        }
+    }
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "IAF: %f\nIAPF: %f", data->individualFrequency, data->individualPeakFrequency);
+    clCPhysiologicalStates_StartBaselineCalibration(ps); // Первым делом заканчиваем основную калибровку
+}
+
+// При окончании одного из состояний калибровки(кроме 4-го, так как при окончании его вызывается onCalibrated)
+void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
+    clCError error;
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Event");
+    switch (stage){
+        case clCIndividualNFBCalibrationStage_1:
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 1");
+            stage = clCIndividualNFBCalibrationStage_2;
+            clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage,&error);
+            break;
+        case clCIndividualNFBCalibrationStage_2:
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 2");
+            stage = clCIndividualNFBCalibrationStage_3;
+            clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage,&error);
+            break;
+        case clCIndividualNFBCalibrationStage_3:
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 3");
+            stage = clCIndividualNFBCalibrationStage_4;
+            clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage,&error);
+            break;
+        case clCIndividualNFBCalibrationStage_4:
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 4");
+
+
+
+    }
+}
+
+// Обновление частот
+void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
+    // Getting NFB user data
+    // if artifacts or weak resistance on the electrodes are observed,
+    // the data will not be changed
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_NFB", "NFB update state: alpha = %f , beta = %f , theta = %f", userState->alpha, userState->beta, userState->theta);
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID nfbFun = env->GetMethodID(capsuleClass, "onNFBReceived", "(FFFFF)V");
+    env->CallVoidMethod(javaCapsule, nfbFun, static_cast<jfloat>(userState->alpha),
+                        static_cast<jfloat>(userState->beta),
+                        static_cast<jfloat>(userState->theta),
+                        static_cast<jfloat>(userState->delta),
+                        static_cast<jfloat>(userState->smr));
+
+}
+
+// Ошибка при обновлении частот
+void onNFBErrorEvent(clCNFB, const char* error) noexcept {
+    __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_NFB", "NFB error: %s", error);
+}
+
+// Обновление данных акселерометра и гироскопа
+void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
+    const int32_t count = clCMEMSTimedData_GetCount(data);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "MEMS update: showing 1 of %d values", count);
+    const clCPoint3d accelerometer = clCMEMSTimedData_GetAccelerometer(data, 0);
+    const clCPoint3d gyroscope = clCMEMSTimedData_GetGyroscope(data, 0);
+    const auto timestamp = clCMEMSTimedData_GetTimestampMilli(data, 0);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "\taccelerometer: X:%f, Y:%f, Z:%f", accelerometer.x, accelerometer.y, accelerometer.z);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "\tgyroscope: X:%f, Y:%f, Z:%f", gyroscope.x, gyroscope.y, gyroscope.z);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "\ttime^ %s", std::to_string(timestamp).c_str());
+}
+
+// После калибровки метрик продуктивности
+void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselines* baselines) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update:\n\tTimestamp: %ld\n\tGravity: %f\n\tProductivity: %f\n\tFatigue: %f\n\tReverse Fatigue: %f\n\tRelaxation: %f\n\tConcentration: %f", baselines->timestampMilli, baselines->gravity,baselines->productivity, baselines->fatigue, baselines->reverseFatigue, baselines->relaxation, baselines->concentration);
+}
+
+// Обновление значений метрик продуктивности
+void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics* metrics) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity score update: %f", metrics->currentValue);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update:\n\tTimestamp: %ld\n\tGravity: %f\n\tProductivity: %f\n\tFatigue: %f\n\tReverse Fatigue: %f\n\tRelaxation: %f\n\tConcentration: %f", metrics->timestampMilli, metrics->gravityScore,metrics->productivityScore, metrics->fatigueScore, metrics->reverseFatigueScore, metrics->relaxationScore, metrics->concentrationScore);
+}
+// Обновление значений индексов продуктивности
+void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes* indexes) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity indexes update:\n\tStress: %u\n\tRelaxation: %u", indexes->stress, indexes->relaxation);
+}
+// Отображение прогресса калибровки
+void onProductivityCalibrationProgress(clCProductivity, float progress) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baseline calibration progress: %f", progress);
+}
+
+// При получение индивидуальных значений
+void onProductivityIndividualNFBUpdate(clCProductivity) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity individual nfb data has been updated");
+}
+// При окончании калибровки
+void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologicalStates_Baselines* baselines) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states baselines calibrated:\n\tTimestamp: %ld\n\tAlpha: %f\n\tBeta: %f\n\tConcentration: %f\n\tAlpha Gravity: %f\n\tBeta Gravity: %f\n",baselines->timestampMilli,baselines->alpha,baselines->beta,baselines->concentration,baselines->alphaGravity,baselines->betaGravity);
+}
+// при обновлении данных
+void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalStates_Value* value) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states update:\n\"\\tTimestamp: %ld\n\tRelaxation: %f\n\tFatigue: %f\n\tNone: %f\n\tConcentration: %f\n\tInvolvement: %f\n\tStress: %f\n\tNfb Artifacts: %b\n\tCardio Artifacts: %b",value->timestampMilli, value->relaxation, value->fatigue, value->none, value->concentration, value->involvement, value->stress, value->nfbArtifacts, value->cardioArtifacts );
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID resistFun = env->GetMethodID(capsuleClass, "onPhysiologicalReceived", "(FFFFFFZZ)V");
+    env->CallVoidMethod(javaCapsule, resistFun, static_cast<jfloat>(value->relaxation),
+                        static_cast<jfloat>(value->fatigue),
+                        static_cast<jfloat>(value->none),
+                        static_cast<jfloat>(value->concentration),
+                        static_cast<jfloat>(value->involvement),
+                        static_cast<jfloat>(value->stress),
+                        static_cast<jboolean>(value->nfbArtifacts),
+                        static_cast<jboolean >(value->cardioArtifacts));
+}
+// При получение индивидуальных значений
+void onPhysiologicalStatesIndividualNFBUpdate(clCPhysiologicalStates) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states individual nfb data has been updated");
+}
+// при обновлении данных
+void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_EMOT", "Emotional states update:\n\tAttention: %f\n\tRelaxation: %f\n\tCognitive Load: %f\n\tCognitive Control: %f\n\tSelfControl: %f", states->attention, states->relaxation, states->cognitiveLoad, states->cognitiveControl, states->selfControl );
+
+
+}
+// При окончании калибровки
+void onCardioCalibrated(clCCardio) noexcept{
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "Calibrated");
+}
+
 
 void removeAll(){
-    if (MEMS) {
-        MEMS = nullptr;
+    if (mems) {
+        mems = nullptr;
     }
     if (cardio) {
         cardio = nullptr;
@@ -180,8 +335,19 @@ void removeAll(){
         clCDeviceLocator_Destroy(locator);
         locator = nullptr;
     }
+    if(cardio){
+        cardio = nullptr;
+    }
+    if(productivity){
+        productivity = nullptr;
+    }
+    if(ps){
+        ps = nullptr;
+    }
 
 }
+
+
 // **callbacks**
 
 
@@ -285,6 +451,92 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
     clCDevice_SetOnResistanceUpdateEvent(device, onDeviceResistanceUpdate);
     clCDevice_SetOnErrorEvent(device, onDeviceError);
 
+    // Здесь также надо инициализировать все объекты метрик, которые будут использоваться
+
+    calibrator = clCNFBCalibrator_CreateOrGet(device);
+    clCNFBCalibrator_SetOnCalibratedEvent(calibrator, onCalibrated);
+    clCNFBCalibrator_SetOnCalibrationStageFinishedEvent(calibrator, onCalibrationStageFinishedEvent);
+
+    nfb = clCNFB_Create(device, &error);
+    if (nfb == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create NFB object: %s", error.message);
+        stopRequested = true;
+        return;
+    }
+    clCNFB_SetOnUserStateChangedEvent(nfb, onUpdateUserState);
+    clCNFB_SetOnErrorEvent(nfb, onNFBErrorEvent);
+
+    cardio = clCCardio_Create(device, &error);
+    clCCardio_SetOnCalibratedEvent(cardio, onCardioCalibrated, &error);
+    if (cardio == nullptr) {
+        if (error.code == clCError_ModuleIsNotSupported) {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create cardio object: %s", error.message);
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Unexpected error in creation cardio object: %s", error.message);
+            stopRequested = true;
+            return;
+        }
+    }
+    if (cardio != nullptr) {
+        clCCardio_SetOnIndexesUpdateEvent(cardio, onCardioIndexesUpdate, &error);
+    }
+
+    mems = clCMEMS_Create(device, &error);
+    if (mems == nullptr) {
+        if (error.code == clCError_ModuleIsNotSupported) {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create mems object: %s", error.message);
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Unexpected error in creation mems object: %s", error.message);
+            stopRequested = true;
+            return;
+        }
+    }
+    if (mems != nullptr) {
+        clCMEMS_SetOnMEMSTimedDataUpdateEvent(mems, onMEMSUpdate, &error);
+    }
+
+    productivity = clCProductivity_Create(device, &error);
+    if (productivity == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create productivity object: %s", error.message);
+        stopRequested = true;
+        return;
+    }
+
+    clCProductivity_SetOnBaselineUpdateEvent(productivity, onProductivityBaselineUpdate);
+    clCProductivity_SetOnMetricsUpdateEvent(productivity, onProductivityMetricsUpdate);
+    clCProductivity_SetOnIndexesUpdateEvent(productivity, onProductivityIndexesUpdate);
+    clCProductivity_SetOnCalibrationProgressUpdateEvent(productivity, onProductivityCalibrationProgress);
+    clCProductivity_SetOnIndividualNFBUpdateEvent(productivity, onProductivityIndividualNFBUpdate);
+
+    ps = clCPhysiologicalStates_Create(device, &error);
+    if (ps == nullptr) {
+        if (error.code == clCError_ModuleIsNotSupported) {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create ps object: %s", error.message);
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Unexpected error in creation ps object: %s", error.message);
+            stopRequested = true;
+            return;
+        }
+    }
+    if (ps != nullptr) {
+        clCPhysiologicalStates_SetOnCalibratedEvent(ps, onPhysiologicalStatesCalibrated, &error);
+        clCPhysiologicalStates_SetOnStatesUpdateEvent(ps, onPhysiologicalStatesUpdate, &error);
+        clCPhysiologicalStates_SetOnIndividualNFBUpdateEvent(ps, onPhysiologicalStatesIndividualNFBUpdate, &error);
+    }
+
+    emotions = clCEmotions_Create(device, &error);
+    if (!error.success) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create emotion object: %s", error.message);
+        stopRequested = true;
+        return;
+    }
+    clCEmotions_SetOnEmotionalStatesUpdateEvent(emotions, onEmotionalStatesUpdate);
+
+
+
+
+
+
 
     clCDevice_Connect(device,   true, &error);
     if(clCDevice_IsConnected(device, &error)){
@@ -314,13 +566,19 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeStartSignalAndHR(
         JNIEnv *env, jobject thiz) {
+    clCError error;
+    clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
+    clCProductivity_StartBaselineCalibration(productivity);
+
+
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeStopSignalAndHR(
         JNIEnv *env, jobject thiz) {
-    // TODO: implement nativeStopSignalAndHR()
+    clCError error;
+    clCDevice_Stop(device, &error);
 }
 
 extern "C"
@@ -343,4 +601,5 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_removeAll(JNIEnv *env, jobject thiz) {
+    removeAll();
 }

@@ -47,7 +47,7 @@ enum class StageState(val value: Int) {
 }
 
 data class CalibrationStateInfo(val stage: CapsuleStages, val state: StageState)
-data class EmotionData(
+data class PhysiologicalData(
     val relax: Float = 0f,
     val fatigue: Float = 0f,
     val none: Float = 0f,
@@ -58,7 +58,7 @@ data class EmotionData(
     val cardioArtifacts: Boolean = true
 )
 
-data class RhythmData(
+data class NFBData(
     val alpha: Float = 0f,
     val beta: Float = 0f,
     val theta: Float = 0f,
@@ -90,13 +90,13 @@ class CapsuleDeviceManager @Inject constructor(){
         )
     )
     private var _hrData = MutableStateFlow(0f)
-    private var _emotionData = MutableStateFlow(EmotionData())
-    private var _rythmData = MutableStateFlow(RhythmData())
+    private var _physiologicalData = MutableStateFlow(PhysiologicalData())
+    private var _nfbData = MutableStateFlow(NFBData())
     private var _baseLineData = MutableStateFlow(BaselineValues(0f, 0f, 0f, 0f))
 
     var hrData = _hrData.asStateFlow()
-    var emotionData = _emotionData.asStateFlow()
-    var rythmData = _rythmData.asStateFlow()
+    var physiologicalData = _physiologicalData.asStateFlow()
+    var nfbData = _nfbData.asStateFlow()
     var baseLineData = _baseLineData.asStateFlow()
 
     var connectionState = _connectionState.asStateFlow()
@@ -107,6 +107,8 @@ class CapsuleDeviceManager @Inject constructor(){
 
     var resistanceReceived: (o1: Double, o2: Double, t3: Double, t4: Double) -> Unit =
         { o1: Double, o2: Double, t3: Double, t4: Double -> }
+
+    var nfbReceived: (alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) -> Unit = { alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->}
     var stageCalibrationProgress: (stage: Int) -> Unit = { }
 
 
@@ -208,10 +210,11 @@ class CapsuleDeviceManager @Inject constructor(){
         Log.d("JCAPSULE", "onCalibrationReceived")
     }
 
-    fun onRhytmsReceived(alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
+    fun onNFBReceived(alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
         scope.launch {
-            _rythmData.emit(RhythmData(alpha, beta, theta, delta, smr))
+            _nfbData.emit(NFBData(alpha, beta, theta, delta, smr))
         }
+        nfbReceived(alpha, beta, theta, delta, smr)
         Log.d("JCAPSULE", "alpha = " + alpha + ", beta = " + beta + ", theta = " + theta)
     }
 
@@ -222,7 +225,7 @@ class CapsuleDeviceManager @Inject constructor(){
         Log.d("JCAPSULE", "HR = " + hr)
     }
 
-    fun onEmotionsReceived(
+    fun onPhysiologicalReceived(
         relax: Float,
         fatigue: Float,
         none: Float,
@@ -233,8 +236,8 @@ class CapsuleDeviceManager @Inject constructor(){
         cardioArtifacts: Boolean
     ) {
         scope.launch {
-            _emotionData.emit(
-                EmotionData(
+            _physiologicalData.emit(
+                PhysiologicalData(
                     relax,
                     fatigue,
                     none,

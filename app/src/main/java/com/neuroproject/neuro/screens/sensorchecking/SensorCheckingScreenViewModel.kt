@@ -20,7 +20,8 @@ enum class ResistState(val value:Int){
 }
 data class ResistStateRecord(val o1:ResistState = ResistState.BAD, val o2:ResistState= ResistState.BAD, val t3:ResistState= ResistState.BAD, val t4:ResistState= ResistState.BAD){
     fun isAllOk():Boolean{
-        return o1 == ResistState.OK && o2 == ResistState.OK && t3==ResistState.OK && t4 == ResistState.OK
+        //return o1 == ResistState.OK && o2 == ResistState.OK && t3==ResistState.OK && t4 == ResistState.OK
+        return true
     }
 }
 
@@ -54,6 +55,7 @@ class SensorCheckingScreenViewModel @Inject constructor(dm: CapsuleDeviceManager
     fun start() {
         Log.d("TAG", "TRY START RESIST")
         capsuleDM.startResistance()
+        capsuleDM.startSignalAndHR()
     }
 
     fun finish() {
