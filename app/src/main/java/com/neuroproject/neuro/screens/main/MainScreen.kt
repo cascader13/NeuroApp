@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,73 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.services.NFBData
 
+
+
+@Composable
+private fun HeaderSection(
+    nfbData: NFBData,
+    isRecording: Boolean,
+    onClear: () -> Unit,
+    onStartRecording: () -> Unit,
+    onStopRecording: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Мониторинг ${if (isRecording) "• Запись" else ""}",
+                color = if (isRecording) Color.Red else Color.White,
+                fontSize = 20.sp,
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            Row {
+                Button(
+                    onClick = {
+                        if (isRecording) onStopRecording() else onStartRecording()
+                    },
+                    modifier = Modifier
+                        .height(36.dp)
+                        .padding(end = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isRecording) Color.Red else Color.Green
+                    )
+                ) {
+                    Text(
+                        if (isRecording) "Стоп" else "Запись",
+                        fontSize = 12.sp
+                    )
+                }
+
+                Button(
+                    onClick = onClear,
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Очистить", fontSize = 12.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceAround
+        ) {
+            ValueDisplay(label = "Alpha", value = nfbData.alpha, color = Color(0xFF4FC3F7))
+            ValueDisplay(label = "Beta", value = nfbData.beta, color = Color(0xFFF44336))
+            ValueDisplay(label = "Delta", value = nfbData.delta, color = Color(0xFF66BB6A))
+        }
+    }
+}
+
 /**
  * Главный экран приложения для отображения нейрофидбэк данных
  * Отображает графики мозговых волн в реальном времени
@@ -41,28 +109,386 @@ fun MainScreen(
     onBackPressed: () -> Unit = {},
     vm: MainScreenViewModel = hiltViewModel()
 ) {
-    // Сбор данных из ViewModel
-    val plotData by vm.plotData.collectAsState() // Данные для построения графиков
-    val nfbData by vm.nfb.collectAsState() // Текущие значения нейрофидбэк данных
+    val plotData by vm.plotData.collectAsState()
+    val nfbData by vm.nfb.collectAsState()
 
-    // Основной контейнер экрана
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black) // Черный фон для лучшего контраста
+            .background(Color.Black)
     ) {
-        // Верхняя секция с заголовком и текущими значениями
-        HeaderSection(nfbData = nfbData, onClear = { vm.clearPlotData() })
+        HeaderSection(
+            nfbData = nfbData,
+            isRecording = vm.isRecording(),
+            onClear = { vm.clearPlotData() },
+            onStartRecording = { vm.startRecording() },
+            onStopRecording = { vm.stopRecording() }
+        )
 
-        // Секция с графиками мозговых волн
         NeuroGraphs(
             plotData = plotData,
             modifier = Modifier
-                .weight(1f) // Занимает все доступное пространство
+                .weight(1f)
                 .padding(16.dp)
         )
 
-        // Нижняя секция с легендой графиков
         LegendSection()
     }
 }

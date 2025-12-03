@@ -23,6 +23,12 @@ class NeuroNavigationActions(val navController: NavController) {
         }
     }
 
+    fun navigateToCalibration(){
+        navController.navigate(NavDestinations.ProbeNavStack.CALIBRATION){
+            launchSingleTop = true
+        }
+    }
+
     fun navigateToMain() {
         navController.navigate(NavDestinations.MAIN) {
             launchSingleTop = true

@@ -192,6 +192,7 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
     }
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "IAF: %f\nIAPF: %f", data->individualFrequency, data->individualPeakFrequency);
     clCPhysiologicalStates_StartBaselineCalibration(ps); // Первым делом заканчиваем основную калибровку
+    clCProductivity_StartBaselineCalibration(productivity);
 }
 
 // При окончании одного из состояний калибровки(кроме 4-го, так как при окончании его вызывается onCalibrated)
@@ -216,7 +217,7 @@ void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
             break;
         case clCIndividualNFBCalibrationStage_4:
             __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 4");
-
+        //Добавить связь для того, чтобы знать какое у нас состояние калибровки
 
 
     }
@@ -236,7 +237,6 @@ void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
                         static_cast<jfloat>(userState->theta),
                         static_cast<jfloat>(userState->delta),
                         static_cast<jfloat>(userState->smr));
-
 }
 
 // Ошибка при обновлении частот
@@ -254,6 +254,16 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "\taccelerometer: X:%f, Y:%f, Z:%f", accelerometer.x, accelerometer.y, accelerometer.z);
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "\tgyroscope: X:%f, Y:%f, Z:%f", gyroscope.x, gyroscope.y, gyroscope.z);
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_MEMS", "\ttime^ %s", std::to_string(timestamp).c_str());
+    JNIEnv* env = nullptr;
+    
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID MEMSFun = env->GetMethodID(capsuleClass, "onMEMSReceived", "(FFFFFF)V");
+    env->CallVoidMethod(javaCapsule, MEMSFun, static_cast<jfloat>(accelerometer.x),
+                        static_cast<jfloat>(accelerometer.y),
+                        static_cast<jfloat>(accelerometer.z),
+                        static_cast<jfloat>(gyroscope.x),
+                        static_cast<jfloat>(gyroscope.y),
+                        static_cast<jfloat>(gyroscope.z));
 }
 
 // После калибровки метрик продуктивности
@@ -265,6 +275,17 @@ void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselin
 void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics* metrics) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity score update: %f", metrics->currentValue);
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update:\n\tTimestamp: %ld\n\tGravity: %f\n\tProductivity: %f\n\tFatigue: %f\n\tReverse Fatigue: %f\n\tRelaxation: %f\n\tConcentration: %f", metrics->timestampMilli, metrics->gravityScore,metrics->productivityScore, metrics->fatigueScore, metrics->reverseFatigueScore, metrics->relaxationScore, metrics->concentrationScore);
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID ProdFun = env->GetMethodID(capsuleClass, "onProductivityReceived", "(DFFFFFF)V");
+    env->CallVoidMethod(javaCapsule, ProdFun, static_cast<jdouble>(metrics->timestampMilli),
+                                                            static_cast<jfloat>(metrics->gravityScore),
+                                                            static_cast<jfloat>(metrics->productivityScore),
+                                                            static_cast<jfloat>(metrics->fatigueScore),
+                                                            static_cast<jfloat>(metrics->reverseFatigueScore),
+                                                            static_cast<jfloat>(metrics->relaxationScore),
+                                                            static_cast<jfloat>(metrics->concentrationScore)
+                                                            );
 }
 // Обновление значений индексов продуктивности
 void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes* indexes) noexcept {
@@ -281,7 +302,10 @@ void onProductivityIndividualNFBUpdate(clCProductivity) noexcept {
 }
 // При окончании калибровки
 void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologicalStates_Baselines* baselines) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states baselines calibrated:\n\tTimestamp: %ld\n\tAlpha: %f\n\tBeta: %f\n\tConcentration: %f\n\tAlpha Gravity: %f\n\tBeta Gravity: %f\n",baselines->timestampMilli,baselines->alpha,baselines->beta,baselines->concentration,baselines->alphaGravity,baselines->betaGravity);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS",
+                        "Physiological states baselines calibrated:\n\tTimestamp: %ld\n\tAlpha: %f\n\tBeta: %f\n\tConcentration: %f\n\tAlpha Gravity: %f\n\tBeta Gravity: %f\n",
+                        baselines->timestampMilli, baselines->alpha, baselines->beta,
+                        baselines->concentration, baselines->alphaGravity, baselines->betaGravity);
 }
 // при обновлении данных
 void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalStates_Value* value) noexcept {
@@ -304,9 +328,18 @@ void onPhysiologicalStatesIndividualNFBUpdate(clCPhysiologicalStates) noexcept {
 }
 // при обновлении данных
 void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_EMOT", "Emotional states update:\n\tAttention: %f\n\tRelaxation: %f\n\tCognitive Load: %f\n\tCognitive Control: %f\n\tSelfControl: %f", states->attention, states->relaxation, states->cognitiveLoad, states->cognitiveControl, states->selfControl );
-
-
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_EMOT",
+                        "Emotional states update:\n\tAttention: %f\n\tRelaxation: %f\n\tCognitive Load: %f\n\tCognitive Control: %f\n\tSelfControl: %f",
+                        states->attention, states->relaxation, states->cognitiveLoad,
+                        states->cognitiveControl, states->selfControl);
+    JNIEnv *env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID EmFun = env->GetMethodID(capsuleClass, "onEmotionReceived", "(FFFFF)V");
+    env->CallVoidMethod(javaCapsule, EmFun, static_cast<jfloat>(states->attention),
+                        static_cast<jfloat>(states->relaxation),
+                        static_cast<jfloat>(states->cognitiveLoad),
+                        static_cast<jfloat>(states->cognitiveControl),
+                        static_cast<jfloat>(states->selfControl));
 }
 // При окончании калибровки
 void onCardioCalibrated(clCCardio) noexcept{
@@ -568,7 +601,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
         JNIEnv *env, jobject thiz) {
     clCError error;
     clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
-    clCProductivity_StartBaselineCalibration(productivity);
 
 
 }

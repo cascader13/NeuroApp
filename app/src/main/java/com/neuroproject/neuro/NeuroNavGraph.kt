@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.navigation
+import com.neuroproject.neuro.screens.calibration.CalibrationScreen
 import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
 import com.neuroproject.neuro.screens.login.LoginScreen
 import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
@@ -43,7 +44,7 @@ fun NeuroNavGraph(
             )
         }
 
-        // Главный экран (пока пустышка)
+        // Главный экран
         composable(NavDestinations.MAIN) {
             com.neuroproject.neuro.screens.main.MainScreen(
                 modifier = Modifier.safeDrawingPadding(),
@@ -81,10 +82,24 @@ fun NeuroNavGraph(
                         navActions.navigateBack()
                     },
                     onSensorOk = {
+                        navActions.navigateToCalibration()
+                    },
+                    vm = hiltViewModel()
+                )
+            }
+
+            composable(NavDestinations.ProbeNavStack.CALIBRATION) {
+                CalibrationScreen (
+                    modifier = Modifier.safeDrawingPadding(),
+                    onBackPressed = {
+                        navActions.navigateBack()
+                    },
+                    onCalibrationComplete = {
                         navActions.navigateToMain()
                     },
                     vm = hiltViewModel()
                 )
+
             }
         }
     }

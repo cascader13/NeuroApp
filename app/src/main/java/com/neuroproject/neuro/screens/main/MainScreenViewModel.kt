@@ -2,6 +2,7 @@ package com.neuroproject.neuro.screens.main
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import com.neuroproject.neuro.data.MetricsRepository
 import com.neuroproject.neuro.screens.sensorchecking.ResistStateRecord
 import com.neuroproject.neuro.services.CapsuleDeviceManager
 import com.neuroproject.neuro.services.NFBData
@@ -27,7 +28,10 @@ data class PlotData(
 )
 
 @HiltViewModel
-class MainScreenViewModel @Inject constructor(dm: CapsuleDeviceManager) : ViewModel() {
+class MainScreenViewModel @Inject constructor(
+    dm: CapsuleDeviceManager,
+    private val metricsRepository: MetricsRepository
+) : ViewModel() {
     private val capsuleDM = dm
     private val _scope = CoroutineScope(EmptyCoroutineContext)
     private val _nfbState = MutableStateFlow(NFBData())
@@ -46,7 +50,17 @@ class MainScreenViewModel @Inject constructor(dm: CapsuleDeviceManager) : ViewMo
     private val timeStep = 0.1f
     private val maxPoints = 200 // Максимальное количество точек на графике
 
+    // Флаги для управления записью
+    private var isRecording = false
+    private var lastSaveTime = 0L
+    private val saveInterval = 1000L // Сохранять каждую секунду
+
     init {
+        setupCapsuleListeners()
+    }
+
+    private fun setupCapsuleListeners() {
+        // Слушатель для NFB данных
         capsuleDM.nfbReceived = { alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->
             _scope.launch {
                 // Обновляем NFB данные
@@ -65,10 +79,175 @@ class MainScreenViewModel @Inject constructor(dm: CapsuleDeviceManager) : ViewMo
                     )
                 }
 
+                // Автоматически сохраняем данные при записи
+                if (isRecording) {
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastSaveTime >= saveInterval) {
+                        saveNFBData(alpha, beta, theta, delta, smr)
+                        lastSaveTime = currentTime
+                    }
+                }
+
                 timeCounter += timeStep
             }
         }
+
+        // Слушатель для физиологических данных
+        capsuleDM.physiologicalData.collectInScope(_scope) { data ->
+            if (isRecording) {
+                savePhysiologicalData(
+                    data.relax,
+                    data.fatigue,
+                    data.none,
+                    data.concentration,
+                    data.involvement,
+                    data.stress,
+                    data.nfbArtifacts,
+                    data.cardioArtifacts
+                )
+            }
+        }
+
+        // Слушатель для кардио данных
+        capsuleDM.hrData.collectInScope(_scope) { hr ->
+            if (isRecording) {
+                saveCardioData(hr)
+            }
+        }
+
+        // Слушатель для MEMS данных
+        capsuleDM.memsData.collectInScope(_scope) { mems ->
+            if (isRecording) {
+                saveMEMSData(
+                    mems.accelerometer_x,
+                    mems.accelerometer_y,
+                    mems.accelerometer_z,
+                    mems.gyroscope_x,
+                    mems.gyroscope_y,
+                    mems.gyroscope_z
+                )
+            }
+        }
+
+        // Слушатель для продуктивности
+        capsuleDM.productivityData.collectInScope(_scope) { productivity ->
+            if (isRecording) {
+                saveProductivityData(
+                    productivity.gravity,
+                    productivity.productivity,
+                    productivity.fatigue,
+                    productivity.reverse_fatique,
+                    productivity.relaxation,
+                    productivity.concentration
+                )
+            }
+        }
+
+        // Слушатель для эмоциональных данных
+        capsuleDM.emotionalData.collectInScope(_scope) { emotion ->
+            if (isRecording) {
+                saveEmotionalData(
+                    emotion.attention,
+                    emotion.relaxation,
+                    emotion.cognitive_load,
+                    emotion.cognitive_control,
+                    emotion.self_control
+                )
+            }
+        }
     }
+
+    // Методы для сохранения данных в БД
+    private fun saveNFBData(alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
+        metricsRepository.saveNFBMetric(alpha, beta, theta, delta, smr)
+        Log.d("MainScreenViewModel", "NFB data saved: alpha=$alpha, beta=$beta")
+    }
+
+    private fun savePhysiologicalData(
+        relax: Float,
+        fatigue: Float,
+        none: Float,
+        concentration: Float,
+        involvement: Float,
+        stress: Float,
+        nfbArtifacts: Boolean,
+        cardioArtifacts: Boolean
+    ) {
+        metricsRepository.savePhysiologicalMetric(
+            relax,
+            fatigue,
+            none,
+            concentration,
+            involvement,
+            stress,
+            nfbArtifacts,
+            cardioArtifacts
+        )
+    }
+
+    private fun saveCardioData(heartRate: Float) {
+        metricsRepository.saveCardioMetric(heartRate)
+    }
+
+    private fun saveMEMSData(
+        accX: Float, accY: Float, accZ: Float,
+        gyroX: Float, gyroY: Float, gyroZ: Float
+    ) {
+        metricsRepository.saveMEMSMetric(accX, accY, accZ, gyroX, gyroY, gyroZ)
+    }
+
+    private fun saveProductivityData(
+        gravity: Float,
+        productivity: Float,
+        fatigue: Float,
+        reverseFatigue: Float,
+        relaxation: Float,
+        concentration: Float
+    ) {
+        metricsRepository.saveProductivityMetric(
+            gravity,
+            productivity,
+            fatigue,
+            reverseFatigue,
+            relaxation,
+            concentration
+        )
+    }
+
+    private fun saveEmotionalData(
+        attention: Float,
+        relaxation: Float,
+        cognitiveLoad: Float,
+        cognitiveControl: Float,
+        selfControl: Float
+    ) {
+        metricsRepository.saveEmotionalMetric(
+            attention,
+            relaxation,
+            cognitiveLoad,
+            cognitiveControl,
+            selfControl
+        )
+    }
+
+    // Методы управления записью
+    fun startRecording() {
+        isRecording = true
+        lastSaveTime = System.currentTimeMillis()
+        Log.d("MainScreenViewModel", "Recording started")
+    }
+
+    fun stopRecording() {
+        isRecording = false
+        Log.d("MainScreenViewModel", "Recording stopped")
+    }
+
+    fun clearDatabase() {
+        metricsRepository.clearAllMetrics()
+        Log.d("MainScreenViewModel", "Database cleared")
+    }
+
+    fun isRecording(): Boolean = isRecording
 
     // Очистка данных графиков
     fun clearPlotData() {
@@ -82,5 +261,17 @@ class MainScreenViewModel @Inject constructor(dm: CapsuleDeviceManager) : ViewMo
 
     private fun updatePlotData(transform: (PlotData) -> PlotData) {
         _plotData.value = transform(_plotData.value)
+    }
+}
+
+// Extension function для удобного сбора Flow данных
+private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectInScope(
+    scope: CoroutineScope,
+    action: (T) -> Unit
+) {
+    scope.launch {
+        this@collectInScope.collect { value ->
+            action(value)
+        }
     }
 }

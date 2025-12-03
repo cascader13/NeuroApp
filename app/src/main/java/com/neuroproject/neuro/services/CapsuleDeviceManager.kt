@@ -66,6 +66,35 @@ data class NFBData(
     val smr: Float = 0f
 )
 
+data class MEMSdata(
+    val accelerometer_x: Float = 0f,
+    val accelerometer_y: Float = 0f,
+    val accelerometer_z: Float = 0f,
+    val gyroscope_x: Float = 0f,
+    val gyroscope_y: Float = 0f,
+    val gyroscope_z: Float = 0f
+)
+
+data class Productivitydata(
+    val timestamp_prod: Double = 0.0,
+    val gravity: Float = 0f,
+    val productivity: Float = 0f,
+    val fatigue: Float = 0f,
+    val reverse_fatique: Float = 0f,
+    val relaxation: Float = 0f,
+    val concentration: Float
+
+)
+
+data class Emotionaldata(
+    val attention:Float = 0f,
+    val relaxation:Float = 0f,
+    val cognitive_load:Float = 0f,
+    val cognitive_control:Float = 0f,
+    val self_control: Float = 0f
+)
+
+
 @Singleton
 class CapsuleDeviceManager @Inject constructor(){
 
@@ -93,14 +122,19 @@ class CapsuleDeviceManager @Inject constructor(){
     private var _physiologicalData = MutableStateFlow(PhysiologicalData())
     private var _nfbData = MutableStateFlow(NFBData())
     private var _baseLineData = MutableStateFlow(BaselineValues(0f, 0f, 0f, 0f))
+    private var _memsData = MutableStateFlow(MEMSdata(0f, 0f, 0f, 0f, 0f, 0f))
+    private var _productivityData = MutableStateFlow(Productivitydata(0.0, 0f, 0f, 0f, 0f, 0f , 0f))
+    private var _emotionalData = MutableStateFlow(Emotionaldata(0f, 0f, 0f, 0f, 0f))
 
     var hrData = _hrData.asStateFlow()
     var physiologicalData = _physiologicalData.asStateFlow()
+    var memsData = _memsData.asStateFlow()
+    var productivityData = _productivityData.asStateFlow()
+    var emotionalData = _emotionalData.asStateFlow()
     var nfbData = _nfbData.asStateFlow()
     var baseLineData = _baseLineData.asStateFlow()
 
     var connectionState = _connectionState.asStateFlow()
-    var licenseState = _licenseState.asStateFlow()
     var calibrationState = _calibrationState.asStateFlow()
 
     var batteryChanged: (Int) -> Unit = { }
@@ -193,6 +227,27 @@ class CapsuleDeviceManager @Inject constructor(){
     }
 
 
+    fun onMEMSReceived(accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float){
+        Log.d("JCAPSULE", "onMEMSReceived: smth")
+        scope.launch {
+            _memsData.emit(MEMSdata(accx, accy, accz, hyrx, hyry, hyrz))
+        }
+    }
+
+    fun onEmotionReceived(attention: Float, relaxation: Float, cognitive_load: Float, cognitive_control: Float, self_control: Float){
+        Log.d("JCAPSULE", "onEmotionReceived: smth")
+        scope.launch {
+            _emotionalData.emit(Emotionaldata(attention, relaxation, cognitive_load, cognitive_control, self_control))
+        }
+    }
+
+    fun onProductivityReceived(timestamp_prod: Double, gravity: Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float){
+        Log.d("JCAPSULE", "onProductivityReceived: smth")
+        scope.launch {
+            _productivityData.emit(Productivitydata(timestamp_prod, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration))
+        }
+
+    }
 
     fun onResistanceReceived(o1: Double, o2: Double, t3: Double, t4: Double) {
         Log.d("JCAPSULE", "onResistanceReceived: smth")
