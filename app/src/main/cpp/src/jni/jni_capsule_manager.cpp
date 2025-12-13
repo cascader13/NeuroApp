@@ -171,8 +171,18 @@ void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
 
 // при получение данных сердцебиения
 void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept{
-    JNIEnv* env = nullptr;
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "HeartRate: %f", cardioData->heartRate);
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID cardioFun = env ->GetMethodID(capsuleClass, "onCardioReceived", "(JFZFZZZF)V");
+    env->CallVoidMethod(javaCapsule, cardioFun, static_cast<jlong>(cardioData->timestampMilli),
+                                                    static_cast<jfloat>(cardioData->heartRate),
+                                                    static_cast<jboolean>(cardioData->hasArtifacts),
+                                                    static_cast<jfloat>(cardioData->kaplanIndex),
+                                                    static_cast<jboolean>(cardioData->metricsAvailable),
+                                                    static_cast<jboolean>(cardioData->motionArtifacts),
+                                                    static_cast<jboolean>(cardioData->skinContact),
+                                                    static_cast<jboolean>(cardioData->stressIndex));
 }
 
 // при окончании калибровки устройства
@@ -231,8 +241,9 @@ void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_NFB", "NFB update state: alpha = %f , beta = %f , theta = %f", userState->alpha, userState->beta, userState->theta);
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
-    jmethodID nfbFun = env->GetMethodID(capsuleClass, "onNFBReceived", "(FFFFF)V");
-    env->CallVoidMethod(javaCapsule, nfbFun, static_cast<jfloat>(userState->alpha),
+    jmethodID nfbFun = env->GetMethodID(capsuleClass, "onNFBReceived", "(JFFFFF)V");
+    env->CallVoidMethod(javaCapsule, nfbFun, static_cast<jlong>(userState->timestampMilli),
+                        static_cast<jfloat>(userState->alpha),
                         static_cast<jfloat>(userState->beta),
                         static_cast<jfloat>(userState->theta),
                         static_cast<jfloat>(userState->delta),
@@ -257,8 +268,10 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
     JNIEnv* env = nullptr;
     
     javaVM->AttachCurrentThread(&env, nullptr);
-    jmethodID MEMSFun = env->GetMethodID(capsuleClass, "onMEMSReceived", "(FFFFFF)V");
-    env->CallVoidMethod(javaCapsule, MEMSFun, static_cast<jfloat>(accelerometer.x),
+    jmethodID MEMSFun = env->GetMethodID(capsuleClass, "onMEMSReceived", "(JFFFFFF)V");
+    env->CallVoidMethod(javaCapsule, MEMSFun, static_cast<jlong>(clCMEMSTimedData_GetTimestampMilli(
+            data, 0)),
+                        static_cast<jfloat>(accelerometer.x),
                         static_cast<jfloat>(accelerometer.y),
                         static_cast<jfloat>(accelerometer.z),
                         static_cast<jfloat>(gyroscope.x),
@@ -277,8 +290,9 @@ void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics*
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update:\n\tTimestamp: %ld\n\tGravity: %f\n\tProductivity: %f\n\tFatigue: %f\n\tReverse Fatigue: %f\n\tRelaxation: %f\n\tConcentration: %f", metrics->timestampMilli, metrics->gravityScore,metrics->productivityScore, metrics->fatigueScore, metrics->reverseFatigueScore, metrics->relaxationScore, metrics->concentrationScore);
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
-    jmethodID ProdFun = env->GetMethodID(capsuleClass, "onProductivityReceived", "(DFFFFFF)V");
-    env->CallVoidMethod(javaCapsule, ProdFun, static_cast<jdouble>(metrics->timestampMilli),
+    jmethodID ProdFun = env->GetMethodID(capsuleClass, "onProductivityReceived", "(JDFFFFFF)V");
+    env->CallVoidMethod(javaCapsule, ProdFun, static_cast<jlong>(metrics->timestampMilli),
+                                                            static_cast<jdouble>(metrics->timestampMilli),
                                                             static_cast<jfloat>(metrics->gravityScore),
                                                             static_cast<jfloat>(metrics->productivityScore),
                                                             static_cast<jfloat>(metrics->fatigueScore),
@@ -312,8 +326,9 @@ void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalS
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states update:\n\"\\tTimestamp: %ld\n\tRelaxation: %f\n\tFatigue: %f\n\tNone: %f\n\tConcentration: %f\n\tInvolvement: %f\n\tStress: %f\n\tNfb Artifacts: %b\n\tCardio Artifacts: %b",value->timestampMilli, value->relaxation, value->fatigue, value->none, value->concentration, value->involvement, value->stress, value->nfbArtifacts, value->cardioArtifacts );
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
-    jmethodID resistFun = env->GetMethodID(capsuleClass, "onPhysiologicalReceived", "(FFFFFFZZ)V");
-    env->CallVoidMethod(javaCapsule, resistFun, static_cast<jfloat>(value->relaxation),
+    jmethodID resistFun = env->GetMethodID(capsuleClass, "onPhysiologicalReceived", "(JFFFFFFZZ)V");
+    env->CallVoidMethod(javaCapsule, resistFun, static_cast<jlong>(value->timestampMilli),
+                        static_cast<jfloat>(value->relaxation),
                         static_cast<jfloat>(value->fatigue),
                         static_cast<jfloat>(value->none),
                         static_cast<jfloat>(value->concentration),
@@ -334,8 +349,9 @@ void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noex
                         states->cognitiveControl, states->selfControl);
     JNIEnv *env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
-    jmethodID EmFun = env->GetMethodID(capsuleClass, "onEmotionReceived", "(FFFFF)V");
-    env->CallVoidMethod(javaCapsule, EmFun, static_cast<jfloat>(states->attention),
+    jmethodID EmFun = env->GetMethodID(capsuleClass, "onEmotionReceived", "(JFFFFF)V");
+    env->CallVoidMethod(javaCapsule, EmFun, static_cast<jlong>(states->timestampMilli),
+                        static_cast<jfloat>(states->attention),
                         static_cast<jfloat>(states->relaxation),
                         static_cast<jfloat>(states->cognitiveLoad),
                         static_cast<jfloat>(states->cognitiveControl),

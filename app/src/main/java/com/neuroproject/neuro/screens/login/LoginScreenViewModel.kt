@@ -1,5 +1,3 @@
-// LoginScreenViewModel.kt
-// LoginScreenViewModel.kt
 package com.neuroproject.neuro.screens.login
 
 import android.content.Context
@@ -12,7 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -23,8 +20,9 @@ class LoginScreenViewModel @Inject constructor(
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Disconnected)
     val loginState = _loginState.asStateFlow()
 
-    val individualNumber = mutableStateOf("")
-    val userName = mutableStateOf("")
+    val username = mutableStateOf("")
+    val password = mutableStateOf("")
+    val showPassword = mutableStateOf(false)
     val errorMessage = mutableStateOf<String?>(null)
 
     private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
@@ -33,21 +31,25 @@ class LoginScreenViewModel @Inject constructor(
         loadSavedData()
     }
 
-    fun onIndividualNumberChange(number: String) {
-        individualNumber.value = number
+    fun onUsernameChange(value: String) {
+        username.value = value
         errorMessage.value = null
     }
 
-    fun onUserNameChange(name: String) {
-        userName.value = name
+    fun onPasswordChange(value: String) {
+        password.value = value
         errorMessage.value = null
+    }
+
+    fun togglePasswordVisibility() {
+        showPassword.value = !showPassword.value
     }
 
     fun login() {
-        val number = individualNumber.value.trim()
-        val name = userName.value.trim()
+        val user = username.value.trim()
+        val pass = password.value.trim()
 
-        if (!isFormValid(number, name)) {
+        if (!isFormValid(user, pass)) {
             return
         }
 
@@ -56,17 +58,22 @@ class LoginScreenViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val success = performLogin(number)
+                // Имитация сетевого запроса
+                delay(1500)
+
+                // В реальном приложении здесь будет вызов API
+                val success = performLogin(user, pass)
+
                 if (success) {
-                    saveUserData(number, name)
+                    saveUserData(user, pass)
                     _loginState.value = LoginState.Connected
                 } else {
                     _loginState.value = LoginState.Error
-                    errorMessage.value = "Неверный индивидуальный номер"
+                    errorMessage.value = "Неверный логин или пароль"
                 }
             } catch (e: Exception) {
                 _loginState.value = LoginState.Error
-                errorMessage.value = "Ошибка сети: ${e.message}"
+                errorMessage.value = "Ошибка подключения: ${e.message}"
             }
         }
     }
@@ -78,71 +85,75 @@ class LoginScreenViewModel @Inject constructor(
         }
     }
 
-    private fun isFormValid(number: String, name: String): Boolean {
-        if (number.isBlank()) {
-            errorMessage.value = "Введите индивидуальный номер"
+    private fun isFormValid(username: String, password: String): Boolean {
+        if (username.isBlank()) {
+            errorMessage.value = "Введите логин"
             return false
         }
 
-        if (number.length < 3) {
-            errorMessage.value = "Номер должен содержать минимум 3 символа"
+        if (password.isBlank()) {
+            errorMessage.value = "Введите пароль"
             return false
         }
 
-        if (!number.matches(Regex("^[a-zA-Z0-9]+$"))) {
-            errorMessage.value = "Номер может содержать только буквы и цифры"
+        if (username.length < 3) {
+            errorMessage.value = "Логин должен содержать минимум 3 символа"
             return false
         }
 
-        if (name.isNotEmpty() && name.length < 2) {
-            errorMessage.value = "Имя должно содержать минимум 2 символа"
+        if (password.length != 8) {
+            errorMessage.value = "Пароль должен содержать ровно 8 символов"
+            return false
+        }
+
+        if (!username.matches(Regex("^[a-zA-Z0-9]+$"))) {
+            errorMessage.value = "Логин может содержать только буквы и цифры"
             return false
         }
 
         return true
     }
 
-    private suspend fun performLogin(individualNumber: String): Boolean {
-        return individualNumber.length >= 3
+    private suspend fun performLogin(username: String, password: String): Boolean {
+        // В реальном приложении здесь будет аутентификация через API
+        // Пока что просто имитируем успешный вход
+        return username.isNotEmpty() && password.length == 8
     }
 
-    private fun saveUserData(number: String, name: String) {
+    private fun saveUserData(username: String, password: String) {
         val editor = sharedPreferences.edit()
-        editor.putString("saved_individual_number", number)
-
-        // Сохраняем имя только если оно было введено
-        if (name.isNotEmpty()) {
-            editor.putString("saved_user_name", name)
-        }
+        editor.putString("saved_username", username)
+        // В реальном приложении пароль должен быть зашифрован!
+        editor.putString("saved_password", password)
         editor.apply()
     }
 
     private fun loadSavedData() {
-        val savedNumber = sharedPreferences.getString("saved_individual_number", "")
-        val savedName = sharedPreferences.getString("saved_user_name", "")
+        val savedUsername = sharedPreferences.getString("saved_username", "")
+        val savedPassword = sharedPreferences.getString("saved_password", "")
 
-        if (!savedNumber.isNullOrEmpty()) {
-            individualNumber.value = savedNumber
+        if (!savedUsername.isNullOrEmpty()) {
+            username.value = savedUsername
         }
 
-        if (!savedName.isNullOrEmpty()) {
-            userName.value = savedName
+        if (!savedPassword.isNullOrEmpty()) {
+            password.value = savedPassword
         }
     }
 
     fun clearSavedData() {
         sharedPreferences.edit().apply {
-            remove("saved_individual_number")
-            remove("saved_user_name")
+            remove("saved_username")
+            remove("saved_password")
         }.apply()
 
-        individualNumber.value = ""
-        userName.value = ""
+        username.value = ""
+        password.value = ""
+        showPassword.value = false
         _loginState.value = LoginState.Disconnected
     }
 
-
     fun hasSavedData(): Boolean {
-        return sharedPreferences.contains("saved_individual_number")
+        return sharedPreferences.contains("saved_username")
     }
 }

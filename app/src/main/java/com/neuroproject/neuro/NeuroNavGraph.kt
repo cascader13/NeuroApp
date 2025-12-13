@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.navigation
+import com.neuroproject.neuro.screens.analysis.AnalysisScreen
 import com.neuroproject.neuro.screens.calibration.CalibrationScreen
 import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
 import com.neuroproject.neuro.screens.login.LoginScreen
@@ -35,7 +36,7 @@ fun NeuroNavGraph(
             LoginScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 onLoginSuccess = {
-                    navActions.navigateToDeviceSearch()
+                    navActions.navigateToMain()
                 },
                 onBackPressed = {
                     navActions.navigateBack()
@@ -48,21 +49,19 @@ fun NeuroNavGraph(
         composable(NavDestinations.MAIN) {
             com.neuroproject.neuro.screens.main.MainScreen(
                 modifier = Modifier.safeDrawingPadding(),
-                onBackPressed = {
-                    navActions.navigateBack()
-                },
-                vm = hiltViewModel()
+                vm = hiltViewModel(),
+                onStartSessionClick = {
+                    navActions.navigateToDeviceSearch()
+                }
             )
         }
 
-        /**
-         * PROBE STACK
-         */
+
         navigation(
-            startDestination = NavDestinations.ProbeNavStack.SEARCH,
+            startDestination = NavDestinations.SEARCH,
             route = NavDestinations.PROBE_STACK
         ) {
-            composable(NavDestinations.ProbeNavStack.SEARCH) {
+            composable(NavDestinations.SEARCH) {
                 DeviceSearchScreen(
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
@@ -75,7 +74,7 @@ fun NeuroNavGraph(
                 )
             }
 
-            composable(NavDestinations.ProbeNavStack.SENSOR_CHECK) {
+            composable(NavDestinations.SENSOR_CHECK) {
                 SensorCheckingScreen(
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
@@ -88,19 +87,30 @@ fun NeuroNavGraph(
                 )
             }
 
-            composable(NavDestinations.ProbeNavStack.CALIBRATION) {
+            composable(NavDestinations.CALIBRATION) {
                 CalibrationScreen (
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
                         navActions.navigateBack()
                     },
                     onCalibrationComplete = {
-                        navActions.navigateToMain()
+                        navActions.navigateToAnalysis()
                     },
                     vm = hiltViewModel()
                 )
 
             }
+
+            composable(NavDestinations.ANALYSIS) {
+                AnalysisScreen(
+                    modifier = Modifier.safeDrawingPadding(),
+                    onBackPressed = {
+                        navActions.navigateBack()
+                    },
+                    vm = hiltViewModel()
+                )
+            }
+
         }
     }
 }

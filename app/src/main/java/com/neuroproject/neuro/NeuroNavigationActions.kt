@@ -18,13 +18,13 @@ class NeuroNavigationActions(val navController: NavController) {
     }
 
     fun navigateToSensorCheck() {
-        navController.navigate(NavDestinations.ProbeNavStack.SENSOR_CHECK) {
+        navController.navigate(NavDestinations.SENSOR_CHECK) {
             launchSingleTop = true
         }
     }
 
     fun navigateToCalibration(){
-        navController.navigate(NavDestinations.ProbeNavStack.CALIBRATION){
+        navController.navigate(NavDestinations.CALIBRATION){
             launchSingleTop = true
         }
     }
@@ -33,6 +33,12 @@ class NeuroNavigationActions(val navController: NavController) {
         navController.navigate(NavDestinations.MAIN) {
             launchSingleTop = true
             popUpTo(NavDestinations.LOGIN) { inclusive = true }
+        }
+    }
+
+    fun navigateToAnalysis() {
+        navController.navigate(NavDestinations.ANALYSIS) {
+            launchSingleTop = true
         }
     }
 

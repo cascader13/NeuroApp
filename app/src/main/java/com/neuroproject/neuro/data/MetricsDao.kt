@@ -7,6 +7,9 @@ import androidx.room.Query
 @Dao
 interface MetricsDao {
 
+
+    @Insert
+    suspend fun insertUsers(session: UsersEntity)
     @Insert
     suspend fun insertNFBMetric(metric: NFBMetricEntity)
 
@@ -25,6 +28,10 @@ interface MetricsDao {
     @Insert
     suspend fun insertCardioMetric(metric: CardioMetricEntity)
 
+
+    @Query("SELECT COUNT(*) FROM Users")
+    suspend fun getUsersCount(): Int
+
     @Query("SELECT COUNT(*) FROM nfb_metrics")
     suspend fun getNFBMetricsCount(): Int
 
@@ -33,6 +40,10 @@ interface MetricsDao {
 
     @Query("SELECT COUNT(*) FROM mems_metrics")
     suspend fun getMEMSMetricsCount(): Int
+
+
+    @Query("DELETE FROM Users")
+    suspend fun clearUsers()
 
     @Query("DELETE FROM nfb_metrics")
     suspend fun clearNFBMetrics()

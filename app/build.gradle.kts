@@ -106,10 +106,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 
-fun Task.findCapsuleSharedLib(aarPath:String) : List<File> {
-    return zipTree(aarPath).matching{
-        include("**/*.so")
-    }.toList()
+fun Task.findCapsuleSharedLib(aarPath: String): List<File> {
+    return project.zipTree(aarPath).filter { it.name.endsWith(".so") }.toList()
 }
 data class AarSharedLibFileInfo(val name:String,val path:String,val architecture: String)
 

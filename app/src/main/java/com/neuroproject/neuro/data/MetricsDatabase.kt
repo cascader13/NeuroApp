@@ -13,7 +13,8 @@ import android.content.Context
         MEMSMetricEntity::class,
         ProductivityMetricEntity::class,
         EmotionalMetricEntity::class,
-        CardioMetricEntity::class
+        CardioMetricEntity::class,
+        UsersEntity::class
     ],
     version = 1,
     exportSchema = false

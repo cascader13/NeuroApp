@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,16 +14,34 @@ class MetricsRepository @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    fun saveNFBMetric(alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
+    fun saveUsers(name: String, password: String, user_id: String){
+        scope.launch {
+            try {
+                val sessionD = UsersEntity(
+                    user_name = name,
+                    user_password = password,
+                    user_id = user_id
+                )
+                metricsDao.insertUsers(sessionD)
+            } catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving Users", e)
+            }
+        }
+    }
+
+    fun saveNFBMetric(time: Long, id: String, date: java.sql.Timestamp,  alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
         scope.launch {
             try {
                 val metric = NFBMetricEntity(
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = time,
+                    id = id,
+                    session = date,
                     alpha = alpha,
                     beta = beta,
                     theta = theta,
                     delta = delta,
-                    smr = smr
+                    smr = smr,
+                    isMarked = false
                 )
                 metricsDao.insertNFBMetric(metric)
             } catch (e: Exception) {
@@ -32,6 +51,9 @@ class MetricsRepository @Inject constructor(
     }
 
     fun savePhysiologicalMetric(
+        time: Long,
+        id: String,
+        date: java.sql.Timestamp,
         relax: Float,
         fatigue: Float,
         none: Float,
@@ -44,7 +66,9 @@ class MetricsRepository @Inject constructor(
         scope.launch {
             try {
                 val metric = PhysiologicalMetricEntity(
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = time,
+                    id = id,
+                    session = date,
                     relax = relax,
                     fatigue = fatigue,
                     none = none,
@@ -52,7 +76,8 @@ class MetricsRepository @Inject constructor(
                     involvement = involvement,
                     stress = stress,
                     nfbArtifacts = nfbArtifacts,
-                    cardioArtifacts = cardioArtifacts
+                    cardioArtifacts = cardioArtifacts,
+                    isMarked = false
                 )
                 metricsDao.insertPhysiologicalMetric(metric)
             } catch (e: Exception) {
@@ -62,19 +87,22 @@ class MetricsRepository @Inject constructor(
     }
 
     fun saveMEMSMetric(
-        accX: Float, accY: Float, accZ: Float,
+        time: Long, id: String, date: java.sql.Timestamp, accX: Float, accY: Float, accZ: Float,
         gyroX: Float, gyroY: Float, gyroZ: Float
     ) {
         scope.launch {
             try {
                 val metric = MEMSMetricEntity(
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = time,
+                    id = id,
+                    session = date,
                     accelerometerX = accX,
                     accelerometerY = accY,
                     accelerometerZ = accZ,
                     gyroscopeX = gyroX,
                     gyroscopeY = gyroY,
-                    gyroscopeZ = gyroZ
+                    gyroscopeZ = gyroZ,
+                    isMarked = false
                 )
                 metricsDao.insertMEMSMetric(metric)
             } catch (e: Exception) {
@@ -84,6 +112,9 @@ class MetricsRepository @Inject constructor(
     }
 
     fun saveProductivityMetric(
+        time: Long,
+        id: String,
+        date: java.sql.Timestamp,
         gravity: Float,
         productivity: Float,
         fatigue: Float,
@@ -94,13 +125,16 @@ class MetricsRepository @Inject constructor(
         scope.launch {
             try {
                 val metric = ProductivityMetricEntity(
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = time,
+                    id = id,
+                    session = date,
                     gravity = gravity,
                     productivity = productivity,
                     fatigue = fatigue,
                     reverseFatigue = reverseFatigue,
                     relaxation = relaxation,
-                    concentration = concentration
+                    concentration = concentration,
+                    isMarked = false
                 )
                 metricsDao.insertProductivityMetric(metric)
             } catch (e: Exception) {
@@ -110,6 +144,9 @@ class MetricsRepository @Inject constructor(
     }
 
     fun saveEmotionalMetric(
+        time: Long,
+        id: String,
+        date: java.sql.Timestamp,
         attention: Float,
         relaxation: Float,
         cognitiveLoad: Float,
@@ -119,12 +156,15 @@ class MetricsRepository @Inject constructor(
         scope.launch {
             try {
                 val metric = EmotionalMetricEntity(
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = time,
+                    id = id,
+                    session = date,
                     attention = attention,
                     relaxation = relaxation,
                     cognitiveLoad = cognitiveLoad,
                     cognitiveControl = cognitiveControl,
-                    selfControl = selfControl
+                    selfControl = selfControl,
+                    isMarked = false
                 )
                 metricsDao.insertEmotionalMetric(metric)
             } catch (e: Exception) {
@@ -133,12 +173,21 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveCardioMetric(heartRate: Float) {
+    fun saveCardioMetric(time: Long, id: String, date: java.sql.Timestamp, heartRate: Float, hasArtifacts:Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionAtrifacts: Boolean, skinContact: Boolean, stressIndex: Float) {
         scope.launch {
             try {
                 val metric = CardioMetricEntity(
-                    timestamp = System.currentTimeMillis(),
-                    heartRate = heartRate
+                    timestamp = time,
+                    id = id,
+                    session = date,
+                    heartRate = heartRate,
+                    hasArtifacts = hasArtifacts,
+                    kaplanIndex = kaplanIndex,
+                    metricsAvailable = metricsAvailable,
+                    motionArtifacts = motionAtrifacts,
+                    skinContact = skinContact,
+                    stressIndex = stressIndex,
+                    isMarked = false
                 )
                 metricsDao.insertCardioMetric(metric)
             } catch (e: Exception) {
@@ -150,6 +199,7 @@ class MetricsRepository @Inject constructor(
     fun clearAllMetrics() {
         scope.launch {
             try {
+                metricsDao.clearUsers()
                 metricsDao.clearNFBMetrics()
                 metricsDao.clearPhysiologicalMetrics()
                 metricsDao.clearMEMSMetrics()

@@ -1,4 +1,3 @@
-// LoginScreen.kt
 package com.neuroproject.neuro.screens.login
 
 import androidx.compose.foundation.background
@@ -17,10 +16,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +37,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,9 +53,10 @@ fun LoginScreen(
     onBackPressed: () -> Unit = {}
 ) {
     val loginState by vm.loginState.collectAsState()
-    val individualNumber = vm.individualNumber.value
-    val userName = vm.userName.value
-    val errorMessage = vm.errorMessage.value
+    val username by remember { vm.username }
+    val password by remember { vm.password }
+    val showPassword by remember { vm.showPassword }
+    val errorMessage by remember { vm.errorMessage }
 
     // Автоматически переходим при успешном входе
     LaunchedEffect(loginState) {
@@ -137,7 +142,7 @@ fun LoginScreen(
                         }
                         else -> {
                             Text(
-                                "Введите данные для входа",
+                                "Введите логин и пароль",
                                 color = Color.White,
                                 fontSize = 16.sp
                             )
@@ -147,11 +152,11 @@ fun LoginScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Поле ввода номера
-                IndividualNumberField(
-                    value = individualNumber,
-                    onValueChange = vm::onIndividualNumberChange,
-                    placeholder = "Индивидуальный номер *",
+                // Поле ввода логина
+                UsernameField(
+                    value = username,
+                    onValueChange = vm::onUsernameChange,
+                    placeholder = "Логин *",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp)
@@ -159,17 +164,31 @@ fun LoginScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Поле ввода имени (необязательное)
-                UserNameField(
-                    value = userName,
-                    onValueChange = vm::onUserNameChange,
-                    placeholder = "Ваше имя (необязательно)",
+                // Поле ввода пароля
+                PasswordField(
+                    value = password,
+                    onValueChange = vm::onPasswordChange,
+                    showPassword = showPassword,
+                    onToggleVisibility = vm::togglePasswordVisibility,
+                    placeholder = "Пароль (8 символов) *",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                // Счетчик символов пароля
+                if (password.isNotEmpty()) {
+                    Text(
+                        text = "Символов: ${password.length}/8",
+                        color = if (password.length == 8) Color.Green else Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
 
                 // Сообщение об ошибке
                 errorMessage?.let { message ->
@@ -191,26 +210,14 @@ fun LoginScreen(
                             .padding(horizontal = 12.dp)
                     ) {
                         Spacer(Modifier.height(8.dp))
-
                         Text(
-                            text = "Сохраненные данные:",
+                            text = "Используются сохраненные данные",
                             style = TextStyle(
                                 color = Color.Gray,
                                 fontSize = 12.sp
                             )
                         )
                     }
-                } else {
-                    Text(
-                        text = "Данные будут сохранены после входа",
-                        style = TextStyle(
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                    )
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -224,7 +231,9 @@ fun LoginScreen(
                 ) {
                     TextButton(
                         onClick = vm::login,
-                        enabled = individualNumber.isNotBlank() && loginState !is LoginState.Connecting,
+                        enabled = username.isNotBlank() &&
+                                password.length == 8 &&
+                                loginState !is LoginState.Connecting,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
@@ -283,7 +292,7 @@ fun LoginScreen(
 }
 
 @Composable
-fun IndividualNumberField(
+fun UsernameField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -300,7 +309,7 @@ fun IndividualNumberField(
         ) {
             Icon(
                 Icons.Filled.Person,
-                contentDescription = "Номер",
+                contentDescription = "Логин",
                 tint = Color.White
             )
 
@@ -331,9 +340,11 @@ fun IndividualNumberField(
 }
 
 @Composable
-fun UserNameField(
+fun PasswordField(
     value: String,
     onValueChange: (String) -> Unit,
+    showPassword: Boolean,
+    onToggleVisibility: () -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier
 ) {
@@ -347,8 +358,8 @@ fun UserNameField(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Icon(
-                Icons.Filled.Star,
-                contentDescription = "Имя",
+                Icons.Filled.Lock,
+                contentDescription = "Пароль",
                 tint = Color.White
             )
 
@@ -359,8 +370,9 @@ fun UserNameField(
                     color = Color.White,
                     fontSize = 18.sp
                 ),
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
+                    keyboardType = KeyboardType.Password,
                     autoCorrect = false
                 ),
                 singleLine = true,
@@ -373,6 +385,20 @@ fun UserNameField(
                     color = Color.Gray,
                     fontSize = 18.sp
                 )
+            }
+
+            // Кнопка показа/скрытия пароля
+            if (value.isNotEmpty()) {
+                IconButton(
+                    onClick = onToggleVisibility,
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (showPassword) "Скрыть пароль" else "Показать пароль",
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
