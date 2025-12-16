@@ -52,7 +52,20 @@ fun NeuroNavGraph(
                 vm = hiltViewModel(),
                 onStartSessionClick = {
                     navActions.navigateToDeviceSearch()
+                } ,
+                onSettingsClick = {
+                    navActions.navigateToSettings()
                 }
+            )
+        }
+
+        composable(NavDestinations.SETTINGS){
+            com.neuroproject.neuro.screens.settings.SettingsScreen(
+                modifier = Modifier.safeDrawingPadding(),
+                onBackClick = {
+                    navActions.navigateToMain()
+                },
+                vm = hiltViewModel(),
             )
         }
 

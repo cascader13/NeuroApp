@@ -83,9 +83,13 @@ dependencies {
     implementation("io.github.boguszpawlowski.composecalendar:kotlinx-datetime:1.3.0")
 
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
+    implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.dagger:hilt-android:2.49")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation(files("libs/CapsuleService.aar"))
     implementation(files("libs/devicedriver.aar"))
     kapt("com.google.dagger:hilt-android-compiler:2.49")

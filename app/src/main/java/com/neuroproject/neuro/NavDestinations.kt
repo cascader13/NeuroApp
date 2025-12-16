@@ -7,6 +7,7 @@ object NavDestinations {
     const val SUB_TEST = "sub_test"
     const val MAIN = "main"
 
+    const val SETTINGS = "settings"
     const val ANALYSIS = "analysis"
 
     const val SEARCH = "search"

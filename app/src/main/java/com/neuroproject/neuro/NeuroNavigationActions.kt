@@ -29,6 +29,12 @@ class NeuroNavigationActions(val navController: NavController) {
         }
     }
 
+    fun navigateToSettings(){
+        navController.navigate(NavDestinations.SETTINGS){
+            launchSingleTop = true
+        }
+    }
+
     fun navigateToMain() {
         navController.navigate(NavDestinations.MAIN) {
             launchSingleTop = true
