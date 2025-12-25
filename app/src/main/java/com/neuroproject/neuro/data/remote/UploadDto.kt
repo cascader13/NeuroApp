@@ -2,6 +2,7 @@
 package com.neuroproject.neuro.data.remote
 
 import com.google.gson.annotations.SerializedName
+import com.neuroproject.neuro.data.EEGRawMetricEntity
 
 /**
  * Основной DTO для отправки на сервер
@@ -12,6 +13,15 @@ data class UploadRequest(
 
     @SerializedName("emotionalMetrics")
     val emotionalMetrics: List<EmotionalMetricDto>,
+
+    @SerializedName("EEGRawMetrics")
+    val EEGRawMetrics: List<EEGRawMetricDto>,
+
+    @SerializedName("EEGProceedMetrics")
+    val EEGProceedMetrics: List<EEGProceedMetricDto>,
+
+    @SerializedName("EEGArtifactsMetrics")
+    val EEGArtifactsMetrics: List<EEGArtifactMetricDto>,
 
     @SerializedName("memsMetrics")
     val memsMetrics: List<MemsMetricDto>,
@@ -88,6 +98,70 @@ data class EmotionalMetricDto(
 
     @SerializedName("selfControl")
     val selfControl: Double? = null
+)
+
+/**
+ * DTO для EEG RAW метрик
+ */
+
+data class EEGRawMetricDto(
+    @SerializedName("individualNumber")
+    val individualNumber: String,
+
+    @SerializedName("timestamp")
+    val timestamp: Long,
+
+    @SerializedName("session")
+    val session: Int? = null,
+
+    @SerializedName("channel1")
+    val channel1: Float,
+
+    @SerializedName("channel2")
+    val channel2: Float
+)
+
+/**
+ * DTO для EEG PROCEED метрик
+ */
+
+data class EEGProceedMetricDto(
+    @SerializedName("individualNumber")
+    val individualNumber: String,
+
+    @SerializedName("timestamp")
+    val timestamp: Long,
+
+    @SerializedName("session")
+    val session: Int? = null,
+
+    @SerializedName("channel1")
+    val channel1: Float,
+    @SerializedName("channel2")
+    val channel2: Float
+)
+
+/**
+ * DTO для EEG artifact метрик
+ */
+
+data class EEGArtifactMetricDto(
+    @SerializedName("individualNumber")
+    val individualNumber: String,
+
+    @SerializedName("timestamp")
+    val timestamp: Long,
+
+    @SerializedName("session")
+    val session: Int? = null,
+    @SerializedName("artifactsChannel1")
+    val artifactsChannel1: Boolean,
+    @SerializedName("artifactsChannel2")
+    val artifactsChannel2: Boolean,
+    @SerializedName("qualityChannel1")
+    val qualityChannel1: Float,
+    @SerializedName("qualityChannel2")
+    val qualityChannel2: Float,
 )
 
 /**

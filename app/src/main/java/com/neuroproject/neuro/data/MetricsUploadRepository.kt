@@ -4,6 +4,8 @@ package com.neuroproject.neuro.data
 import android.content.Context
 import com.google.gson.Gson
 import com.neuroproject.neuro.data.*
+import com.neuroproject.neuro.data.remote.EEGArtifactMetricDto
+import com.neuroproject.neuro.data.remote.EEGProceedMetricDto
 import com.neuroproject.neuro.data.remote.MetricsApiService
 import com.neuroproject.neuro.data.remote.UploadRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +37,9 @@ class MetricsUploadRepository @Inject constructor(
             val productivityMetrics = metricsDao.getUnmarkedProductivityMetrics()
             val emotionalMetrics = metricsDao.getUnmarkedEmotionalMetrics()
             val cardioMetrics = metricsDao.getUnmarkedCardioMetrics()
+            val EEGRawMetrics = metricsDao.getUnmarkedEEGRAWMetrics()
+            val EEGProceedMetrics = metricsDao.getUnmarkedEEGPROCEEDMetrics()
+            val EEGArtifactMetrics = metricsDao.getUnmarkedEEGArtifactsMetrics()
 
             val totalRecords = nfbMetrics.size + physiologicalMetrics.size + memsMetrics.size +
                     productivityMetrics.size + emotionalMetrics.size + cardioMetrics.size
@@ -50,7 +55,11 @@ class MetricsUploadRepository @Inject constructor(
                 memsMetrics = memsMetrics.map { it.toServerDto() },
                 nfbMetrics = nfbMetrics.map { it.toServerDto() },
                 physiologicalMetrics = physiologicalMetrics.map { it.toServerDto() },
-                productivityMetrics = productivityMetrics.map { it.toServerDto() }
+                productivityMetrics = productivityMetrics.map { it.toServerDto() },
+                EEGRawMetrics = EEGRawMetrics.map {it.toServerDto()},
+                EEGProceedMetrics = EEGProceedMetrics.map {it.toServerDto()},
+                EEGArtifactsMetrics = EEGArtifactMetrics.map{it.toServerDto()}
+
             )
 
             UploadPreparationResult.Ready(
@@ -61,7 +70,10 @@ class MetricsUploadRepository @Inject constructor(
                 memsCount = memsMetrics.size,
                 productivityCount = productivityMetrics.size,
                 emotionalCount = emotionalMetrics.size,
-                cardioCount = cardioMetrics.size
+                cardioCount = cardioMetrics.size,
+                EEGRAWCount = EEGRawMetrics.size,
+                EEGPROCEEDCount = EEGProceedMetrics.size,
+                EEGArtifactsCount = EEGArtifactMetrics.size
             )
 
         } catch (e: Exception) {
@@ -212,6 +224,10 @@ class MetricsUploadRepository @Inject constructor(
         val prodTimestamps = metricsDao.getUnmarkedProductivityMetrics().map { it.timestamp }
         val emotTimestamps = metricsDao.getUnmarkedEmotionalMetrics().map { it.timestamp }
         val cardioTimestamps = metricsDao.getUnmarkedCardioMetrics().map { it.timestamp }
+        val EEGRAWTimestamps = metricsDao.getUnmarkedEEGRAWMetrics().map {it.timestamp}
+        val EEGProceedTimestamps = metricsDao.getUnmarkedEEGPROCEEDMetrics().map {it.timestamp}
+        val EEGArtifactsTimestamps = metricsDao.getUnmarkedEEGArtifactsMetrics().map {it.timestamp}
+
 
         if (nfbTimestamps.isNotEmpty()) metricsDao.markNFBMetricsAsSynced(nfbTimestamps)
         if (physioTimestamps.isNotEmpty()) metricsDao.markPhysiologicalMetricsAsSynced(physioTimestamps)
@@ -219,6 +235,9 @@ class MetricsUploadRepository @Inject constructor(
         if (prodTimestamps.isNotEmpty()) metricsDao.markProductivityMetricsAsSynced(prodTimestamps)
         if (emotTimestamps.isNotEmpty()) metricsDao.markEmotionalMetricsAsSynced(emotTimestamps)
         if (cardioTimestamps.isNotEmpty()) metricsDao.markCardioMetricsAsSynced(cardioTimestamps)
+        if (EEGRAWTimestamps.isNotEmpty()) metricsDao.markEEGRAWMetricsAsSynced(EEGRAWTimestamps)
+        if (EEGProceedTimestamps.isNotEmpty()) metricsDao.markEEGProceedMetricsAsSynced(EEGProceedTimestamps)
+        if (EEGArtifactsTimestamps.isNotEmpty()) metricsDao.markEEGArtifactsMetricsAsSynced(EEGArtifactsTimestamps)
     }
 
     /**
@@ -230,14 +249,20 @@ class MetricsUploadRepository @Inject constructor(
                 metricsDao.getAllMEMSMetricsCount() +
                 metricsDao.getAllProductivityMetricsCount() +
                 metricsDao.getAllEmotionalMetricsCount() +
-                metricsDao.getAllCardioMetricsCount()
+                metricsDao.getAllCardioMetricsCount() +
+                metricsDao.getAllEEGRAWMetricsCount() +
+                metricsDao.getAllEEGPROCEEDMetricsCount() +
+                metricsDao.getAllEEGArtifactsMetricsCount()
 
         val unsyncedRecords = metricsDao.getUnmarkedNFBMetricsCount() +
                 metricsDao.getUnmarkedPhysiologicalMetricsCount() +
                 metricsDao.getUnmarkedMEMSMetricsCount() +
                 metricsDao.getUnmarkedProductivityMetricsCount() +
                 metricsDao.getUnmarkedEmotionalMetricsCount() +
-                metricsDao.getUnmarkedCardioMetricsCount()
+                metricsDao.getUnmarkedCardioMetricsCount() +
+                metricsDao.getUnmarkedEEGRAWMetricsCount() +
+                metricsDao.getUnmarkedEEGPROCEEDMetricsCount() +
+                metricsDao.getUnmarkedEEGArtifactMetricsCount()
 
         return UploadStats(
             totalRecords = totalRecords,
@@ -248,12 +273,18 @@ class MetricsUploadRepository @Inject constructor(
             productivityCount = metricsDao.getAllProductivityMetricsCount(),
             emotionalCount = metricsDao.getAllEmotionalMetricsCount(),
             cardioCount = metricsDao.getAllCardioMetricsCount(),
+            EEGRAWCount = metricsDao.getAllEEGRAWMetricsCount(),
+            EEGPROCEEDCount = metricsDao.getAllEEGPROCEEDMetricsCount(),
+            EEGArtifactsCount = metricsDao.getAllEEGArtifactsMetricsCount(),
             nfbUnsynced = metricsDao.getUnmarkedNFBMetricsCount(),
             physiologicalUnsynced = metricsDao.getUnmarkedPhysiologicalMetricsCount(),
             memsUnsynced = metricsDao.getUnmarkedMEMSMetricsCount(),
             productivityUnsynced = metricsDao.getUnmarkedProductivityMetricsCount(),
             emotionalUnsynced = metricsDao.getUnmarkedEmotionalMetricsCount(),
-            cardioUnsynced = metricsDao.getUnmarkedCardioMetricsCount()
+            cardioUnsynced = metricsDao.getUnmarkedCardioMetricsCount(),
+            EEGRAWUnsynced = metricsDao.getUnmarkedEEGRAWMetricsCount(),
+            EEGPROCEEDUnsynced = metricsDao.getUnmarkedEEGPROCEEDMetricsCount(),
+            EEGArtifactsUnsynced = metricsDao.getUnmarkedEEGArtifactMetricsCount()
         )
     }
 }
@@ -269,7 +300,10 @@ sealed class UploadPreparationResult {
         val memsCount: Int,
         val productivityCount: Int,
         val emotionalCount: Int,
-        val cardioCount: Int
+        val cardioCount: Int,
+        val EEGRAWCount: Int,
+        val EEGPROCEEDCount: Int,
+        val EEGArtifactsCount: Int
     ) : UploadPreparationResult()
     data class Error(val message: String) : UploadPreparationResult()
 }
@@ -306,10 +340,17 @@ data class UploadStats(
     val productivityCount: Int,
     val emotionalCount: Int,
     val cardioCount: Int,
+    val EEGRAWCount: Int,
+    val EEGPROCEEDCount: Int,
+    val EEGArtifactsCount: Int,
     val nfbUnsynced: Int,
     val physiologicalUnsynced: Int,
     val memsUnsynced: Int,
     val productivityUnsynced: Int,
     val emotionalUnsynced: Int,
-    val cardioUnsynced: Int
+    val cardioUnsynced: Int,
+    val EEGRAWUnsynced: Int,
+    val EEGPROCEEDUnsynced: Int,
+    val EEGArtifactsUnsynced: Int
+
 )

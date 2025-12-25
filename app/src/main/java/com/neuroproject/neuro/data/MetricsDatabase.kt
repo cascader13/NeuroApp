@@ -13,10 +13,13 @@ import android.content.Context
         MEMSMetricEntity::class,
         ProductivityMetricEntity::class,
         EmotionalMetricEntity::class,
+        EEGRawMetricEntity::class,
+        EEGProceedMetricEntity::class,
+        EEGArtifactsMetricEntity::class,
         CardioMetricEntity::class,
         UsersEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

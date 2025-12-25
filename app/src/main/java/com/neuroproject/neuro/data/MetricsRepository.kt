@@ -50,6 +50,62 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    fun saveEEGRAWMetric(time: Long, id: String, date: java.sql.Timestamp,  channel1: Float, channel2: Float) {
+        scope.launch {
+            try {
+                val metric = EEGRawMetricEntity(
+                    timestamp = time,
+                    id = id,
+                    session = date,
+                    channel1 = channel1,
+                    channel2 = channel2,
+                    isMarked = false
+                )
+                metricsDao.insertEEGRAWMetric(metric)
+            }catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving EEG RAW metric", e)
+            }
+        }
+    }
+
+    fun saveEEGPROCEEDMetric(time: Long, id: String, date: java.sql.Timestamp, channel1: Float, channel2: Float) {
+        scope.launch {
+            try {
+                val metric = EEGProceedMetricEntity(
+                    timestamp = time,
+                    id = id,
+                    session = date,
+                    channel1 = channel1,
+                    channel2 = channel2,
+                    isMarked = false
+                )
+                metricsDao.insertEEGPROCEEDMetric(metric)
+            }catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving EEG PROCEED metric", e)
+            }
+        }
+    }
+
+    fun saveEEGArtifactMetric(time: Long, id: String, date: java.sql.Timestamp, artifactsChannel1: Boolean, artifactsChannel2: Boolean, qualityChannel1: Float, qualityChannel2: Float,) {
+        scope.launch {
+            try {
+                val metric = EEGArtifactsMetricEntity(
+                    timestamp = time,
+                    id = id,
+                    session = date,
+                    artifactsChannel1 = artifactsChannel1,
+                    artifactsChannel2 = artifactsChannel2,
+                    qualityChannel1 = qualityChannel1,
+                    qualityChannel2 = qualityChannel2,
+                    isMarked = false
+                )
+                metricsDao.insertEEGArtifactsMetric(metric)
+            }catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving EEG Artifact metric", e)
+            }
+        }
+    }
+
     fun savePhysiologicalMetric(
         time: Long,
         id: String,

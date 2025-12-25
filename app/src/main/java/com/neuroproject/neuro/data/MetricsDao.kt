@@ -17,6 +17,14 @@ interface MetricsDao {
     suspend fun insertNFBMetric(metric: NFBMetricEntity)
 
     @Insert
+    suspend fun insertEEGRAWMetric(metric: EEGRawMetricEntity)
+
+    @Insert
+    suspend fun insertEEGPROCEEDMetric(metric: EEGProceedMetricEntity)
+
+    @Insert
+    suspend fun insertEEGArtifactsMetric(metric: EEGArtifactsMetricEntity)
+    @Insert
     suspend fun insertPhysiologicalMetric(metric: PhysiologicalMetricEntity)
 
     @Insert
@@ -37,6 +45,15 @@ interface MetricsDao {
     @Query("SELECT COUNT(*) FROM nfb_metrics")
     suspend fun getNFBMetricsCount(): Int
 
+    @Query("SELECT COUNT(*) FROM EEG_Raw_metrics")
+    suspend fun getEEGRAWMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM EEG_Proceed_metrics")
+    suspend fun getEEGPROCEEDMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM EEG_Artifacts_metrics")
+    suspend fun getEEGArtifactMetricsCount(): Int
+
     @Query("SELECT COUNT(*) FROM physiological_metrics")
     suspend fun getPhysiologicalMetricsCount(): Int
 
@@ -46,6 +63,14 @@ interface MetricsDao {
     @Query("DELETE FROM Users")
     suspend fun clearUsers()
 
+    @Query("DELETE FROM EEG_Raw_metrics")
+    suspend fun clearEEGRAW()
+
+    @Query("DELETE FROM EEG_Proceed_metrics")
+    suspend fun clearEEGPROCEED()
+
+    @Query("DELETE FROM EEG_Artifacts_metrics")
+    suspend fun clearEEGArtifacts()
     @Query("DELETE FROM nfb_metrics")
     suspend fun clearNFBMetrics()
 
@@ -64,11 +89,19 @@ interface MetricsDao {
     @Query("DELETE FROM cardio_metrics")
     suspend fun clearCardioMetrics()
 
-    // НОВЫЕ МЕТОДЫ ДЛЯ ВЫГРУЗКИ
 
     // Получение непомеченных данных
     @Query("SELECT * FROM nfb_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedNFBMetrics(): List<NFBMetricEntity>
+
+    @Query("SELECT * FROM EEG_Raw_metrics WHERE isMarked = 0")
+    suspend fun getUnmarkedEEGRAWMetrics(): List<EEGRawMetricEntity>
+
+    @Query("SELECT * FROM EEG_Proceed_metrics WHERE isMarked = 0")
+    suspend fun getUnmarkedEEGPROCEEDMetrics(): List<EEGProceedMetricEntity>
+
+    @Query("SELECT * FROM EEG_Artifacts_metrics WHERE isMarked = 0")
+    suspend fun getUnmarkedEEGArtifactsMetrics(): List<EEGArtifactsMetricEntity>
 
     @Query("SELECT * FROM physiological_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedPhysiologicalMetrics(): List<PhysiologicalMetricEntity>
@@ -88,6 +121,15 @@ interface MetricsDao {
     // Подсчет непомеченных данных
     @Query("SELECT COUNT(*) FROM nfb_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedNFBMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM eeg_raw_metrics WHERE isMarked = 0")
+    suspend fun getUnmarkedEEGRAWMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM eeg_proceed_metrics WHERE isMarked = 0")
+    suspend fun getUnmarkedEEGPROCEEDMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM eeg_artifacts_metrics WHERE isMarked = 0")
+    suspend fun getUnmarkedEEGArtifactMetricsCount(): Int
 
     @Query("SELECT COUNT(*) FROM physiological_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedPhysiologicalMetricsCount(): Int
@@ -114,6 +156,15 @@ interface MetricsDao {
     @Query("UPDATE mems_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markMEMSMetricsAsSynced(timestamps: List<Long>)
 
+    @Query("UPDATE EEG_Raw_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
+    suspend fun markEEGRAWMetricsAsSynced(timestamps: List<Long>)
+
+    @Query("UPDATE EEG_Proceed_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
+    suspend fun markEEGProceedMetricsAsSynced(timestamps: List<Long>)
+
+    @Query("UPDATE eeg_artifacts_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
+    suspend fun markEEGArtifactsMetricsAsSynced(timestamps: List<Long>)
+
     @Query("UPDATE productivity_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markProductivityMetricsAsSynced(timestamps: List<Long>)
 
@@ -126,6 +177,15 @@ interface MetricsDao {
     // Получить данные с лимитом (для пакетной отправки)
     @Query("SELECT * FROM nfb_metrics WHERE isMarked = 0 LIMIT :limit")
     suspend fun getUnmarkedNFBMetricsBatch(limit: Int): List<NFBMetricEntity>
+
+    @Query("SELECT * FROM EEG_Raw_metrics WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedEEGRAWMetricsBatch(limit: Int): List<EEGRawMetricEntity>
+
+    @Query("SELECT * FROM EEG_Proceed_metrics WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedEEGPROCEEDMetricsBatch(limit: Int): List<EEGProceedMetricEntity>
+
+    @Query("SELECT * FROM EEG_Artifacts_metrics WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedEEGArtifactsMetricsBatch(limit: Int): List<EEGArtifactsMetricEntity>
 
     @Query("SELECT * FROM physiological_metrics WHERE isMarked = 0 LIMIT :limit")
     suspend fun getUnmarkedPhysiologicalMetricsBatch(limit: Int): List<PhysiologicalMetricEntity>
@@ -146,6 +206,15 @@ interface MetricsDao {
     @Query("SELECT COUNT(*) FROM nfb_metrics")
     suspend fun getAllNFBMetricsCount(): Int
 
+    @Query("SELECT COUNT(*) FROM EEG_Raw_metrics")
+    suspend fun getAllEEGRAWMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM EEG_Proceed_metrics")
+    suspend fun getAllEEGPROCEEDMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM EEG_Artifacts_metrics")
+    suspend fun getAllEEGArtifactsMetricsCount(): Int
+
     @Query("SELECT COUNT(*) FROM physiological_metrics")
     suspend fun getAllPhysiologicalMetricsCount(): Int
 
@@ -164,6 +233,15 @@ interface MetricsDao {
     // Получить временные метки последних данных
     @Query("SELECT MAX(timestamp) FROM nfb_metrics")
     suspend fun getLastNFBMetricTimestamp(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM EEG_Raw_metrics")
+    suspend fun getLastEEGRAWMetricTimestamp(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM EEG_Proceed_metrics")
+    suspend fun getLastEEGPROCEEDMetricTimestamp(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM EEG_Artifacts_metrics")
+    suspend fun getLastEEGArtifactMetricTimestamp(): Long?
 
     @Query("SELECT MAX(timestamp) FROM physiological_metrics")
     suspend fun getLastPhysiologicalMetricTimestamp(): Long?

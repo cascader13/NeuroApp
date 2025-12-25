@@ -34,6 +34,38 @@ fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
     )
 }
 
+fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto{
+    return EEGRawMetricDto(
+        individualNumber = this.id,
+        timestamp = this.timestamp,
+        session = this.session.toInt(),
+        channel1 = this.channel1,
+        channel2 = this.channel2
+    )
+}
+
+fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto{
+    return EEGProceedMetricDto(
+        individualNumber = this.id,
+        timestamp = this.timestamp,
+        session = this.session.toInt(),
+        channel1 = this.channel1,
+        channel2 = this.channel2
+    )
+}
+
+fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto{
+    return EEGArtifactMetricDto(
+        individualNumber = this.id,
+        timestamp = this.timestamp,
+        session = this.session.toInt(),
+        artifactsChannel1 = this.artifactsChannel1,
+        artifactsChannel2 = this.artifactsChannel2,
+        qualityChannel1 = this.qualityChannel1,
+        qualityChannel2 = this.qualityChannel2
+    )
+}
+
 fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
     return MemsMetricDto(
         individualNumber = this.id,

@@ -15,6 +15,39 @@ data class UsersEntity(
     val user_password : String,
     val user_id : String
 )
+
+@Entity(tableName = "EEG_Raw_metrics")
+data class EEGRawMetricEntity(
+    @PrimaryKey val timestamp: Long,
+    val id: String,
+    val session : java.sql.Timestamp,
+    val channel1: Float,
+    val channel2: Float,
+    val isMarked: Boolean
+)
+
+@Entity(tableName = "EEG_Proceed_metrics")
+data class EEGProceedMetricEntity(
+    @PrimaryKey val timestamp: Long,
+    val id: String,
+    val session : java.sql.Timestamp,
+    val channel1: Float,
+    val channel2: Float,
+    val isMarked: Boolean
+)
+
+@Entity(tableName = "EEG_Artifacts_metrics")
+data class EEGArtifactsMetricEntity(
+    @PrimaryKey val timestamp: Long,
+    val id: String,
+    val session : java.sql.Timestamp,
+    val artifactsChannel1: Boolean,
+    val artifactsChannel2: Boolean,
+    val qualityChannel1: Float,
+    val qualityChannel2: Float,
+    val isMarked: Boolean
+)
+
 @Entity(tableName = "nfb_metrics")
 data class NFBMetricEntity(
 @PrimaryKey val timestamp: Long,

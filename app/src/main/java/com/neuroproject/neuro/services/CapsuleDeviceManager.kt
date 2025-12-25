@@ -11,13 +11,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.concurrent.thread
 import kotlin.coroutines.EmptyCoroutineContext
 
-// здесь как раз работа с устройством на kotlin. В принципе данный код мало как будет изменяться. Надо только добавить enum состояний экземпляра класса и добавить методы с новыми метриками. Посмотрим
 enum class CapsuleStages(val value: Int) {
     CALIBRATOR_UNKNOWN_STAGE(-2),
     CALIBRATOR_READY_STAGE(-1),
@@ -86,16 +84,15 @@ data class Productivitydata(
     val fatigue: Float = 0f,
     val reverse_fatique: Float = 0f,
     val relaxation: Float = 0f,
-    val concentration: Float
-
+    val concentration: Float = 0f
 )
 
 data class Emotionaldata(
     val timeStampMilli: Long = 0,
-    val attention:Float = 0f,
-    val relaxation:Float = 0f,
-    val cognitive_load:Float = 0f,
-    val cognitive_control:Float = 0f,
+    val attention: Float = 0f,
+    val relaxation: Float = 0f,
+    val cognitive_load: Float = 0f,
+    val cognitive_control: Float = 0f,
     val self_control: Float = 0f
 )
 
@@ -110,9 +107,29 @@ data class Cardiodata(
     val stress: Float = 0f
 )
 
+// НОВЫЕ КЛАССЫ ДЛЯ EEG ДАННЫХ (только raw и processed)
+data class EEGRawSample(
+    val timeStampMilli: Long = 0,
+    val channel1: Float = 0f,
+    val channel2: Float = 0f
+)
+
+data class EEGProcessedSample(
+    val timeStampMilli: Long = 0,
+    val channel1: Float = 0f,
+    val channel2: Float = 0f
+)
+
+data class EEGArtifactsSample(
+    val timeStampMilli: Long = 0,
+    val artifactsChannel1: Boolean = false,
+    val artifactsChannel2: Boolean = false,
+    val qualityChannel1: Float = 0f,
+    val qualityChannel2: Float = 0f
+)
 
 @Singleton
-class CapsuleDeviceManager @Inject constructor(){
+class CapsuleDeviceManager @Inject constructor() {
 
     private var _instance = this
 
@@ -123,8 +140,7 @@ class CapsuleDeviceManager @Inject constructor(){
 
     var scope = CoroutineScope(EmptyCoroutineContext)
 
-    var devicesFound: (Array<DeviceInfo>) -> Unit = { }
-
+    var devicesFound: (Array<DeviceInfo>) -> Unit = {}
 
     private var _connectionState = MutableStateFlow(DeviceConnectionState.disconnected)
     private var _licenseState = MutableStateFlow(false)
@@ -139,8 +155,13 @@ class CapsuleDeviceManager @Inject constructor(){
     private var _nfbData = MutableStateFlow(NFBData())
     private var _baseLineData = MutableStateFlow(BaselineValues(0f, 0f, 0f, 0f))
     private var _memsData = MutableStateFlow(MEMSdata(0, 0f, 0f, 0f, 0f, 0f, 0f))
-    private var _productivityData = MutableStateFlow(Productivitydata(0,0.0, 0f, 0f, 0f, 0f, 0f , 0f))
-    private var _emotionalData = MutableStateFlow(Emotionaldata(0,0f, 0f, 0f, 0f, 0f))
+    private var _productivityData = MutableStateFlow(Productivitydata(0, 0.0, 0f, 0f, 0f, 0f, 0f, 0f))
+    private var _emotionalData = MutableStateFlow(Emotionaldata(0, 0f, 0f, 0f, 0f, 0f))
+
+    // НОВЫЕ ПОТОКИ ДЛЯ EEG ДАННЫХ
+    private var _eegRawData = MutableStateFlow(EEGRawSample())
+    private var _eegProcessedData = MutableStateFlow(EEGProcessedSample())
+    private var _eegArtifacts = MutableStateFlow(EEGArtifactsSample())
 
     var hrData = _hrData.asStateFlow()
     var physiologicalData = _physiologicalData.asStateFlow()
@@ -150,25 +171,28 @@ class CapsuleDeviceManager @Inject constructor(){
     var nfbData = _nfbData.asStateFlow()
     var baseLineData = _baseLineData.asStateFlow()
 
+    // НОВЫЕ СВОЙСТВА ДЛЯ EEG ДАННЫХ
+    var eegRawData = _eegRawData.asStateFlow()
+    var eegProcessedData = _eegProcessedData.asStateFlow()
+    var eegArtifacts = _eegArtifacts.asStateFlow()
+
     var connectionState = _connectionState.asStateFlow()
     var calibrationState = _calibrationState.asStateFlow()
 
-    var batteryChanged: (Int) -> Unit = { }
+    var batteryChanged: (Int) -> Unit = {}
 
     var resistanceReceived: (o1: Double, o2: Double, t3: Double, t4: Double) -> Unit =
         { o1: Double, o2: Double, t3: Double, t4: Double -> }
 
-    var nfbReceived: (time: Long ,alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) -> Unit = { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->}
-    var stageCalibrationProgress: (stage: Int) -> Unit = { }
+    var nfbReceived: (time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) -> Unit =
+        { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float -> }
 
-
+    var stageCalibrationProgress: (stage: Int) -> Unit = {}
     var initializeStateChanged: (state: CapsuleInitializedState) -> Unit = {}
 
-
-    fun onCapsuleStateChanged(state: Int){
+    fun onCapsuleStateChanged(state: Int) {
         initializeStateChanged(CapsuleInitializedState.entries[state])
     }
-
 
     fun initCapsule() {
         scope.launch {
@@ -229,7 +253,6 @@ class CapsuleDeviceManager @Inject constructor(){
         nativeStopSession()
     }
 
-
     fun locatorEvent(devices: Array<DeviceInfo>) {
         devicesFound(devices)
         Log.d("JCAPSULE", "locatorEvent")
@@ -242,27 +265,25 @@ class CapsuleDeviceManager @Inject constructor(){
         Log.d("JCAPSULE", "deviceConnectionState")
     }
 
-
-    fun onMEMSReceived(time: Long, accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float){
+    fun onMEMSReceived(time: Long, accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float) {
         Log.d("JCAPSULE", "onMEMSReceived: smth")
         scope.launch {
             _memsData.emit(MEMSdata(time, accx, accy, accz, hyrx, hyry, hyrz))
         }
     }
 
-    fun onEmotionReceived(time: Long, attention: Float, relaxation: Float, cognitive_load: Float, cognitive_control: Float, self_control: Float){
+    fun onEmotionReceived(time: Long, attention: Float, relaxation: Float, cognitive_load: Float, cognitive_control: Float, self_control: Float) {
         Log.d("JCAPSULE", "onEmotionReceived: smth")
         scope.launch {
-            _emotionalData.emit(Emotionaldata(time,attention, relaxation, cognitive_load, cognitive_control, self_control))
+            _emotionalData.emit(Emotionaldata(time, attention, relaxation, cognitive_load, cognitive_control, self_control))
         }
     }
 
-    fun onProductivityReceived(time : Long, timestamp_prod: Double, gravity: Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float){
+    fun onProductivityReceived(time: Long, timestamp_prod: Double, gravity: Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float) {
         Log.d("JCAPSULE", "onProductivityReceived: smth")
         scope.launch {
             _productivityData.emit(Productivitydata(time, timestamp_prod, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration))
         }
-
     }
 
     fun onResistanceReceived(o1: Double, o2: Double, t3: Double, t4: Double) {
@@ -283,13 +304,13 @@ class CapsuleDeviceManager @Inject constructor(){
 
     fun onNFBReceived(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
         scope.launch {
-            _nfbData.emit(NFBData(time,alpha, beta, theta, delta, smr))
+            _nfbData.emit(NFBData(time, alpha, beta, theta, delta, smr))
         }
         nfbReceived(time, alpha, beta, theta, delta, smr)
         Log.d("JCAPSULE", "alpha = " + alpha + ", beta = " + beta + ", theta = " + theta)
     }
 
-    fun onCardioReceived(time:Long, heartRate: Float, hasArtifacts: Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionArtifacts: Boolean, skinContact: Boolean, stress: Float) {
+    fun onCardioReceived(time: Long, heartRate: Float, hasArtifacts: Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionArtifacts: Boolean, skinContact: Boolean, stress: Float) {
         scope.launch {
             _hrData.emit(Cardiodata(time, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifacts, skinContact, stress))
         }
@@ -321,14 +342,54 @@ class CapsuleDeviceManager @Inject constructor(){
                     cardioArtifacts
                 )
             )
-
         }
         Log.d(
             "JCAPSULE", "r = " + relax +
                     ", f = " + fatigue + ", n = " + none
                     + ", c = " + concentration + ", i = " + involvement + ", na = " + nfbArtifacts + ", ca = " + cardioArtifacts
         )
+    }
 
+    // НОВЫЕ МЕТОДЫ ДЛЯ EEG ДАННЫХ
+    fun onEEGRawDataReceived(
+        timeStampMilli: Long,
+        channel1: Float,
+        channel2: Float
+    ) {
+        Log.d("JCAPSULE", "onEEGRawDataReceived: time=$timeStampMilli")
+        scope.launch {
+            _eegRawData.emit(EEGRawSample(timeStampMilli, channel1, channel2))
+        }
+    }
+
+    fun onEEGProcessedDataReceived(
+        timeStampMilli: Long,
+        channel1: Float,
+        channel2: Float
+    ) {
+        Log.d("JCAPSULE", "onEEGProcessedDataReceived: time=$timeStampMilli")
+        scope.launch {
+            _eegProcessedData.emit(EEGProcessedSample(timeStampMilli, channel1, channel2))
+        }
+    }
+
+    fun onEEGArtifactsReceived(
+        timeStampMilli: Long,
+        artifacts1: Boolean,
+        artifacts2: Boolean,
+        quality1: Float,
+        quality2: Float
+    ) {
+        Log.d("JCAPSULE", "onEEGArtifactsReceived: time=$timeStampMilli")
+        scope.launch {
+            _eegArtifacts.emit(
+                EEGArtifactsSample(
+                    timeStampMilli,
+                    artifacts1, artifacts2,
+                    quality1, quality2
+                )
+            )
+        }
     }
 
     companion object {
@@ -347,5 +408,4 @@ class CapsuleDeviceManager @Inject constructor(){
         external fun nativeStopSession()
         external fun removeAll()
     }
-
 }

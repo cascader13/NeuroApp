@@ -183,12 +183,45 @@ class AnalysisScreenViewModel @Inject constructor(
                 )
             }
         }
+        capsuleDM.eegRawData.collectInScope(_scope) {eegRaw ->
+            if (isRecording) {
+                saveEEGRAWData(eegRaw.timeStampMilli, eegRaw.channel1, eegRaw.channel2)
+            }
+        }
+
+        capsuleDM.eegProcessedData.collectInScope(_scope) {eegProceed ->
+            if(isRecording){
+                saveEEGPROCEEDData(eegProceed.timeStampMilli, eegProceed.channel1, eegProceed.channel2)
+            }
+        }
+
+        capsuleDM.eegArtifacts.collectInScope(_scope){eegArt ->
+            if(isRecording){
+                saveEEGArtifactData(eegArt.timeStampMilli,
+                    eegArt.artifactsChannel1,
+                    eegArt.artifactsChannel2,
+                    eegArt.qualityChannel1,
+                    eegArt.qualityChannel2)
+            }
+        }
     }
 
     // Методы для сохранения данных в БД
     private fun saveNFBData(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
         metricsRepository.saveNFBMetric(time, id, date, alpha, beta, theta, delta, smr)
         Log.d("MainScreenViewModel", "NFB data saved: alpha=$alpha, beta=$beta")
+    }
+
+    private fun saveEEGRAWData(time: Long, channel1: Float, channel2: Float) {
+        metricsRepository.saveEEGRAWMetric(time, id, date,channel1, channel2)
+    }
+
+    private fun saveEEGPROCEEDData(time: Long, channel1: Float, channel2: Float) {
+        metricsRepository.saveEEGPROCEEDMetric(time, id, date, channel1, channel2)
+    }
+
+    private fun saveEEGArtifactData(time: Long, ArtifactChannel1: Boolean, ArtifactChannel2: Boolean, QualityChannel1: Float, QualityChannel2: Float){
+        metricsRepository.saveEEGArtifactMetric(time, id, date, ArtifactChannel1, ArtifactChannel2, QualityChannel1, QualityChannel2)
     }
 
     private fun savePhysiologicalData(

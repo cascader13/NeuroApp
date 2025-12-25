@@ -1,10 +1,11 @@
-// [file name]: SettingsViewModel.kt (для отправки)
 package com.neuroproject.neuro.screens.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.data.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,18 +23,35 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val uploadRepository: MetricsUploadRepository
-) : ViewModel() {
-
+    private val uploadRepository: MetricsUploadRepository,
+    @ApplicationContext private val context: Context
+) : ViewModel()
+{
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
+    private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
     private val _effect = Channel<SettingsEffect>()
-
     private var uploadJob: kotlinx.coroutines.Job? = null
 
     init {
+        loadSavedKey()
         loadStats()
+    }
+
+    private fun loadSavedKey() {
+        // Используем то же поле, что и для пароля
+        val savedKey = sharedPreferences.getString("saved_password", "")
+
+        if (!savedKey.isNullOrEmpty()) {
+            val isValid = savedKey.matches(Regex("^[a-zA-Z0-9]*\$"))
+            _state.update {
+                it.copy(
+                    key = savedKey,
+                    isKeyValid = isValid
+                )
+            }
+        }
     }
 
     private fun loadStats() {
@@ -56,6 +74,8 @@ class SettingsViewModel @Inject constructor(
     fun onKeyChanged(newKey: String) {
         val isValid = newKey.matches(Regex("^[a-zA-Z0-9]*\$"))
 
+        saveKeyToPreferences(newKey)
+
         _state.update {
             it.copy(
                 key = newKey,
@@ -64,13 +84,14 @@ class SettingsViewModel @Inject constructor(
                 successMessage = null
             )
         }
-
-        saveKey(newKey)
     }
 
-    /**
-     * Основной метод для отправки данных на сервер
-     */
+    private fun saveKeyToPreferences(key: String) {
+        sharedPreferences.edit()
+            .putString("saved_password", key)
+            .apply()
+    }
+
     fun onUploadClicked() {
         if (_state.value.isUploading) return
 
@@ -118,9 +139,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Сохранить данные в JSON файл (для отладки)
-     */
     fun saveToFile() {
         viewModelScope.launch {
             try {
@@ -191,7 +209,6 @@ class SettingsViewModel @Inject constructor(
             }
 
             is UploadProgress.Completed -> {
-                // Обновляем статистику после успешной отправки
                 loadStats()
 
                 _state.update {
@@ -233,13 +250,13 @@ class SettingsViewModel @Inject constructor(
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
 
         return """
-            ✅ Отправка завершена в $time
+            Отправка завершена в $time
             
-            📤 Отправлено записей: ${progress.sentCount}
+            Отправлено записей: ${progress.sentCount}
             
-            💬 Ответ сервера: ${progress.message}
+            Ответ сервера: ${progress.message}
             
-            📊 Данные помечены как отправленные
+            Данные помечены как отправленные
         """.trimIndent()
     }
 
@@ -248,13 +265,6 @@ class SettingsViewModel @Inject constructor(
             viewModelScope.launch {
                 _effect.send(SettingsEffect.ShareFile(filePath))
             }
-        }
-    }
-
-    private fun saveKey(key: String) {
-        viewModelScope.launch {
-            // Сохраняем ключ для будущего использования
-            // preferences.edit().putString("user_key", key).apply()
         }
     }
 
@@ -271,7 +281,6 @@ class SettingsViewModel @Inject constructor(
     }
 }
 
-// Обновленный State
 data class SettingsState(
     val key: String = "",
     val isKeyValid: Boolean = false,
@@ -280,15 +289,10 @@ data class SettingsState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val currentStep: String? = null,
-
-    // Статистика
     val totalRecords: Int = 0,
     val unsyncedRecords: Int = 0,
     val uploadStats: UploadStats? = null,
-
-    // Сохраненные файлы
     val savedFilePath: String? = null,
-
     val appInfo: String = "NeuroAssessment v0.6.3"
 )
 
