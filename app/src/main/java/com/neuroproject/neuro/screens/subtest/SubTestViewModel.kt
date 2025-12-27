@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionRepository
 import com.neuroproject.neuro.data.subtest.SubTestRepository
+import com.neuroproject.neuro.services.RecordManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -13,7 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SubTestViewModel @Inject constructor(
     private val questionRepository: SubjectiveQuestionRepository,
-    private val testRepository: SubTestRepository
+    private val testRepository: SubTestRepository,
+    private val recordManager: RecordManager
 ) : ViewModel() {
 
     private val _answers = MutableStateFlow<Map<Int, Int>>(emptyMap())
@@ -27,6 +30,7 @@ class SubTestViewModel @Inject constructor(
 
     init {
         loadQuestions()
+        recordManager.startRecording()
     }
 
     private fun loadQuestions() {
@@ -98,4 +102,17 @@ class SubTestViewModel @Inject constructor(
     }
 
     fun getResult(): Map<Int, Int> = _answers.value
+}
+
+
+// Extension function для удобного сбора Flow данных
+private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectInScope(
+    scope: CoroutineScope,
+    action: (T) -> Unit
+) {
+    scope.launch {
+        this@collectInScope.collect { value ->
+            action(value)
+        }
+    }
 }

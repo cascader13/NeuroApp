@@ -21,7 +21,7 @@ import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
 fun NeuroNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = NavDestinations.SUB_TEST,
+    startDestination: String = NavDestinations.LOGIN,
     navActions: NeuroNavigationActions = remember(navController) {
         NeuroNavigationActions(navController)
     }

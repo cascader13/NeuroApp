@@ -25,7 +25,7 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         SubTestResultEntity::class,
         SubjectiveQuestionEntity::class,
     ],
-    version = 3,
+    version = 2,
     exportSchema = false
 )
 
@@ -33,10 +33,6 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 abstract class MetricsDatabase : RoomDatabase() {
     abstract fun metricsDao(): MetricsDao
     abstract fun subTestDao(): SubTestDao
-    abstract fun subjectiveQuestionDao(): SubjectiveQuestionDao
-
-    abstract fun subTestDao(): SubTestDao
-
     abstract fun subjectiveQuestionDao(): SubjectiveQuestionDao
 
     companion object {
