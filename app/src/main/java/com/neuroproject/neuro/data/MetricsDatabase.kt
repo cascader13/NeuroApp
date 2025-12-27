@@ -5,6 +5,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
+import com.neuroproject.neuro.data.subtest.SubTestDao
+import com.neuroproject.neuro.data.subtest.SubTestResultEntity
+import com.neuroproject.neuro.data.subtest.SubjectiveQuestionDao
+import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 
 @Database(
     entities = [
@@ -17,14 +21,19 @@ import android.content.Context
         EEGProceedMetricEntity::class,
         EEGArtifactsMetricEntity::class,
         CardioMetricEntity::class,
-        UsersEntity::class
+        UsersEntity::class,
+        SubTestResultEntity::class,
+        SubjectiveQuestionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
+
 @TypeConverters(Converters::class)
 abstract class MetricsDatabase : RoomDatabase() {
     abstract fun metricsDao(): MetricsDao
+    abstract fun subTestDao(): SubTestDao
+    abstract fun subjectiveQuestionDao(): SubjectiveQuestionDao
 
     companion object {
         @Volatile

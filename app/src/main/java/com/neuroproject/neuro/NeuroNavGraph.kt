@@ -21,7 +21,7 @@ import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
 fun NeuroNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = NavDestinations.LOGIN,
+    startDestination: String = NavDestinations.SUB_TEST,
     navActions: NeuroNavigationActions = remember(navController) {
         NeuroNavigationActions(navController)
     }
@@ -31,6 +31,15 @@ fun NeuroNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
+        composable(NavDestinations.SUB_TEST) {
+            com.neuroproject.neuro.screens.subtest.SubTestScreen(
+                modifier = Modifier.safeDrawingPadding(),
+                onTestFinished = {
+                    navActions.navigateToMain()
+                }
+            )
+        }
+
         // Экран логина
         composable(NavDestinations.LOGIN) {
             LoginScreen(

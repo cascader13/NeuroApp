@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.neuroproject.neuro"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.neuroproject.neuro"
@@ -57,9 +57,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
     }
     packaging {
         resources {
