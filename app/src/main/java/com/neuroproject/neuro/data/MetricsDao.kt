@@ -1,16 +1,15 @@
-// [file name]: MetricsDao.kt (расширенная версия)
 package com.neuroproject.neuro.data
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MetricsDao {
 
-    // Существующие методы
     @Insert
     suspend fun insertUsers(session: UsersEntity)
     @Insert
@@ -257,4 +256,79 @@ interface MetricsDao {
 
     @Query("SELECT MAX(timestamp) FROM cardio_metrics")
     suspend fun getLastCardioMetricTimestamp(): Long?
+
+
+    @Transaction
+    suspend fun safeMarkNFBMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markNFBMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkPhysiologicalMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markPhysiologicalMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkMEMSMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markMEMSMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkEEGRAWMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markEEGRAWMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkEEGProceedMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markEEGProceedMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkEEGArtifactsMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markEEGArtifactsMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkProductivityMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markProductivityMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkEmotionalMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markEmotionalMetricsAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkCardioMetricsAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markCardioMetricsAsSynced(batch)
+        }
+    }
+
+
 }

@@ -2,6 +2,9 @@
 package com.neuroproject.neuro.data
 
 import androidx.room.TypeConverter
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.lang.reflect.Type
 import java.sql.Timestamp
 import java.util.Date
 
@@ -27,5 +30,18 @@ class Converters {
     @TypeConverter
     fun sqlTimestampToLong(timestamp: Timestamp?): Long? {
         return timestamp?.time
+    }
+
+    private val gson = Gson()
+
+    @TypeConverter
+    fun fromStringToMap(value: String?): Map<Int, Int> {
+        val type: Type = object : TypeToken<Map<Int, Int>>() {}.type
+        return gson.fromJson(value ?: "", type) ?: emptyMap()
+    }
+
+    @TypeConverter
+    fun fromMapToString(map: Map<Int, Int>?): String {
+        return gson.toJson(map ?: mapOf<Int, Int>())
     }
 }

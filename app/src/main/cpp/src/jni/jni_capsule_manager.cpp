@@ -319,7 +319,7 @@ void onCardioCalibrated(clCCardio) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "Calibrated");
 }
 
-// НОВЫЕ КОЛБЭКИ ДЛЯ EEG ДАННЫХ
+// КОЛБЭКИ ДЛЯ EEG ДАННЫХ
 void onEEGData(clCDevice, clCEEGTimedData eegData) noexcept {
     clCError error;
     const int32_t samples = clCEEGTimedData_GetSamplesCount(eegData, &error);
@@ -331,7 +331,7 @@ void onEEGData(clCDevice, clCEEGTimedData eegData) noexcept {
     javaVM->AttachCurrentThread(&env, nullptr);
 
     // Для каждого сэмпла отправляем отдельный вызов
-    for (int32_t sampleIndex = 0; sampleIndex < samples; ++sampleIndex) {
+    for (int32_t sampleIndex = 0; sampleIndex < /*Костыль*/1; ++sampleIndex) {
         const long timestamp = clCEEGTimedData_GetTimestampMilli(eegData, sampleIndex, &error);
 
         // RAW данные (если есть хотя бы 2 канала)

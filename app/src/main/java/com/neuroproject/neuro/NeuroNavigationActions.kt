@@ -51,4 +51,11 @@ class NeuroNavigationActions(val navController: NavController) {
     fun navigateBack() {
         navController.popBackStack()
     }
+
+    fun navigateToSubTest() {
+        navController.navigate(NavDestinations.SUB_TEST) {
+            launchSingleTop = true
+        }
+    }
+
 }

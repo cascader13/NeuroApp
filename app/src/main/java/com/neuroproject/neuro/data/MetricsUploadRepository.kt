@@ -42,7 +42,8 @@ class MetricsUploadRepository @Inject constructor(
             val EEGArtifactMetrics = metricsDao.getUnmarkedEEGArtifactsMetrics()
 
             val totalRecords = nfbMetrics.size + physiologicalMetrics.size + memsMetrics.size +
-                    productivityMetrics.size + emotionalMetrics.size + cardioMetrics.size
+                    productivityMetrics.size + emotionalMetrics.size + cardioMetrics.size +
+                    EEGArtifactMetrics.size + EEGProceedMetrics.size + EEGRawMetrics.size
 
             if (totalRecords == 0) {
                 return UploadPreparationResult.NoData
@@ -217,27 +218,37 @@ class MetricsUploadRepository @Inject constructor(
     }
 
     private suspend fun markDataAsUploaded() {
-        // Помечаем все непомеченные данные как отправленные
-        val nfbTimestamps = metricsDao.getUnmarkedNFBMetrics().map { it.timestamp }
-        val physioTimestamps = metricsDao.getUnmarkedPhysiologicalMetrics().map { it.timestamp }
-        val memsTimestamps = metricsDao.getUnmarkedMEMSMetrics().map { it.timestamp }
-        val prodTimestamps = metricsDao.getUnmarkedProductivityMetrics().map { it.timestamp }
-        val emotTimestamps = metricsDao.getUnmarkedEmotionalMetrics().map { it.timestamp }
-        val cardioTimestamps = metricsDao.getUnmarkedCardioMetrics().map { it.timestamp }
-        val EEGRAWTimestamps = metricsDao.getUnmarkedEEGRAWMetrics().map {it.timestamp}
-        val EEGProceedTimestamps = metricsDao.getUnmarkedEEGPROCEEDMetrics().map {it.timestamp}
-        val EEGArtifactsTimestamps = metricsDao.getUnmarkedEEGArtifactsMetrics().map {it.timestamp}
+        // Получаем все timestamp из уже загруженных данных
+        val preparationResult = prepareDataForUpload()
 
+        when (preparationResult) {
+            is UploadPreparationResult.Ready -> {
+                // Получаем timestamps из подготовленного запроса
+                val nfbTimestamps = preparationResult.request.nfbMetrics.map { it.timestamp }
+                val physioTimestamps = preparationResult.request.physiologicalMetrics.map { it.timestamp }
+                val memsTimestamps = preparationResult.request.memsMetrics.map { it.timestamp }
+                val prodTimestamps = preparationResult.request.productivityMetrics?.map { it.timestamp } ?: emptyList()
+                val emotTimestamps = preparationResult.request.emotionalMetrics?.map { it.timestamp } ?: emptyList()
+                val cardioTimestamps = preparationResult.request.cardioMetrics?.map { it.timestamp } ?: emptyList()
+                val EEGRAWTimestamps = preparationResult.request.EEGRawMetrics?.map { it.timestamp } ?: emptyList()
+                val EEGProceedTimestamps = preparationResult.request.EEGProceedMetrics?.map { it.timestamp } ?: emptyList()
+                val EEGArtifactsTimestamps = preparationResult.request.EEGArtifactsMetrics?.map { it.timestamp } ?: emptyList()
 
-        if (nfbTimestamps.isNotEmpty()) metricsDao.markNFBMetricsAsSynced(nfbTimestamps)
-        if (physioTimestamps.isNotEmpty()) metricsDao.markPhysiologicalMetricsAsSynced(physioTimestamps)
-        if (memsTimestamps.isNotEmpty()) metricsDao.markMEMSMetricsAsSynced(memsTimestamps)
-        if (prodTimestamps.isNotEmpty()) metricsDao.markProductivityMetricsAsSynced(prodTimestamps)
-        if (emotTimestamps.isNotEmpty()) metricsDao.markEmotionalMetricsAsSynced(emotTimestamps)
-        if (cardioTimestamps.isNotEmpty()) metricsDao.markCardioMetricsAsSynced(cardioTimestamps)
-        if (EEGRAWTimestamps.isNotEmpty()) metricsDao.markEEGRAWMetricsAsSynced(EEGRAWTimestamps)
-        if (EEGProceedTimestamps.isNotEmpty()) metricsDao.markEEGProceedMetricsAsSynced(EEGProceedTimestamps)
-        if (EEGArtifactsTimestamps.isNotEmpty()) metricsDao.markEEGArtifactsMetricsAsSynced(EEGArtifactsTimestamps)
+                // Используем безопасные методы пакетной пометки
+                if (nfbTimestamps.isNotEmpty()) metricsDao.safeMarkNFBMetricsAsSynced(nfbTimestamps)
+                if (physioTimestamps.isNotEmpty()) metricsDao.safeMarkPhysiologicalMetricsAsSynced(physioTimestamps)
+                if (memsTimestamps.isNotEmpty()) metricsDao.safeMarkMEMSMetricsAsSynced(memsTimestamps)
+                if (prodTimestamps.isNotEmpty()) metricsDao.safeMarkProductivityMetricsAsSynced(prodTimestamps)
+                if (emotTimestamps.isNotEmpty()) metricsDao.safeMarkEmotionalMetricsAsSynced(emotTimestamps)
+                if (cardioTimestamps.isNotEmpty()) metricsDao.safeMarkCardioMetricsAsSynced(cardioTimestamps)
+                if (EEGRAWTimestamps.isNotEmpty()) metricsDao.safeMarkEEGRAWMetricsAsSynced(EEGRAWTimestamps)
+                if (EEGProceedTimestamps.isNotEmpty()) metricsDao.safeMarkEEGProceedMetricsAsSynced(EEGProceedTimestamps)
+                if (EEGArtifactsTimestamps.isNotEmpty()) metricsDao.safeMarkEEGArtifactsMetricsAsSynced(EEGArtifactsTimestamps)
+            }
+            else -> {
+                // Нет данных для пометки
+            }
+        }
     }
 
     /**

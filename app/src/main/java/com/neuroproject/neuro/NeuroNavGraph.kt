@@ -59,6 +59,15 @@ fun NeuroNavGraph(
             )
         }
 
+        composable(NavDestinations.SUB_TEST) {
+            com.neuroproject.neuro.screens.subtest.SubTestScreen(
+                modifier = Modifier.safeDrawingPadding(),
+                onTestFinished = {
+                    navActions.navigateToAnalysis()
+                }
+            )
+        }
+
         composable(NavDestinations.SETTINGS){
             com.neuroproject.neuro.screens.settings.SettingsScreen(
                 modifier = Modifier.safeDrawingPadding(),
@@ -107,7 +116,7 @@ fun NeuroNavGraph(
                         navActions.navigateBack()
                     },
                     onCalibrationComplete = {
-                        navActions.navigateToAnalysis()
+                        navActions.navigateToSubTest()
                     },
                     vm = hiltViewModel()
                 )
@@ -118,7 +127,7 @@ fun NeuroNavGraph(
                 AnalysisScreen(
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
-                        navActions.navigateBack()
+                        navActions.navigateToMain()
                     },
                     vm = hiltViewModel()
                 )

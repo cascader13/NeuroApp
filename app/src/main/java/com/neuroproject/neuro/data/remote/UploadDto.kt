@@ -1,12 +1,8 @@
-// [file name]: UploadDto.kt
 package com.neuroproject.neuro.data.remote
 
 import com.google.gson.annotations.SerializedName
-import com.neuroproject.neuro.data.EEGRawMetricEntity
 
-/**
- * Основной DTO для отправки на сервер
- */
+
 data class UploadRequest(
     @SerializedName("cardioMetrics")
     val cardioMetrics: List<CardioMetricDto>,
