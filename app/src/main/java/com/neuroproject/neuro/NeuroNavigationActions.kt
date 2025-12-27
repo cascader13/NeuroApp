@@ -11,6 +11,12 @@ class NeuroNavigationActions(val navController: NavController) {
         }
     }
 
+    fun navigateToSubTest() {
+        navController.navigate(NavDestinations.SUB_TEST) {
+            launchSingleTop = true
+        }
+    }
+
     fun navigateToDeviceSearch() {
         navController.navigate(NavDestinations.PROBE_STACK) {
             launchSingleTop = true
