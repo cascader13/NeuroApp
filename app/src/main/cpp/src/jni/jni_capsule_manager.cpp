@@ -1,5 +1,5 @@
-#include <jni.h>
-
+    #include <jni.h>
+// Initial INIT(just checking)
 //
 // Created by aseatari on 20.09.2024.
 //
