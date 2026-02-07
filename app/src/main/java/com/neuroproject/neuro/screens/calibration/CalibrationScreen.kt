@@ -1,4 +1,5 @@
 package com.neuroproject.neuro.screens.calibration
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -48,6 +49,15 @@ fun CalibrationScreen(
 ) {
     val state by vm.uiState.collectAsState()
 
+    LaunchedEffect(vm.state) {
+        Log.d("Calibration", "${vm.state.value.value}")
+        if(vm.state.value.value % 2 == 0){
+            state.ClosedEyes = true
+        }else{
+            state.ClosedEyes = false
+        }
+    }
+
     LaunchedEffect(state.isCalibrating) {
         if (state.isCalibrating) {
             vm.startCalibration()
@@ -59,6 +69,7 @@ fun CalibrationScreen(
             onCalibrationComplete()
         }
     }
+
 
     BackHandler {
         if (state.isCalibrating) {

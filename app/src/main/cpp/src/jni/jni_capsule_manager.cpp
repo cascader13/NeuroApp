@@ -170,6 +170,9 @@ void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept
 }
 
 void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     if (data == nullptr || data->failReason != clC_IndividualNFBCalibrationFailReason_None) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Calibration failed");
         switch (data->failReason) {
@@ -184,27 +187,35 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
         }
     }
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "IAF: %f\nIAPF: %f", data->individualFrequency, data->individualPeakFrequency);
+    env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(4));
     clCPhysiologicalStates_StartBaselineCalibration(ps);
+    env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(5));
     clCProductivity_StartBaselineCalibration(productivity);
 }
 
 void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     clCError error;
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Event");
     switch (stage) {
         case clCIndividualNFBCalibrationStage_1:
             __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 1");
             stage = clCIndividualNFBCalibrationStage_2;
+            env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(1));
             clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
             break;
         case clCIndividualNFBCalibrationStage_2:
             __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 2");
             stage = clCIndividualNFBCalibrationStage_3;
+            env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(2));
             clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
             break;
         case clCIndividualNFBCalibrationStage_3:
             __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 3");
             stage = clCIndividualNFBCalibrationStage_4;
+            env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(3));
             clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
             break;
         case clCIndividualNFBCalibrationStage_4:
@@ -402,7 +413,6 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
     }
 }
 
-// Убираем PSD колбэк полностью
 void removeAll() {
     if (mems) {
         mems = nullptr;
@@ -443,7 +453,7 @@ void Loop() {
     }
 }
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* aReserved) {
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM * vm, void* aReserved) {
     auto resolver = JniResolver::Instance();
     javaVM = vm;
     resolver->SetJVM(vm);
@@ -604,7 +614,10 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeStartSignalAndHR(
         JNIEnv* env, jobject thiz) {
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     clCError error;
+    env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(0));
     clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
 }
 

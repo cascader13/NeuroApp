@@ -32,19 +32,6 @@ enum class CapsuleStages(val value: Int) {
             CapsuleStages.entries.firstOrNull { it.value == value } ?: CALIBRATOR_UNKNOWN_STAGE
     }
 }
-
-enum class StageState(val value: Int) {
-    STAGE_UNKNOWN(-1),
-    STAGE_STARTED(0),
-    STAGE_FINISHED(1);
-
-    companion object {
-        fun fromInt(value: Int) =
-            StageState.entries.firstOrNull { it.value == value } ?: STAGE_UNKNOWN
-    }
-}
-
-data class CalibrationStateInfo(val stage: CapsuleStages, val state: StageState)
 data class PhysiologicalData(
     val timeStampMilli: Long = 0,
     val relax: Float = 0f,
@@ -107,7 +94,7 @@ data class Cardiodata(
     val stress: Float = 0f
 )
 
-// НОВЫЕ КЛАССЫ ДЛЯ EEG ДАННЫХ (только raw и processed)
+
 data class EEGRawSample(
     val timeStampMilli: Long = 0,
     val channel1: Float = 0f,
@@ -143,13 +130,9 @@ class CapsuleDeviceManager @Inject constructor() {
     var devicesFound: (Array<DeviceInfo>) -> Unit = {}
 
     private var _connectionState = MutableStateFlow(DeviceConnectionState.disconnected)
-    private var _licenseState = MutableStateFlow(false)
     private var _calibrationState = MutableStateFlow(
-        CalibrationStateInfo(
-            CapsuleStages.CALIBRATOR_UNKNOWN_STAGE,
-            StageState.STAGE_UNKNOWN
+        CapsuleStages.CALIBRATOR_UNKNOWN_STAGE
         )
-    )
     private var _hrData = MutableStateFlow(Cardiodata(0, 0f, false, 0f, false, false, false, 0f))
     private var _physiologicalData = MutableStateFlow(PhysiologicalData())
     private var _nfbData = MutableStateFlow(NFBData())
@@ -163,6 +146,7 @@ class CapsuleDeviceManager @Inject constructor() {
     private var _eegProcessedData = MutableStateFlow(EEGProcessedSample())
     private var _eegArtifacts = MutableStateFlow(EEGArtifactsSample())
 
+    var calibrationStage = _calibrationState.asStateFlow()
     var hrData = _hrData.asStateFlow()
     var physiologicalData = _physiologicalData.asStateFlow()
     var memsData = _memsData.asStateFlow()
@@ -205,11 +189,11 @@ class CapsuleDeviceManager @Inject constructor() {
         }
     }
 
-    fun calibrationStateChanged(stageNum: Int, state: Int) {
+    fun calibrationStateChanged(stageNum: Int) {
         val stage = CapsuleStages.fromInt(stageNum)
-        val type = StageState.fromInt(state)
+        Log.d("JCAPSULE", "StateChanged $stageNum")
         MainScope().launch {
-            _calibrationState.emit(CalibrationStateInfo(stage, type))
+            _calibrationState.emit(stage)
         }
     }
 
@@ -232,11 +216,7 @@ class CapsuleDeviceManager @Inject constructor() {
     fun startSignalAndHR() {
         MainScope().launch {
             _calibrationState.emit(
-                CalibrationStateInfo(
-                    CapsuleStages.CALIBRATOR_UNKNOWN_STAGE,
-                    StageState.STAGE_UNKNOWN
-                )
-            )
+                    CapsuleStages.CALIBRATOR_UNKNOWN_STAGE)
         }
         nativeStartSignalAndHR()
     }

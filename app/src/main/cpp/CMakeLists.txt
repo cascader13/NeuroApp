@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.22)
 project(native-lib)
-set(GRADLE_TOP_PROJECT_DIR ${PROJECT_SOURCE_DIR}/../../..)
 
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+
+add_compile_options(-fexceptions -frtti)
+
+set(GRADLE_TOP_PROJECT_DIR ${PROJECT_SOURCE_DIR}/../../..)
 
 set(CAPSULE_API_SHARED_LIB_DIR ${GRADLE_TOP_PROJECT_DIR}/build/capsule_shared/${CMAKE_ANDROID_ARCH_ABI})
 message(${CAPSULE_API_SHARED_LIB_DIR})
@@ -21,9 +29,6 @@ set_target_properties(CapsuleAPI
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} ${SOURCE_JNI_FILES} ${SOURCE_HELPERS_FILES})
 
-
-
-
 find_library(log-lib
         log)
 
@@ -32,4 +37,5 @@ target_link_libraries(${PROJECT_NAME}
         ${log-lib}
         log
         CapsuleAPI
+        c++_shared
 )

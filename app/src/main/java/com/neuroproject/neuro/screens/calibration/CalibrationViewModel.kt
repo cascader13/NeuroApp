@@ -15,8 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.util.Log
+import com.neuroproject.neuro.services.CapsuleDeviceManager
 
 data class CalibrationState(
+
+    var ClosedEyes: Boolean = true,
     val isCalibrating: Boolean = false,
     val isComplete: Boolean = false,
     val progress: Float = 0f,
@@ -25,12 +28,13 @@ data class CalibrationState(
 
 @HiltViewModel
 class CalibrationViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    dm: CapsuleDeviceManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalibrationState())
     val uiState: StateFlow<CalibrationState> = _uiState.asStateFlow()
-
+    val state = dm.calibrationState
     private var calibrationJob: Job? = null
     private var metronomePlayer: MediaPlayer? = null
     private val totalCalibrationTime = 60000L // 60 секунд
