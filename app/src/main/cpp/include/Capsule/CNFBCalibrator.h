@@ -61,6 +61,7 @@ typedef struct clCIndividualNFBData {
     float lowerFrequency = 7.F;
     /**
      * \brief Right frequency bound
+     *
      */
     float upperFrequency = 13.F;
 } clCIndividualNFBData;

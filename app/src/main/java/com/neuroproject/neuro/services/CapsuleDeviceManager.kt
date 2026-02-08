@@ -1,10 +1,15 @@
 package com.neuroproject.neuro.services
 
+import android.content.Context
 import android.util.Log
+import com.neuroproject.neuro.data.CalibrationHistoryEntity
+import com.neuroproject.neuro.data.MetricsDao
+import com.neuroproject.neuro.data.UsersEntity
 import com.neuroproject.neuro.models.BaselineValues
 import com.neuroproject.neuro.models.CapsuleInitializedState
 import com.neuroproject.neuro.models.DeviceConnectionState
 import com.neuroproject.neuro.models.DeviceInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -116,7 +121,10 @@ data class EEGArtifactsSample(
 )
 
 @Singleton
-class CapsuleDeviceManager @Inject constructor() {
+class CapsuleDeviceManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val metricsDao: MetricsDao
+) {
 
     private var _instance = this
 
@@ -155,7 +163,6 @@ class CapsuleDeviceManager @Inject constructor() {
     var nfbData = _nfbData.asStateFlow()
     var baseLineData = _baseLineData.asStateFlow()
 
-    // НОВЫЕ СВОЙСТВА ДЛЯ EEG ДАННЫХ
     var eegRawData = _eegRawData.asStateFlow()
     var eegProcessedData = _eegProcessedData.asStateFlow()
     var eegArtifacts = _eegArtifacts.asStateFlow()
@@ -269,6 +276,29 @@ class CapsuleDeviceManager @Inject constructor() {
     fun onResistanceReceived(o1: Double, o2: Double, t3: Double, t4: Double) {
         Log.d("JCAPSULE", "onResistanceReceived: smth")
         resistanceReceived(o1 / 10e3, o2 / 10e3, t3 / 10e3, t4 / 10e3)
+    }
+
+
+    fun onCalibrationReceived(indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float, indPeakFrequencySuppression : Float, indBandwidth : Float,indNormalizedPower: Float, lowerFrequency: Float, upperFrequency: Float){
+        val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE);
+
+        scope.launch {
+            try {
+                val prob: CalibrationHistoryEntity = CalibrationHistoryEntity(user_name = sharedPreferences.getString("saved_username", "").toString(),
+                    individualFrequency = indFrequency,
+                    individualPeakFrequency = indPeakFrequency,
+                    individualPeakFrequencyPower = indPeakFrequencyPower,
+                    individualPeakFrequencySuppression = indPeakFrequencySuppression,
+                    individualBandwidth = indBandwidth,
+                    individualNormalizedPower = indNormalizedPower,
+                    lowerFrequency = lowerFrequency,
+                    upperFrequency = upperFrequency)
+                metricsDao.insertCalibrationData(prob)
+            } catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving Calibration data", e)
+            }
+        }
+
     }
 
     fun onEEGCalibrationReceived(stage: Int) {
@@ -386,6 +416,7 @@ class CapsuleDeviceManager @Inject constructor() {
         external fun nativeStopSignalAndHR()
         external fun nativeStartSession()
         external fun nativeStopSession()
+        external fun nativeImportCalibration(indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float, indPeakFrequencySuppression : Float, indBandwidth : Float,indNormalizedPower: Float, lowerFrequency: Float, upperFrequency: Float)
         external fun removeAll()
     }
 }

@@ -12,6 +12,9 @@ interface MetricsDao {
 
     @Insert
     suspend fun insertUsers(session: UsersEntity)
+
+    @Insert
+    suspend fun insertCalibrationData(history: CalibrationHistoryEntity)
     @Insert
     suspend fun insertNFBMetric(metric: NFBMetricEntity)
 
@@ -44,6 +47,7 @@ interface MetricsDao {
     @Query("SELECT COUNT(*) FROM nfb_metrics")
     suspend fun getNFBMetricsCount(): Int
 
+
     @Query("SELECT COUNT(*) FROM EEG_Raw_metrics")
     suspend fun getEEGRAWMetricsCount(): Int
 
@@ -58,6 +62,13 @@ interface MetricsDao {
 
     @Query("SELECT COUNT(*) FROM mems_metrics")
     suspend fun getMEMSMetricsCount(): Int
+
+
+    @Query("SELECT *  FROM calibration_history WHERE user_name = :user_name ORDER BY id DESC LIMIT 1")
+    suspend fun getCalibration(user_name: String): List<CalibrationHistoryEntity>
+
+
+
 
     @Query("DELETE FROM Users")
     suspend fun clearUsers()
@@ -148,6 +159,7 @@ interface MetricsDao {
     // Пометить данные как отправленные
     @Query("UPDATE nfb_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markNFBMetricsAsSynced(timestamps: List<Long>)
+
 
     @Query("UPDATE physiological_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markPhysiologicalMetricsAsSynced(timestamps: List<Long>)

@@ -24,8 +24,9 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         UsersEntity::class,
         SubTestResultEntity::class,
         SubjectiveQuestionEntity::class,
+        CalibrationHistoryEntity::class
     ],
-    version = 2,
+    version = 1,
     exportSchema = false
 )
 

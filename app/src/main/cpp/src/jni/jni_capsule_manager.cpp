@@ -173,6 +173,8 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
     jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
+    jmethodID calibDataFun = env->GetMethodID(capsuleClass, "onCalibrationReceived", "(FFFFFFFF)V");
+    // ЗДЕСЬ НУЖНО СДЕЛАТЬ УХОД НА ОШИБКУ(ЛИБО С ПОМОЩЬЮ КОНТРОЛЯ СОСТОЯНИЙ)
     if (data == nullptr || data->failReason != clC_IndividualNFBCalibrationFailReason_None) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Calibration failed");
         switch (data->failReason) {
@@ -186,6 +188,14 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
                 __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Reason unknown");
         }
     }
+    env->CallVoidMethod(javaCapsule, calibDataFun, static_cast<jfloat>(data->individualFrequency),
+                        static_cast<jfloat>(data->individualPeakFrequency),
+                        static_cast<jfloat>(data->individualPeakFrequencyPower),
+                        static_cast<jfloat>(data->individualPeakFrequencySuppression),
+                        static_cast<jfloat>(data->individualBandwidth),
+                        static_cast<jfloat>(data->individualNormalizedPower),
+                        static_cast<jfloat>(data->lowerFrequency),
+                        static_cast<jfloat>(data->upperFrequency));
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "IAF: %f\nIAPF: %f", data->individualFrequency, data->individualPeakFrequency);
     env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(4));
     clCPhysiologicalStates_StartBaselineCalibration(ps);
@@ -648,6 +658,22 @@ JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeStopResistance(
         JNIEnv* env, jobject thiz) {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stop resist");
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeImportCalibration(JNIEnv* env, jobject thiz, jfloat indFrequency, jfloat indPeakFrequency, jfloat indPeakFrequencyPower, jfloat indPeakFrequencySuppression, jfloat indBandwidth, jfloat indNormalizedPower, jfloat lowerFrequency, jfloat upperFrequency){
+    clCIndividualNFBData prob{
+            .individualFrequency = indFrequency,
+            .individualPeakFrequency = indPeakFrequency,
+            .individualPeakFrequencyPower = indPeakFrequencyPower,
+            .individualPeakFrequencySuppression = indPeakFrequencySuppression,
+            .individualBandwidth = indBandwidth,
+            .individualNormalizedPower = indNormalizedPower,
+            .lowerFrequency = lowerFrequency,
+            .upperFrequency = upperFrequency
+    };
+    clCError error;
+    clCNFBCalibrator_ImportIndividualNFBData(calibrator, &prob, &error);
 }
 
 extern "C"

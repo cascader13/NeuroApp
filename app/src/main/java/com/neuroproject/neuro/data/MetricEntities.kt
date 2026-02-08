@@ -3,8 +3,6 @@ package com.neuroproject.neuro.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Date
-
 
 
 @Entity(tableName = "Users")
@@ -14,6 +12,21 @@ data class UsersEntity(
     val user_name : String,
     val user_password : String,
     val user_id : String
+)
+
+@Entity(tableName = "Calibration_History")
+
+data class CalibrationHistoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val user_name: String?,
+    val individualFrequency: Float,
+    val individualPeakFrequency: Float,
+    val individualPeakFrequencyPower: Float,
+    val individualPeakFrequencySuppression: Float,
+    val individualBandwidth: Float,
+    val individualNormalizedPower: Float,
+    val lowerFrequency: Float,
+    val upperFrequency: Float
 )
 
 @Entity(tableName = "EEG_Raw_metrics")
