@@ -1,4 +1,5 @@
 package com.neuroproject.neuro.screens.calibration
+
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -14,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.R
 import com.neuroproject.neuro.components.BackButton
@@ -48,13 +52,16 @@ fun CalibrationScreen(
     onCalibrationComplete: () -> Unit = {}
 ) {
     val state by vm.uiState.collectAsState()
+    val calibrationValue by vm.state.collectAsState()
 
-    LaunchedEffect(vm.state) {
-        Log.d("Calibration", "${vm.state.value.value}")
-        if(vm.state.value.value % 2 == 0){
-            state.ClosedEyes = true
-        }else{
-            state.ClosedEyes = false
+    LaunchedEffect(calibrationValue) {
+        Log.d("Calibration", "$calibrationValue")
+        if(calibrationValue.value == 6){
+            vm.cancelCalibration();
+        }
+        // Калибровка была пройдена и был вызван callback OnCalibrated
+        if(calibrationValue.value == 4 || calibrationValue.value == 5){
+            onCalibrationComplete()
         }
     }
 
@@ -70,12 +77,64 @@ fun CalibrationScreen(
         }
     }
 
-
     BackHandler {
         if (state.isCalibrating) {
             vm.cancelCalibration()
         }
         onBackPressed()
+    }
+
+    // Диалог с предложением использовать предыдущие данные калибровки
+    if (state.showPreviousCalibrationDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                // При нажатии вне диалога - считаем, что пользователь хочет новую калибровку
+                vm.performNewCalibration()
+            },
+            title = {
+                Text(
+                    text = "Использовать предыдущие данные?",
+                    color = Color.White,
+                    fontSize = 20.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "Хотите использовать данные о калибровке с прошлых сессий?",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.usePreviousCalibrationData()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    ),
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Text("Да", color = Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        vm.performNewCalibration()
+                    },
+                    border = BorderStroke(1.dp, Color(0xFF757575))
+                ) {
+                    Text("Нет", color = Color.White)
+                }
+            },
+            containerColor = Color(0xFF1E1E1E),
+            tonalElevation = 8.dp,
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false
+            )
+        )
     }
 
     Surface(

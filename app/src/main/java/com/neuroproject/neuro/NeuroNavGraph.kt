@@ -13,7 +13,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.navigation
 import com.neuroproject.neuro.screens.analysis.AnalysisScreen
 import com.neuroproject.neuro.screens.calibration.CalibrationScreen
-import com.neuroproject.neuro.screens.calibration.NewCalibrationScreen
 import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
 import com.neuroproject.neuro.screens.login.LoginScreen
 import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen

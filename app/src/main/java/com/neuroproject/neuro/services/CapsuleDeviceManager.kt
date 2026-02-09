@@ -30,7 +30,7 @@ enum class CapsuleStages(val value: Int) {
     CALIBRATOR_STAGE4(3),
     PHYSIO_INIT_STAGE(4),
     PHYSIO_BASELINE_STAGE(5),
-    PHYSIO_SAMPLES_STAGE(6);
+    CALIBRATOR_ERROR_STAGE(6);
 
     companion object {
         fun fromInt(value: Int) =

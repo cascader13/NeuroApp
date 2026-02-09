@@ -187,6 +187,8 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
             default:
                 __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Reason unknown");
         }
+        env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(6));
+        return;
     }
     env->CallVoidMethod(javaCapsule, calibDataFun, static_cast<jfloat>(data->individualFrequency),
                         static_cast<jfloat>(data->individualPeakFrequency),
@@ -628,7 +630,8 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
     jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     clCError error;
     env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(0));
-    clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
+    clCNFBCalibrator_CalibrateIndividualNFBQuick(calibrator, &error);
+    // Поменять если используется долгая калибровка
 }
 
 extern "C"
