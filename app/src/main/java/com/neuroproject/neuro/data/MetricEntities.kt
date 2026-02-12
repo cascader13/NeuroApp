@@ -5,6 +5,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 
+//Добавить новые таблицы, идентичные таблицам метрик
+//Убрать user_id(поговорить с Егором)
 @Entity(tableName = "Users")
 
 data class UsersEntity(

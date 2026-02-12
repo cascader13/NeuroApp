@@ -32,6 +32,8 @@ class RecordManager @Inject constructor(
     private var isSetup = false
     private val _nfbState = MutableStateFlow(NFBData())
     private var session = java.sql.Timestamp(System.currentTimeMillis())
+
+    //КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ
     private var id = "01010101" // здесь также нужна табличка.
 
 
