@@ -48,10 +48,12 @@ class RecordManager @Inject constructor(
         Log.d("Record Manager", "Recording started")
     }
 
-    fun stopRecording() {
+    suspend fun stopRecording() {
         isRecording = false
         Log.d("Record Manager", "Recording stopped")
+        metricsRepository.flushAllBuffers()
     }
+
 
 
 
