@@ -1,5 +1,5 @@
 package com.neuroproject.neuro.screens.settings
-
+//экран настроек нужно перенастроить в экран профиля. Останется всё тот же функционал просто с новым наполнением
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

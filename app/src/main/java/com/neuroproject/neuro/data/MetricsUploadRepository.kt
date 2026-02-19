@@ -1,4 +1,4 @@
-// [file name]: MetricsUploadRepository.kt
+// Здесь нужно добавить загрузку всех недостающих таблиц(протестировать)
 package com.neuroproject.neuro.data
 
 import android.content.Context

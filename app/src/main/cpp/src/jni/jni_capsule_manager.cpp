@@ -156,6 +156,9 @@ void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
 
 void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "HeartRate: %f", cardioData->heartRate);
+    if(cardioData->heartRate + cardioData->kaplanIndex == 0){
+        return;
+    }
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
     jmethodID cardioFun = env->GetMethodID(capsuleClass, "onCardioReceived", "(JFZFZZZF)V");

@@ -1,4 +1,3 @@
-// [file name]: NetworkModule.kt (обновленный)
 package com.neuroproject.neuro
 
 import com.google.gson.Gson

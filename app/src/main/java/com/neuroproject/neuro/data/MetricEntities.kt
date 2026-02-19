@@ -5,15 +5,16 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 
-//Добавить новые таблицы, идентичные таблицам метрик
-//Убрать user_id(поговорить с Егором)
+//Добавить Expedition_id в таблицу Users и Sessions(подумать насчёт хранения имени экспедиции)
 @Entity(tableName = "Users")
 
 data class UsersEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val user_name : String,
     val user_password : String,
-    val user_id : String
+    val user_id : String,
+
+
 )
 
 @Entity(tableName = "Calibration_History")

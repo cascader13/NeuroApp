@@ -121,7 +121,7 @@ class MetricsRepository @Inject constructor(
                     }
                     nfbBuffer.values.add(metric)
 
-                    if(time - nfbBuffer.firstTimestamp!! >= 60_000) {
+                    if(time - nfbBuffer.firstTimestamp!! >= 10_000) {
                         flushNfbBuffer()
                     }
                 }
@@ -148,7 +148,7 @@ class MetricsRepository @Inject constructor(
                         EEGRAWBuffer.firstTimestamp = time
                     }
                     EEGRAWBuffer.values.add(metric)
-                    if(time - EEGRAWBuffer.firstTimestamp!! >= 60_000){
+                    if(time - EEGRAWBuffer.firstTimestamp!! >= 10_000){
                         flushEEGRAWBuffer()
                     }
                 }
@@ -176,7 +176,7 @@ class MetricsRepository @Inject constructor(
                     }
                     EEGPROCEEDBuffer.values.add(metric)
 
-                    if(time - EEGPROCEEDBuffer.firstTimestamp!! >= 60_000){
+                    if(time - EEGPROCEEDBuffer.firstTimestamp!! >= 10_000){
                         flushEEGPROCEEDBuffer()
                     }
                 }
@@ -205,7 +205,7 @@ class MetricsRepository @Inject constructor(
                         EEGArtifactBuffer.firstTimestamp = time
                     }
                     EEGArtifactBuffer.values.add(metric)
-                    if(time - EEGArtifactBuffer.firstTimestamp!! >= 60_000){
+                    if(time - EEGArtifactBuffer.firstTimestamp!! >= 10_000){
                         flushEEGArtifactBuffer()
                     }
                 }
@@ -250,7 +250,7 @@ class MetricsRepository @Inject constructor(
                         PhysiologicalBuffer.firstTimestamp = time
                     }
                     PhysiologicalBuffer.values.add(metric)
-                    if(time - PhysiologicalBuffer.firstTimestamp!! >= 60_000){
+                    if(time - PhysiologicalBuffer.firstTimestamp!! >= 10_000){
                         flushPhysiologicalBuffer()
                     }
                 }
@@ -284,7 +284,7 @@ class MetricsRepository @Inject constructor(
                         MEMSBuffer.firstTimestamp = time
                     }
                     MEMSBuffer.values.add(metric)
-                    if(time - MEMSBuffer.firstTimestamp!! >= 60_000){
+                    if(time - MEMSBuffer.firstTimestamp!! >= 10_000){
                         flushMEMSBuffer()
                     }
                 }
@@ -327,7 +327,7 @@ class MetricsRepository @Inject constructor(
 
                     ProductivityBuffer.values.add(metric)
 
-                    if(time - ProductivityBuffer.firstTimestamp!! >= 60_000){
+                    if(time - ProductivityBuffer.firstTimestamp!! >= 10_000){
                         flushProductivityBuffer()
                     }
                 }
@@ -368,7 +368,7 @@ class MetricsRepository @Inject constructor(
 
                     EmotionalBuffer.values.add(metric)
 
-                    if(time - EmotionalBuffer.firstTimestamp!! >= 60_000){
+                    if(time - EmotionalBuffer.firstTimestamp!! >= 10_000){
                         flushEmotionalBuffer()
                     }
                 }
@@ -402,7 +402,7 @@ class MetricsRepository @Inject constructor(
 
                     CardioBuffer.values.add(metric)
 
-                    if(time - CardioBuffer.firstTimestamp!! >= 60_000){
+                    if(time - CardioBuffer.firstTimestamp!! >= 10_000){
                         flushCardioBuffer()
                     }
                 }
