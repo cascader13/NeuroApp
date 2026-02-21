@@ -1,24 +1,17 @@
 package com.neuroproject.neuro.data
 
-
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-
-//Добавить Expedition_id в таблицу Users и Sessions(подумать насчёт хранения имени экспедиции)
 @Entity(tableName = "Users")
-
 data class UsersEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val user_name : String,
     val user_password : String,
     val user_id : String,
-
-
 )
 
 @Entity(tableName = "Calibration_History")
-
 data class CalibrationHistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val user_name: String?,
@@ -36,6 +29,7 @@ data class CalibrationHistoryEntity(
 data class EEGRawMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val channel1: Float,
     val channel2: Float,
@@ -46,6 +40,7 @@ data class EEGRawMetricEntity(
 data class EEGRawMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val channel1: Float,
     val channel2: Float,
@@ -56,6 +51,7 @@ data class EEGRawMetricCompressedEntity(
 data class EEGProceedMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val channel1: Float,
     val channel2: Float,
@@ -66,6 +62,7 @@ data class EEGProceedMetricEntity(
 data class EEGProceedMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val channel1: Float,
     val channel2: Float,
@@ -76,6 +73,7 @@ data class EEGProceedMetricCompressedEntity(
 data class EEGArtifactsMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val artifactsChannel1: Boolean,
     val artifactsChannel2: Boolean,
@@ -88,6 +86,7 @@ data class EEGArtifactsMetricEntity(
 data class EEGArtifactsMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val artifactsChannel1: Boolean,
     val artifactsChannel2: Boolean,
@@ -98,8 +97,9 @@ data class EEGArtifactsMetricCompressedEntity(
 
 @Entity(tableName = "nfb_metrics")
 data class NFBMetricEntity(
-@PrimaryKey val timestamp: Long,
+    @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val alpha: Float,
     val beta: Float,
@@ -113,6 +113,7 @@ data class NFBMetricEntity(
 data class NFBMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val alpha: Float,
     val beta: Float,
@@ -126,6 +127,7 @@ data class NFBMetricCompressedEntity(
 data class PhysiologicalMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val relax: Float,
     val fatigue: Float,
@@ -142,6 +144,7 @@ data class PhysiologicalMetricEntity(
 data class PhysiologicalMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val relax: Float,
     val fatigue: Float,
@@ -158,6 +161,7 @@ data class PhysiologicalMetricCompressedEntity(
 data class MEMSMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val accelerometerX: Float,
     val accelerometerY: Float,
@@ -172,6 +176,7 @@ data class MEMSMetricEntity(
 data class MEMSMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val accelerometerX: Float,
     val accelerometerY: Float,
@@ -186,6 +191,7 @@ data class MEMSMetricCompressedEntity(
 data class ProductivityMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val gravity: Float,
     val productivity: Float,
@@ -200,6 +206,7 @@ data class ProductivityMetricEntity(
 data class ProductivityMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val gravity: Float,
     val productivity: Float,
@@ -214,6 +221,7 @@ data class ProductivityMetricCompressedEntity(
 data class EmotionalMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val attention: Float,
     val relaxation: Float,
@@ -227,6 +235,7 @@ data class EmotionalMetricEntity(
 data class EmotionalMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val attention: Float,
     val relaxation: Float,
@@ -240,6 +249,7 @@ data class EmotionalMetricCompressedEntity(
 data class CardioMetricEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val heartRate: Float,
     val hasArtifacts: Boolean,
@@ -255,6 +265,7 @@ data class CardioMetricEntity(
 data class CardioMetricCompressedEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
+    val expedition_id: String,
     val session : java.sql.Timestamp,
     val heartRate: Float,
     val hasArtifacts: Boolean,

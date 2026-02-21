@@ -7,9 +7,7 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 interface MetricsApiService {
-
-    // УТОЧНИТЬ endpoint
-    @POST("/api/metrics/upload") // Пример URL
+    @POST("/api/metrics/upload")
     suspend fun uploadMetrics(
         @Body request: UploadRequest
     ): Response<UploadResponse>

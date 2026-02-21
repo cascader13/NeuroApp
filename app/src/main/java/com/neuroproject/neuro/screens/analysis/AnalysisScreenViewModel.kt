@@ -70,6 +70,8 @@ class AnalysisScreenViewModel @Inject constructor(
     private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
 
     private var id = sharedPreferences.getString("saved_password", "").toString()
+
+    private var exp_id = "01"
     private val saveInterval = 1000L // Сохранять каждую секунду
 
     init {
@@ -208,20 +210,20 @@ class AnalysisScreenViewModel @Inject constructor(
 
     // Методы для сохранения данных в БД
     private fun saveNFBData(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
-        metricsRepository.saveNFBMetric(time, id, date, alpha, beta, theta, delta, smr)
+        metricsRepository.saveNFBMetric(time, id, exp_id, date, alpha, beta, theta, delta, smr)
         Log.d("MainScreenViewModel", "NFB data saved: alpha=$alpha, beta=$beta")
     }
 
     private fun saveEEGRAWData(time: Long, channel1: Float, channel2: Float) {
-        metricsRepository.saveEEGRAWMetric(time, id, date,channel1, channel2)
+        metricsRepository.saveEEGRAWMetric(time, id, exp_id, date,channel1, channel2)
     }
 
     private fun saveEEGPROCEEDData(time: Long, channel1: Float, channel2: Float) {
-        metricsRepository.saveEEGPROCEEDMetric(time, id, date, channel1, channel2)
+        metricsRepository.saveEEGPROCEEDMetric(time, id, exp_id, date, channel1, channel2)
     }
 
     private fun saveEEGArtifactData(time: Long, ArtifactChannel1: Boolean, ArtifactChannel2: Boolean, QualityChannel1: Float, QualityChannel2: Float){
-        metricsRepository.saveEEGArtifactMetric(time, id, date, ArtifactChannel1, ArtifactChannel2, QualityChannel1, QualityChannel2)
+        metricsRepository.saveEEGArtifactMetric(time, id, exp_id, date, ArtifactChannel1, ArtifactChannel2, QualityChannel1, QualityChannel2)
     }
 
     private fun savePhysiologicalData(
@@ -238,6 +240,7 @@ class AnalysisScreenViewModel @Inject constructor(
         metricsRepository.savePhysiologicalMetric(
             time,
             id,
+            exp_id,
             date,
             relax,
             fatigue,
@@ -251,14 +254,14 @@ class AnalysisScreenViewModel @Inject constructor(
     }
 
     private fun saveCardioData(time: Long, heartRate: Float, hasArtifacts: Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionArtifact: Boolean, skinContact: Boolean, stressIndex: Float) {
-        metricsRepository.saveCardioMetric(time, id, date, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifact, skinContact, stressIndex)
+        metricsRepository.saveCardioMetric(time, id, exp_id, date, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifact, skinContact, stressIndex)
     }
 
     private fun saveMEMSData(
         time: Long, accX: Float, accY: Float, accZ: Float,
         gyroX: Float, gyroY: Float, gyroZ: Float
     ) {
-        metricsRepository.saveMEMSMetric(time, id, date,accX, accY, accZ, gyroX, gyroY, gyroZ)
+        metricsRepository.saveMEMSMetric(time, id, exp_id, date,accX, accY, accZ, gyroX, gyroY, gyroZ)
     }
 
     private fun saveProductivityData(
@@ -273,6 +276,7 @@ class AnalysisScreenViewModel @Inject constructor(
         metricsRepository.saveProductivityMetric(
             time,
             id,
+            exp_id,
             date,
             gravity,
             productivity,
@@ -294,6 +298,7 @@ class AnalysisScreenViewModel @Inject constructor(
         metricsRepository.saveEmotionalMetric(
             time,
             id,
+            exp_id,
             date,
             attention,
             relaxation,

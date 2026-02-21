@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.data
 
 import android.util.Log
+import androidx.compose.material3.Card
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -10,6 +11,7 @@ import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.collections.map
+import kotlin.math.exp
 
 @Singleton
 class MetricsRepository @Inject constructor(
@@ -100,12 +102,13 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveNFBMetric(time: Long, id: String, date: java.sql.Timestamp,  alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
+    fun saveNFBMetric(time: Long, id: String, exp_id: String,  date: java.sql.Timestamp,  alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
         scope.launch {
             try {
                 val metric = NFBMetricEntity(
                     timestamp = time,
                     id = id,
+                    exp_id,
                     session = date,
                     alpha = alpha,
                     beta = beta,
@@ -131,12 +134,13 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveEEGRAWMetric(time: Long, id: String, date: java.sql.Timestamp,  channel1: Float, channel2: Float) {
+    fun saveEEGRAWMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp,  channel1: Float, channel2: Float) {
         scope.launch {
             try {
                 val metric = EEGRawMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     channel1 = channel1,
                     channel2 = channel2,
@@ -158,12 +162,13 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveEEGPROCEEDMetric(time: Long, id: String, date: java.sql.Timestamp, channel1: Float, channel2: Float) {
+    fun saveEEGPROCEEDMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, channel1: Float, channel2: Float) {
         scope.launch {
             try {
                 val metric = EEGProceedMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     channel1 = channel1,
                     channel2 = channel2,
@@ -186,12 +191,13 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveEEGArtifactMetric(time: Long, id: String, date: java.sql.Timestamp, artifactsChannel1: Boolean, artifactsChannel2: Boolean, qualityChannel1: Float, qualityChannel2: Float,) {
+    fun saveEEGArtifactMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, artifactsChannel1: Boolean, artifactsChannel2: Boolean, qualityChannel1: Float, qualityChannel2: Float,) {
         scope.launch {
             try {
                 val metric = EEGArtifactsMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     artifactsChannel1 = artifactsChannel1,
                     artifactsChannel2 = artifactsChannel2,
@@ -218,6 +224,7 @@ class MetricsRepository @Inject constructor(
     fun savePhysiologicalMetric(
         time: Long,
         id: String,
+        exp_id: String,
         date: java.sql.Timestamp,
         relax: Float,
         fatigue: Float,
@@ -233,6 +240,7 @@ class MetricsRepository @Inject constructor(
                 val metric = PhysiologicalMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     relax = relax,
                     fatigue = fatigue,
@@ -261,7 +269,7 @@ class MetricsRepository @Inject constructor(
     }
 
     fun saveMEMSMetric(
-        time: Long, id: String, date: java.sql.Timestamp, accX: Float, accY: Float, accZ: Float,
+        time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, accX: Float, accY: Float, accZ: Float,
         gyroX: Float, gyroY: Float, gyroZ: Float
     ) {
         scope.launch {
@@ -269,6 +277,7 @@ class MetricsRepository @Inject constructor(
                 val metric = MEMSMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     accelerometerX = accX,
                     accelerometerY = accY,
@@ -297,6 +306,7 @@ class MetricsRepository @Inject constructor(
     fun saveProductivityMetric(
         time: Long,
         id: String,
+        exp_id: String,
         date: java.sql.Timestamp,
         gravity: Float,
         productivity: Float,
@@ -310,6 +320,7 @@ class MetricsRepository @Inject constructor(
                 val metric = ProductivityMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     gravity = gravity,
                     productivity = productivity,
@@ -340,6 +351,7 @@ class MetricsRepository @Inject constructor(
     fun saveEmotionalMetric(
         time: Long,
         id: String,
+        exp_id: String,
         date: java.sql.Timestamp,
         attention: Float,
         relaxation: Float,
@@ -352,6 +364,7 @@ class MetricsRepository @Inject constructor(
                 val metric = EmotionalMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     attention = attention,
                     relaxation = relaxation,
@@ -378,12 +391,13 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveCardioMetric(time: Long, id: String, date: java.sql.Timestamp, heartRate: Float, hasArtifacts:Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionAtrifacts: Boolean, skinContact: Boolean, stressIndex: Float) {
+    fun saveCardioMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, heartRate: Float, hasArtifacts:Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionAtrifacts: Boolean, skinContact: Boolean, stressIndex: Float) {
         scope.launch {
             try {
                 val metric = CardioMetricEntity(
                     timestamp = time,
                     id = id,
+                    expedition_id = exp_id,
                     session = date,
                     heartRate = heartRate,
                     hasArtifacts = hasArtifacts,
@@ -450,6 +464,7 @@ class MetricsRepository @Inject constructor(
         val compressed = NFBMetricCompressedEntity(
             timestamp = nfbBuffer.firstTimestamp!!, // начало минутного интервала
             id = nfbBuffer.values.first().id,
+            expedition_id = nfbBuffer.values.first().expedition_id,
             session = nfbBuffer.values.first().session,
             alpha = nfbBuffer.values.map { it.alpha }.median(),
             beta = nfbBuffer.values.map { it.beta }.median(),
@@ -472,6 +487,7 @@ class MetricsRepository @Inject constructor(
         val compressed = EEGRawMetricCompressedEntity(
             timestamp = EEGRAWBuffer.firstTimestamp!!, // начало минутного интервала
             id = EEGRAWBuffer.values.first().id,
+            expedition_id = EEGRAWBuffer.values.first().expedition_id,
             session = EEGRAWBuffer.values.first().session,
             channel1 = EEGRAWBuffer.values.map { it.channel1 }.median(),
             channel2 = EEGRAWBuffer.values.map {it.channel2}.median(),
@@ -491,6 +507,7 @@ class MetricsRepository @Inject constructor(
         val compressed = EEGProceedMetricCompressedEntity(
             timestamp = EEGPROCEEDBuffer.firstTimestamp!!, // начало минутного интервала
             id = EEGPROCEEDBuffer.values.first().id,
+            expedition_id = EEGPROCEEDBuffer.values.first().expedition_id,
             session = EEGPROCEEDBuffer.values.first().session,
             channel1 = EEGPROCEEDBuffer.values.map { it.channel1 }.median(),
             channel2 = EEGPROCEEDBuffer.values.map {it.channel2}.median(),
@@ -510,6 +527,7 @@ class MetricsRepository @Inject constructor(
         val compressed = EEGArtifactsMetricCompressedEntity(
             timestamp = EEGArtifactBuffer.firstTimestamp!!, // начало минутного интервала
             id = EEGArtifactBuffer.values.first().id,
+            expedition_id = EEGArtifactBuffer.values.first().expedition_id,
             session = EEGArtifactBuffer.values.first().session,
             artifactsChannel1 = EEGArtifactBuffer.values.map { it.artifactsChannel1 }.majority(),
             artifactsChannel2 = EEGArtifactBuffer.values.map { it.artifactsChannel2 }.majority(),
@@ -531,6 +549,7 @@ class MetricsRepository @Inject constructor(
         val compressed = PhysiologicalMetricCompressedEntity(
             timestamp = PhysiologicalBuffer.firstTimestamp!!, // начало минутного интервала
             id = PhysiologicalBuffer.values.first().id,
+            expedition_id = PhysiologicalBuffer.values.first().expedition_id,
             session = PhysiologicalBuffer.values.first().session,
             relax = PhysiologicalBuffer.values.map { it.relax }.median(),
             fatigue = PhysiologicalBuffer.values.map { it.fatigue }.median(),
@@ -556,6 +575,7 @@ class MetricsRepository @Inject constructor(
         val compressed = EmotionalMetricCompressedEntity(
             timestamp = EmotionalBuffer.firstTimestamp!!, // начало минутного интервала
             id = EmotionalBuffer.values.first().id,
+            expedition_id = EmotionalBuffer.values.first().expedition_id,
             session = EmotionalBuffer.values.first().session,
             attention = EmotionalBuffer.values.map { it.attention }.median(),
             relaxation = EmotionalBuffer.values.map { it.relaxation }.median(),
@@ -578,6 +598,7 @@ class MetricsRepository @Inject constructor(
         val compressed = ProductivityMetricCompressedEntity(
             timestamp = ProductivityBuffer.firstTimestamp!!, // начало минутного интервала
             id = ProductivityBuffer.values.first().id,
+            expedition_id = ProductivityBuffer.values.first().id,
             session = ProductivityBuffer.values.first().session,
             gravity = ProductivityBuffer.values.map { it.gravity }.median(),
             productivity = ProductivityBuffer.values.map { it.productivity }.median(),
@@ -601,6 +622,7 @@ class MetricsRepository @Inject constructor(
         val compressed = MEMSMetricCompressedEntity(
             timestamp = MEMSBuffer.firstTimestamp!!, // начало минутного интервала
             id = MEMSBuffer.values.first().id,
+            expedition_id = MEMSBuffer.values.first().id,
             session = MEMSBuffer.values.first().session,
             accelerometerX = MEMSBuffer.values.map { it.accelerometerX }.median(),
             accelerometerY = MEMSBuffer.values.map { it.accelerometerY }.median(),
@@ -624,6 +646,7 @@ class MetricsRepository @Inject constructor(
         val compressed = CardioMetricCompressedEntity(
             timestamp = CardioBuffer.firstTimestamp!!, // начало минутного интервала
             id = CardioBuffer.values.first().id,
+            expedition_id = CardioBuffer.values.first().expedition_id,
             session = CardioBuffer.values.first().session,
             heartRate = CardioBuffer.values.map { it.heartRate }.median(),
             hasArtifacts = CardioBuffer.values.map { it.hasArtifacts }.majority(),

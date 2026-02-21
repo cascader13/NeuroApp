@@ -3,6 +3,7 @@ package com.neuroproject.neuro.services
 import android.content.Context
 import android.util.Log
 import com.neuroproject.neuro.data.MetricsRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -17,6 +18,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 @Singleton
 class RecordManager @Inject constructor(
     deviceManager: CapsuleDeviceManager,
+    @ApplicationContext private val context: Context,
     private val metricsRepository: MetricsRepository){
     private var _instance = this
     init {
@@ -35,6 +37,8 @@ class RecordManager @Inject constructor(
 
     //КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ
     private var id = "01010101" // здесь также нужна табличка.
+
+    private var exp_id = "01" // здесь также надо подвязать shared perference
 
 
     fun setSession(Tsession: Timestamp){
@@ -182,20 +186,20 @@ class RecordManager @Inject constructor(
     }
 
     private fun saveNFBData(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
-        metricsRepository.saveNFBMetric(time, id, session, alpha, beta, theta, delta, smr)
+        metricsRepository.saveNFBMetric(time, id, exp_id, session, alpha, beta, theta, delta, smr)
         Log.d("MainScreenViewModel", "NFB data saved: alpha=$alpha, beta=$beta")
     }
 
     private fun saveEEGRAWData(time: Long, channel1: Float, channel2: Float) {
-        metricsRepository.saveEEGRAWMetric(time, id, session,channel1, channel2)
+        metricsRepository.saveEEGRAWMetric(time, id, exp_id, session,channel1, channel2)
     }
 
     private fun saveEEGPROCEEDData(time: Long, channel1: Float, channel2: Float) {
-        metricsRepository.saveEEGPROCEEDMetric(time, id, session, channel1, channel2)
+        metricsRepository.saveEEGPROCEEDMetric(time, id, exp_id, session, channel1, channel2)
     }
 
     private fun saveEEGArtifactData(time: Long, ArtifactChannel1: Boolean, ArtifactChannel2: Boolean, QualityChannel1: Float, QualityChannel2: Float){
-        metricsRepository.saveEEGArtifactMetric(time, id, session, ArtifactChannel1, ArtifactChannel2, QualityChannel1, QualityChannel2)
+        metricsRepository.saveEEGArtifactMetric(time, id, exp_id, session, ArtifactChannel1, ArtifactChannel2, QualityChannel1, QualityChannel2)
     }
 
     private fun savePhysiologicalData(
@@ -212,6 +216,7 @@ class RecordManager @Inject constructor(
         metricsRepository.savePhysiologicalMetric(
             time,
             id,
+            exp_id,
             session,
             relax,
             fatigue,
@@ -225,14 +230,14 @@ class RecordManager @Inject constructor(
     }
 
     private fun saveCardioData(time: Long, heartRate: Float, hasArtifacts: Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionArtifact: Boolean, skinContact: Boolean, stressIndex: Float) {
-        metricsRepository.saveCardioMetric(time, id, session, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifact, skinContact, stressIndex)
+        metricsRepository.saveCardioMetric(time, id, exp_id, session, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifact, skinContact, stressIndex)
     }
 
     private fun saveMEMSData(
         time: Long, accX: Float, accY: Float, accZ: Float,
         gyroX: Float, gyroY: Float, gyroZ: Float
     ) {
-        metricsRepository.saveMEMSMetric(time, id, session,accX, accY, accZ, gyroX, gyroY, gyroZ)
+        metricsRepository.saveMEMSMetric(time, id, exp_id, session,accX, accY, accZ, gyroX, gyroY, gyroZ)
     }
 
     private fun saveProductivityData(
@@ -247,6 +252,7 @@ class RecordManager @Inject constructor(
         metricsRepository.saveProductivityMetric(
             time,
             id,
+            exp_id,
             session,
             gravity,
             productivity,
@@ -268,6 +274,7 @@ class RecordManager @Inject constructor(
         metricsRepository.saveEmotionalMetric(
             time,
             id,
+            exp_id,
             session,
             attention,
             relaxation,
