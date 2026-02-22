@@ -3,13 +3,6 @@ package com.neuroproject.neuro.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "Users")
-data class UsersEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val user_name : String,
-    val user_password : String,
-    val user_id : String,
-)
 
 @Entity(tableName = "Calibration_History")
 data class CalibrationHistoryEntity(

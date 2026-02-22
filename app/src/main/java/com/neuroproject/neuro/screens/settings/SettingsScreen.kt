@@ -1,5 +1,4 @@
 package com.neuroproject.neuro.screens.settings
-//экран настроек нужно перенастроить в экран профиля. Останется всё тот же функционал просто с новым наполнением
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -45,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,12 +58,12 @@ fun SettingsScreen(
 ) {
     val state by vm.state.collectAsState()
 
-
     SettingsScreenContent(
         modifier = modifier,
         state = state,
         onBackClick = onBackClick,
-        onKeyChanged = vm::onKeyChanged,
+        onMobileIdChanged = vm::onMobileIdChanged,
+        onExpeditionIdChanged = vm::onExpeditionIdChanged,
         onUploadClicked = vm::onUploadClicked
     )
 }
@@ -76,7 +74,8 @@ private fun SettingsScreenContent(
     modifier: Modifier = Modifier,
     state: SettingsState,
     onBackClick: () -> Unit,
-    onKeyChanged: (String) -> Unit,
+    onMobileIdChanged: (String) -> Unit,
+    onExpeditionIdChanged: (String) -> Unit,
     onUploadClicked: () -> Unit
 ) {
     Scaffold(
@@ -85,7 +84,7 @@ private fun SettingsScreenContent(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Настройки",
+                        text = "Профиль",
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium
@@ -112,38 +111,38 @@ private fun SettingsScreenContent(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Невидимый прогресс-бар (становится видимым при загрузке)
             InvisibleProgressBar(
                 isVisible = state.isUploading,
                 progress = state.uploadProgress
             )
 
-            // Поле для ввода  ключа
-            KeyField(
-                Key = state.key,
-                isKeyValid = state.isKeyValid,
-                onValueChange = onKeyChanged
+
+            MobileIdField(
+                mobileId = state.mobileId,
+                onValueChange = onMobileIdChanged
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            ExpeditionIdField(
+                expeditionId = state.expeditionId,
+                onValueChange = onExpeditionIdChanged
+            )
 
-            // Кнопка выгрузки на сервер
+            Spacer(modifier = Modifier.height(8.dp))
+
             UploadButton(
                 isLoading = state.isUploading,
-                isEnabled = state.isKeyValid && !state.isUploading,
+                isEnabled = !state.isUploading,
                 onClick = onUploadClicked
             )
 
-            // Состояние загрузки с прогрессом
             if (state.isUploading) {
                 UploadProgressStatus(
                     progress = state.uploadProgress
                 )
             }
 
-            // Сообщение об ошибке
             state.errorMessage?.let { errorMessage ->
                 Box(
                     modifier = Modifier
@@ -161,7 +160,6 @@ private fun SettingsScreenContent(
                 }
             }
 
-            // Сообщение об успехе
             state.successMessage?.let { successMessage ->
                 Box(
                     modifier = Modifier
@@ -181,7 +179,6 @@ private fun SettingsScreenContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Информация о версии
             Text(
                 text = state.appInfo,
                 color = Color.White.copy(alpha = 0.6f),
@@ -201,7 +198,7 @@ private fun InvisibleProgressBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(4.dp)
-            .alpha(if (isVisible) 1f else 0f) // Контролируем видимость через alpha
+            .alpha(if (isVisible) 1f else 0f)
     ) {
         LinearProgressIndicator(
             progress = {progress},
@@ -235,7 +232,6 @@ private fun UploadProgressStatus(
             fontSize = 14.sp
         )
 
-        // Дополнительная информация о процессе
         when {
             progress < 0.3f -> Text(
                 text = "Подготовка данных...",
@@ -256,32 +252,30 @@ private fun UploadProgressStatus(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KeyField(
-    Key: String,
-    isKeyValid: Boolean,
+private fun MobileIdField(
+    mobileId: String,
     onValueChange: (String) -> Unit
 ) {
-    var isPasswordVisible by remember { mutableStateOf(false) }
-
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Ключ",
+            text = "ID мобильного пользователя",
             color = Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium
         )
 
         OutlinedTextField(
-            value = Key,
+            value = mobileId,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = if (isKeyValid) Color(0xFF4FC3F7) else Color(0xFFFF5252),
+                focusedBorderColor = Color(0xFF4FC3F7),
                 unfocusedBorderColor = Color(0xFF2A2A2A),
                 focusedLabelColor = Color(0xFF4FC3F7),
                 unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
@@ -290,35 +284,63 @@ private fun KeyField(
             ),
             placeholder = {
                 Text(
-                    text = "Введите ваш ключ",
+                    text = "Введите ID мобильного пользователя",
                     color = Color.White.copy(alpha = 0.4f)
                 )
             },
-            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            trailingIcon = {
-                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                    Text(
-                        text = if (isPasswordVisible) "Скрыть" else "Показать",
-                        color = Color(0xFF4FC3F7),
-                        fontSize = 12.sp
-                    )
-                }
-            },
-            singleLine = true,
-            isError = Key.isNotEmpty() && !isKeyValid
+            singleLine = true
         )
 
-        if (Key.isNotEmpty() && !isKeyValid) {
-            Text(
-                text = "Неверный формат ключа",
-                color = Color(0xFFFF5252),
-                fontSize = 12.sp
-            )
-        }
+        Text(
+            text = "Идентификатор пользователя в мобильном приложении",
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 12.sp
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpeditionIdField(
+    expeditionId: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "ID экспедиции",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        OutlinedTextField(
+            value = expeditionId,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = Color(0xFF4FC3F7),
+                unfocusedBorderColor = Color(0xFF2A2A2A),
+                focusedLabelColor = Color(0xFF4FC3F7),
+                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                containerColor = Color(0xFF1A1A1A),
+                cursorColor = Color(0xFF4FC3F7)
+            ),
+            placeholder = {
+                Text(
+                    text = "Введите ID экспедиции",
+                    color = Color.White.copy(alpha = 0.4f)
+                )
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            singleLine = true
+        )
 
         Text(
-            text = "Ключ должен содержать только буквы и цифры",
+            text = "Идентификатор экспедиции/исследования",
             color = Color.White.copy(alpha = 0.6f),
             fontSize = 12.sp
         )

@@ -19,13 +19,17 @@ import kotlin.coroutines.EmptyCoroutineContext
 class RecordManager @Inject constructor(
     deviceManager: CapsuleDeviceManager,
     @ApplicationContext private val context: Context,
-    private val metricsRepository: MetricsRepository){
+    private val metricsRepository: MetricsRepository
+) {
     private var _instance = this
+
+    private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+
     init {
         _instance = this
         Log.d("RecordManager", "init")
+        loadSavedIds()
     }
-
 
     private val capsuleDM = deviceManager
     private val _scope = CoroutineScope(EmptyCoroutineContext)
@@ -35,21 +39,36 @@ class RecordManager @Inject constructor(
     private val _nfbState = MutableStateFlow(NFBData())
     private var session = java.sql.Timestamp(System.currentTimeMillis())
 
-    //КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ КОСТЫЛЬ
-    private var id = "01010101" // здесь также нужна табличка.
-
-    private var exp_id = "01" // здесь также надо подвязать shared perference
 
 
-    fun setSession(Tsession: Timestamp){
+    // ID пользователя и экспедиции из SharedPreferences
+    private var userId: String = ""
+    private var expeditionId: String = ""
+
+    private fun loadSavedIds() {
+        userId = sharedPreferences.getString("saved_user_id", "") ?: ""
+
+        // Загружаем expedition_id
+        expeditionId = sharedPreferences.getString("saved_expedition_id", "") ?: ""
+
+        Log.d("RecordManager", "Loaded IDs - userId: $userId, expeditionId: $expeditionId")
+    }
+
+    fun refreshIds() {
+        loadSavedIds()
+        Log.d("RecordManager", "IDs refreshed - userId: $userId, expeditionId: $expeditionId")
+    }
+
+    fun setSession(Tsession: Timestamp) {
         session = Tsession
     }
 
-
     fun startRecording() {
-        if(!isSetup) setupCapsuleListeners()
+        if (!isSetup) setupCapsuleListeners()
+        // Обновляем ID перед началом записи, чтобы использовать актуальные значения
+        refreshIds()
         isRecording = true
-        Log.d("Record Manager", "Recording started")
+        Log.d("Record Manager", "Recording started with userId: $userId, expeditionId: $expeditionId")
     }
 
     suspend fun stopRecording() {
@@ -57,9 +76,6 @@ class RecordManager @Inject constructor(
         Log.d("Record Manager", "Recording stopped")
         metricsRepository.flushAllBuffers()
     }
-
-
-
 
     //Вспомогательная функция для сбора данных(нашёл на одном из форумов, весьма элегантное решение)
     private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectInScope(
@@ -76,7 +92,7 @@ class RecordManager @Inject constructor(
     private fun setupCapsuleListeners() {
         isSetup = true
         // Слушатель для NFB данных
-        capsuleDM.nfbReceived = {time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->
+        capsuleDM.nfbReceived = { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->
             _scope.launch {
                 // Обновляем NFB данные
                 _nfbState.emit(NFBData(time, alpha, beta, theta, delta, smr))
@@ -108,14 +124,16 @@ class RecordManager @Inject constructor(
         // Слушатель для кардио данных
         capsuleDM.hrData.collectInScope(_scope) { hr ->
             if (isRecording) {
-                saveCardioData(hr.timeStampMilli,
+                saveCardioData(
+                    hr.timeStampMilli,
                     hr.heartRate,
                     hr.hasArtifacts,
                     hr.kaplanIndex,
                     hr.metricsAvailable,
                     hr.motionArtifacts,
                     hr.skinContact,
-                    hr.stress)
+                    hr.stress
+                )
             }
         }
 
@@ -162,44 +180,78 @@ class RecordManager @Inject constructor(
                 )
             }
         }
-        capsuleDM.eegRawData.collectInScope(_scope) {eegRaw ->
+
+        capsuleDM.eegRawData.collectInScope(_scope) { eegRaw ->
             if (isRecording) {
                 saveEEGRAWData(eegRaw.timeStampMilli, eegRaw.channel1, eegRaw.channel2)
             }
         }
 
-        capsuleDM.eegProcessedData.collectInScope(_scope) {eegProceed ->
-            if(isRecording){
+        capsuleDM.eegProcessedData.collectInScope(_scope) { eegProceed ->
+            if (isRecording) {
                 saveEEGPROCEEDData(eegProceed.timeStampMilli, eegProceed.channel1, eegProceed.channel2)
             }
         }
 
-        capsuleDM.eegArtifacts.collectInScope(_scope){eegArt ->
-            if(isRecording){
-                saveEEGArtifactData(eegArt.timeStampMilli,
+        capsuleDM.eegArtifacts.collectInScope(_scope) { eegArt ->
+            if (isRecording) {
+                saveEEGArtifactData(
+                    eegArt.timeStampMilli,
                     eegArt.artifactsChannel1,
                     eegArt.artifactsChannel2,
                     eegArt.qualityChannel1,
-                    eegArt.qualityChannel2)
+                    eegArt.qualityChannel2
+                )
             }
         }
     }
 
     private fun saveNFBData(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
-        metricsRepository.saveNFBMetric(time, id, exp_id, session, alpha, beta, theta, delta, smr)
-        Log.d("MainScreenViewModel", "NFB data saved: alpha=$alpha, beta=$beta")
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveNFBMetric(time, userId, expeditionId, session, alpha, beta, theta, delta, smr)
+            Log.d("RecordManager", "NFB data saved: alpha=$alpha, beta=$beta")
+        } else {
+            Log.e("RecordManager", "Cannot save NFB data: userId or expeditionId is empty")
+        }
     }
 
     private fun saveEEGRAWData(time: Long, channel1: Float, channel2: Float) {
-        metricsRepository.saveEEGRAWMetric(time, id, exp_id, session,channel1, channel2)
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveEEGRAWMetric(time, userId, expeditionId, session, channel1, channel2)
+        } else {
+            Log.e("RecordManager", "Cannot save EEG RAW data: userId or expeditionId is empty")
+        }
     }
 
     private fun saveEEGPROCEEDData(time: Long, channel1: Float, channel2: Float) {
-        metricsRepository.saveEEGPROCEEDMetric(time, id, exp_id, session, channel1, channel2)
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveEEGPROCEEDMetric(time, userId, expeditionId, session, channel1, channel2)
+        } else {
+            Log.e("RecordManager", "Cannot save EEG PROCEED data: userId or expeditionId is empty")
+        }
     }
 
-    private fun saveEEGArtifactData(time: Long, ArtifactChannel1: Boolean, ArtifactChannel2: Boolean, QualityChannel1: Float, QualityChannel2: Float){
-        metricsRepository.saveEEGArtifactMetric(time, id, exp_id, session, ArtifactChannel1, ArtifactChannel2, QualityChannel1, QualityChannel2)
+    private fun saveEEGArtifactData(
+        time: Long,
+        ArtifactChannel1: Boolean,
+        ArtifactChannel2: Boolean,
+        QualityChannel1: Float,
+        QualityChannel2: Float
+    ) {
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveEEGArtifactMetric(
+                time,
+                userId,
+                expeditionId,
+                session,
+                ArtifactChannel1,
+                ArtifactChannel2,
+                QualityChannel1,
+                QualityChannel2
+            )
+        } else {
+            Log.e("RecordManager", "Cannot save EEG Artifact data: userId or expeditionId is empty")
+        }
     }
 
     private fun savePhysiologicalData(
@@ -213,31 +265,71 @@ class RecordManager @Inject constructor(
         nfbArtifacts: Boolean,
         cardioArtifacts: Boolean
     ) {
-        metricsRepository.savePhysiologicalMetric(
-            time,
-            id,
-            exp_id,
-            session,
-            relax,
-            fatigue,
-            none,
-            concentration,
-            involvement,
-            stress,
-            nfbArtifacts,
-            cardioArtifacts
-        )
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.savePhysiologicalMetric(
+                time,
+                userId,
+                expeditionId,
+                session,
+                relax,
+                fatigue,
+                none,
+                concentration,
+                involvement,
+                stress,
+                nfbArtifacts,
+                cardioArtifacts
+            )
+        } else {
+            Log.e("RecordManager", "Cannot save Physiological data: userId or expeditionId is empty")
+        }
     }
 
-    private fun saveCardioData(time: Long, heartRate: Float, hasArtifacts: Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionArtifact: Boolean, skinContact: Boolean, stressIndex: Float) {
-        metricsRepository.saveCardioMetric(time, id, exp_id, session, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifact, skinContact, stressIndex)
+    private fun saveCardioData(
+        time: Long,
+        heartRate: Float,
+        hasArtifacts: Boolean,
+        kaplanIndex: Float,
+        metricsAvailable: Boolean,
+        motionArtifact: Boolean,
+        skinContact: Boolean,
+        stressIndex: Float
+    ) {
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveCardioMetric(
+                time,
+                userId,
+                expeditionId,
+                session,
+                heartRate,
+                hasArtifacts,
+                kaplanIndex,
+                metricsAvailable,
+                motionArtifact,
+                skinContact,
+                stressIndex
+            )
+        } else {
+            Log.e("RecordManager", "Cannot save Cardio data: userId or expeditionId is empty")
+        }
     }
 
     private fun saveMEMSData(
         time: Long, accX: Float, accY: Float, accZ: Float,
         gyroX: Float, gyroY: Float, gyroZ: Float
     ) {
-        metricsRepository.saveMEMSMetric(time, id, exp_id, session,accX, accY, accZ, gyroX, gyroY, gyroZ)
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveMEMSMetric(
+                time,
+                userId,
+                expeditionId,
+                session,
+                accX, accY, accZ,
+                gyroX, gyroY, gyroZ
+            )
+        } else {
+            Log.e("RecordManager", "Cannot save MEMS data: userId or expeditionId is empty")
+        }
     }
 
     private fun saveProductivityData(
@@ -249,18 +341,22 @@ class RecordManager @Inject constructor(
         relaxation: Float,
         concentration: Float
     ) {
-        metricsRepository.saveProductivityMetric(
-            time,
-            id,
-            exp_id,
-            session,
-            gravity,
-            productivity,
-            fatigue,
-            reverseFatigue,
-            relaxation,
-            concentration
-        )
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveProductivityMetric(
+                time,
+                userId,
+                expeditionId,
+                session,
+                gravity,
+                productivity,
+                fatigue,
+                reverseFatigue,
+                relaxation,
+                concentration
+            )
+        } else {
+            Log.e("RecordManager", "Cannot save Productivity data: userId or expeditionId is empty")
+        }
     }
 
     private fun saveEmotionalData(
@@ -271,22 +367,20 @@ class RecordManager @Inject constructor(
         cognitiveControl: Float,
         selfControl: Float
     ) {
-        metricsRepository.saveEmotionalMetric(
-            time,
-            id,
-            exp_id,
-            session,
-            attention,
-            relaxation,
-            cognitiveLoad,
-            cognitiveControl,
-            selfControl
-        )
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveEmotionalMetric(
+                time,
+                userId,
+                expeditionId,
+                session,
+                attention,
+                relaxation,
+                cognitiveLoad,
+                cognitiveControl,
+                selfControl
+            )
+        } else {
+            Log.e("RecordManager", "Cannot save Emotional data: userId or expeditionId is empty")
+        }
     }
-
-
-
-
-
-
 }

@@ -35,21 +35,33 @@ class SettingsViewModel @Inject constructor(
     private var uploadJob: kotlinx.coroutines.Job? = null
 
     init {
-        loadSavedKey()
+        loadSavedMobileId()
+        loadSavedExpeditionId()
         loadStats()
     }
 
-    private fun loadSavedKey() {
-        // Используем то же поле, что и для пароля
-        val savedKey = sharedPreferences.getString("saved_password", "")
 
-        if (!savedKey.isNullOrEmpty()) {
-            val isValid = savedKey.matches(Regex("^[a-zA-Z0-9]*\$"))
+    private fun loadSavedMobileId() {
+        // Сначала пробуем загрузить mobile_id
+        var mobileId = sharedPreferences.getString("saved_mobile_id", "")
+
+        // Если mobile_id пуст, пробуем загрузить user_id
+        if (mobileId.isNullOrEmpty()) {
+            mobileId = sharedPreferences.getString("saved_user_id", "")
+        }
+
+        if (!mobileId.isNullOrEmpty()) {
             _state.update {
-                it.copy(
-                    key = savedKey,
-                    isKeyValid = isValid
-                )
+                it.copy(mobileId = mobileId)
+            }
+        }
+    }
+
+    private fun loadSavedExpeditionId() {
+        val expeditionId = sharedPreferences.getString("saved_expedition_id", "")
+        if (!expeditionId.isNullOrEmpty()) {
+            _state.update {
+                it.copy(expeditionId = expeditionId)
             }
         }
     }
@@ -71,24 +83,39 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onKeyChanged(newKey: String) {
-        val isValid = newKey.matches(Regex("^[a-zA-Z0-9]*\$"))
 
-        saveKeyToPreferences(newKey)
-
+    fun onMobileIdChanged(newId: String) {
+        saveMobileIdToPreferences(newId)
         _state.update {
             it.copy(
-                key = newKey,
-                isKeyValid = isValid,
+                mobileId = newId,
                 errorMessage = null,
                 successMessage = null
             )
         }
     }
 
-    private fun saveKeyToPreferences(key: String) {
+    fun onExpeditionIdChanged(newId: String) {
+        saveExpeditionIdToPreferences(newId)
+        _state.update {
+            it.copy(
+                expeditionId = newId,
+                errorMessage = null,
+                successMessage = null
+            )
+        }
+    }
+
+
+    private fun saveMobileIdToPreferences(id: String) {
         sharedPreferences.edit()
-            .putString("saved_password", key)
+            .putString("saved_mobile_id", id)
+            .apply()
+    }
+
+    private fun saveExpeditionIdToPreferences(id: String) {
+        sharedPreferences.edit()
+            .putString("saved_expedition_id", id)
             .apply()
     }
 
@@ -282,8 +309,8 @@ class SettingsViewModel @Inject constructor(
 }
 
 data class SettingsState(
-    val key: String = "",
-    val isKeyValid: Boolean = false,
+    val mobileId: String = "",
+    val expeditionId: String = "",
     val isUploading: Boolean = false,
     val uploadProgress: Float = 0f,
     val errorMessage: String? = null,

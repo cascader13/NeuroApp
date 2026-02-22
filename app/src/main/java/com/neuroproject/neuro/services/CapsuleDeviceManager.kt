@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.neuroproject.neuro.data.CalibrationHistoryEntity
 import com.neuroproject.neuro.data.MetricsDao
-import com.neuroproject.neuro.data.UsersEntity
 import com.neuroproject.neuro.models.BaselineValues
 import com.neuroproject.neuro.models.CapsuleInitializedState
 import com.neuroproject.neuro.models.DeviceConnectionState

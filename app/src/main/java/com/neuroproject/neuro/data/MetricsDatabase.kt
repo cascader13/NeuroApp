@@ -30,7 +30,6 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         EEGArtifactsMetricCompressedEntity::class,
         CardioMetricEntity::class,
         CardioMetricCompressedEntity::class,
-        UsersEntity::class,
         SubTestResultEntity::class,
         SubjectiveQuestionEntity::class,
         CalibrationHistoryEntity::class

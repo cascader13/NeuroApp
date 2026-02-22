@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-// буду работать здесь
+
 @HiltViewModel
 class LoginScreenViewModel @Inject constructor(
     @ApplicationContext private val context: Context
@@ -20,9 +20,7 @@ class LoginScreenViewModel @Inject constructor(
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Disconnected)
     val loginState = _loginState.asStateFlow()
 
-    val username = mutableStateOf("")
-    val password = mutableStateOf("")
-    val showPassword = mutableStateOf(false)
+    val userId = mutableStateOf("")
     val errorMessage = mutableStateOf<String?>(null)
 
     private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
@@ -31,25 +29,15 @@ class LoginScreenViewModel @Inject constructor(
         loadSavedData()
     }
 
-    fun onUsernameChange(value: String) {
-        username.value = value
+    fun onUserIdChange(value: String) {
+        userId.value = value
         errorMessage.value = null
-    }
-
-    fun onPasswordChange(value: String) {
-        password.value = value
-        errorMessage.value = null
-    }
-
-    fun togglePasswordVisibility() {
-        showPassword.value = !showPassword.value
     }
 
     fun login() {
-        val user = username.value.trim()
-        val pass = password.value.trim()
+        val id = userId.value.trim()
 
-        if (!isFormValid(user, pass)) {
+        if (!isFormValid(id)) {
             return
         }
 
@@ -62,14 +50,14 @@ class LoginScreenViewModel @Inject constructor(
                 delay(1500)
 
                 // В реальном приложении здесь будет вызов API
-                val success = performLogin(user, pass)
+                val success = performLogin(id)
 
                 if (success) {
-                    saveUserData(user, pass)
+                    saveUserData(id)
                     _loginState.value = LoginState.Connected
                 } else {
                     _loginState.value = LoginState.Error
-                    errorMessage.value = "Неверный логин или пароль"
+                    errorMessage.value = "Неверный ID пользователя"
                 }
             } catch (e: Exception) {
                 _loginState.value = LoginState.Error
@@ -85,75 +73,55 @@ class LoginScreenViewModel @Inject constructor(
         }
     }
 
-    private fun isFormValid(username: String, password: String): Boolean {
-        if (username.isBlank()) {
-            errorMessage.value = "Введите логин"
+    private fun isFormValid(userId: String): Boolean {
+        if (userId.isBlank()) {
+            errorMessage.value = "Введите ID пользователя"
             return false
         }
 
-        if (password.isBlank()) {
-            errorMessage.value = "Введите пароль"
+        if (userId.length < 3) {
+            errorMessage.value = "ID должен содержать минимум 3 символа"
             return false
         }
 
-        if (username.length < 3) {
-            errorMessage.value = "Логин должен содержать минимум 3 символа"
-            return false
-        }
-
-        if (password.length != 8) {
-            errorMessage.value = "Пароль должен содержать ровно 8 символов"
-            return false
-        }
-
-        if (!username.matches(Regex("^[a-zA-Z0-9]+$"))) {
-            errorMessage.value = "Логин может содержать только буквы и цифры"
+        if (!userId.matches(Regex("^[a-zA-Z0-9_-]+$"))) {
+            errorMessage.value = "ID может содержать только буквы, цифры, дефис и подчеркивание"
             return false
         }
 
         return true
     }
 
-    private suspend fun performLogin(username: String, password: String): Boolean {
+    private suspend fun performLogin(userId: String): Boolean {
         // В реальном приложении здесь будет аутентификация через API
         // Пока что просто имитируем успешный вход
-        return username.isNotEmpty() && password.length == 8
+        return userId.isNotEmpty() && userId.length >= 3
     }
 
-    private fun saveUserData(username: String, password: String) {
+    private fun saveUserData(userId: String) {
         val editor = sharedPreferences.edit()
-        editor.putString("saved_username", username)
-        // В реальном приложении пароль должен быть зашифрован!
-        editor.putString("saved_password", password)
+        editor.putString("saved_user_id", userId)
         editor.apply()
     }
 
     private fun loadSavedData() {
-        val savedUsername = sharedPreferences.getString("saved_username", "")
-        val savedPassword = sharedPreferences.getString("saved_password", "")
+        val savedUserId = sharedPreferences.getString("saved_user_id", "")
 
-        if (!savedUsername.isNullOrEmpty()) {
-            username.value = savedUsername
-        }
-
-        if (!savedPassword.isNullOrEmpty()) {
-            password.value = savedPassword
+        if (!savedUserId.isNullOrEmpty()) {
+            userId.value = savedUserId
         }
     }
 
     fun clearSavedData() {
         sharedPreferences.edit().apply {
-            remove("saved_username")
-            remove("saved_password")
+            remove("saved_user_id")
         }.apply()
 
-        username.value = ""
-        password.value = ""
-        showPassword.value = false
+        userId.value = ""
         _loginState.value = LoginState.Disconnected
     }
 
     fun hasSavedData(): Boolean {
-        return sharedPreferences.contains("saved_username")
+        return sharedPreferences.contains("saved_user_id")
     }
 }

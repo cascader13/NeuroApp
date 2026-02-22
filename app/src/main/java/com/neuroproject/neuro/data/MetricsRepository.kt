@@ -87,20 +87,6 @@ class MetricsRepository @Inject constructor(
 
 
 
-    fun saveUsers(name: String, password: String, user_id: String){
-        scope.launch {
-            try {
-                val sessionD = UsersEntity(
-                    user_name = name,
-                    user_password = password,
-                    user_id = user_id
-                )
-                metricsDao.insertUsers(sessionD)
-            } catch (e: Exception) {
-                Log.e("MetricsRepository", "Error saving Users", e)
-            }
-        }
-    }
 
     fun saveNFBMetric(time: Long, id: String, exp_id: String,  date: java.sql.Timestamp,  alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
         scope.launch {
@@ -429,7 +415,6 @@ class MetricsRepository @Inject constructor(
     fun clearAllMetrics() {
         scope.launch {
             try {
-                metricsDao.clearUsers()
                 metricsDao.clearNFBMetrics()
                 metricsDao.clearPhysiologicalMetrics()
                 metricsDao.clearMEMSMetrics()

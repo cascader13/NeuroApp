@@ -10,8 +10,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MetricsDao {
 
-    @Insert
-    suspend fun insertUsers(session: UsersEntity)
 
     @Insert
     suspend fun insertCalibrationData(history: CalibrationHistoryEntity)
@@ -68,8 +66,6 @@ interface MetricsDao {
     @Insert
     suspend fun insertCardioCompressedMetric(metric: CardioMetricCompressedEntity)
 
-    @Query("SELECT COUNT(*) FROM Users")
-    suspend fun getUsersCount(): Int
 
     @Query("SELECT COUNT(*) FROM nfb_metrics")
     suspend fun getNFBMetricsCount(): Int
@@ -113,10 +109,6 @@ interface MetricsDao {
     suspend fun getCalibration(user_name: String): List<CalibrationHistoryEntity>
 
 
-
-
-    @Query("DELETE FROM Users")
-    suspend fun clearUsers()
 
     @Query("DELETE FROM EEG_Raw_metrics")
     suspend fun clearEEGRAW()

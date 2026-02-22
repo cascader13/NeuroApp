@@ -16,13 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,8 +33,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,12 +47,10 @@ fun LoginScreen(
     onBackPressed: () -> Unit = {}
 ) {
     val loginState by vm.loginState.collectAsState()
-    val username by remember { vm.username }
-    val password by remember { vm.password }
-    val showPassword by remember { vm.showPassword }
+    val userId by remember { vm.userId }
     val errorMessage by remember { vm.errorMessage }
 
-    // Автоматически переходим при успешном входе
+
     LaunchedEffect(loginState) {
         if (loginState is LoginState.Connected) {
             onLoginSuccess()
@@ -100,7 +92,6 @@ fun LoginScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Статус подключения
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -142,7 +133,7 @@ fun LoginScreen(
                         }
                         else -> {
                             Text(
-                                "Введите логин и пароль",
+                                "Введите ID пользователя",
                                 color = Color.White,
                                 fontSize = 16.sp
                             )
@@ -150,37 +141,23 @@ fun LoginScreen(
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
 
-                // Поле ввода логина
-                UsernameField(
-                    value = username,
-                    onValueChange = vm::onUsernameChange,
-                    placeholder = "Логин *",
+                // Поле ввода ID пользователя
+                UserIdField(
+                    value = userId,
+                    onValueChange = vm::onUserIdChange,
+                    placeholder = "ID пользователя *",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
 
-                // Поле ввода пароля
-                PasswordField(
-                    value = password,
-                    onValueChange = vm::onPasswordChange,
-                    showPassword = showPassword,
-                    onToggleVisibility = vm::togglePasswordVisibility,
-                    placeholder = "Пароль (8 символов) *",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                )
-
-                // Счетчик символов пароля
-                if (password.isNotEmpty()) {
+                if (userId.isNotEmpty()) {
                     Text(
-                        text = "Символов: ${password.length}/8",
-                        color = if (password.length == 8) Color.Green else Color.White,
+                        text = "Символов: ${userId.length} (минимум 3)",
+                        color = if (userId.length >= 3) Color.Green else Color.White,
                         fontSize = 12.sp,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -190,7 +167,7 @@ fun LoginScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Сообщение об ошибке
+
                 errorMessage?.let { message ->
                     Text(
                         text = message,
@@ -211,7 +188,7 @@ fun LoginScreen(
                     ) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Используются сохраненные данные",
+                            text = "Используется сохраненный ID",
                             style = TextStyle(
                                 color = Color.Gray,
                                 fontSize = 12.sp
@@ -220,7 +197,7 @@ fun LoginScreen(
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // Кнопка входа
                 Row(
@@ -231,8 +208,7 @@ fun LoginScreen(
                 ) {
                     TextButton(
                         onClick = vm::login,
-                        enabled = username.isNotBlank() &&
-                                password.length == 8 &&
+                        enabled = userId.length >= 3 &&
                                 loginState !is LoginState.Connecting,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -279,7 +255,7 @@ fun LoginScreen(
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
                             Text(
-                                "Очистить сохраненные данные",
+                                "Очистить сохраненный ID",
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -292,7 +268,7 @@ fun LoginScreen(
 }
 
 @Composable
-fun UsernameField(
+fun UserIdField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -309,7 +285,7 @@ fun UsernameField(
         ) {
             Icon(
                 Icons.Filled.Person,
-                contentDescription = "Логин",
+                contentDescription = "ID пользователя",
                 tint = Color.White
             )
 
@@ -334,71 +310,6 @@ fun UsernameField(
                     color = Color.Gray,
                     fontSize = 18.sp
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun PasswordField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    showPassword: Boolean,
-    onToggleVisibility: () -> Unit,
-    placeholder: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .background(Color.DarkGray, RoundedCornerShape(8.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Filled.Lock,
-                contentDescription = "Пароль",
-                tint = Color.White
-            )
-
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                textStyle = TextStyle(
-                    color = Color.White,
-                    fontSize = 18.sp
-                ),
-                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    autoCorrect = false
-                ),
-                singleLine = true,
-                modifier = Modifier.weight(1f)
-            )
-
-            if (value.isEmpty()) {
-                Text(
-                    text = placeholder,
-                    color = Color.Gray,
-                    fontSize = 18.sp
-                )
-            }
-
-            // Кнопка показа/скрытия пароля
-            if (value.isNotEmpty()) {
-                IconButton(
-                    onClick = onToggleVisibility,
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (showPassword) "Скрыть пароль" else "Показать пароль",
-                        tint = Color.White
-                    )
-                }
             }
         }
     }
