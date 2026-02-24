@@ -105,8 +105,8 @@ interface MetricsDao {
     suspend fun getMEMSMetricsCompressedCount(): Int
 
 
-    @Query("SELECT *  FROM calibration_history WHERE user_name = :user_name ORDER BY id DESC LIMIT 1")
-    suspend fun getCalibration(user_name: String): List<CalibrationHistoryEntity>
+    @Query("SELECT *  FROM calibration_history WHERE user_id = :user_id ORDER BY id DESC LIMIT 1")
+    suspend fun getCalibration(user_id: String): List<CalibrationHistoryEntity>
 
 
 

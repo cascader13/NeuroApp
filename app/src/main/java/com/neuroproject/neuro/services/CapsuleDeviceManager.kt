@@ -283,7 +283,7 @@ class CapsuleDeviceManager @Inject constructor(
 
         scope.launch {
             try {
-                val prob: CalibrationHistoryEntity = CalibrationHistoryEntity(user_name = sharedPreferences.getString("saved_username", "").toString(),
+                val prob: CalibrationHistoryEntity = CalibrationHistoryEntity(user_id = sharedPreferences.getString("saved_user_id", "").toString(),
                     individualFrequency = indFrequency,
                     individualPeakFrequency = indPeakFrequency,
                     individualPeakFrequencyPower = indPeakFrequencyPower,
@@ -359,7 +359,6 @@ class CapsuleDeviceManager @Inject constructor(
         )
     }
 
-    // НОВЫЕ МЕТОДЫ ДЛЯ EEG ДАННЫХ
     fun onEEGRawDataReceived(
         timeStampMilli: Long,
         channel1: Float,

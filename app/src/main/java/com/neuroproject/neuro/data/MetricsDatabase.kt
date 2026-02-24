@@ -53,7 +53,7 @@ abstract class MetricsDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MetricsDatabase::class.java,
-                    "metrics_database_v2"
+                    "metrics_database_v1"
                 ).fallbackToDestructiveMigrationOnDowngrade().build()
                 INSTANCE = instance
                 instance

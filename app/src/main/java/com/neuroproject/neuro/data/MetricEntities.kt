@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "Calibration_History")
 data class CalibrationHistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val user_name: String?,
+    val user_id: String?,
     val individualFrequency: Float,
     val individualPeakFrequency: Float,
     val individualPeakFrequencyPower: Float,

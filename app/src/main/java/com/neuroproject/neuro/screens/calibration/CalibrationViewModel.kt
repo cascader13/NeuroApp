@@ -58,11 +58,11 @@ class CalibrationViewModel @Inject constructor(
         try {
             // Получаем текущего пользователя из SharedPreferences
             val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
-            val currentUserName = sharedPreferences.getString("saved_username", "")
+            val currentUserId = sharedPreferences.getString("saved_user_id", "")
 
             // Если есть текущий пользователь, проверяем его предыдущие калибровки
-            if (!currentUserName.isNullOrEmpty()) {
-                val previousCalibrations = MetricsDao.getCalibration(currentUserName)
+            if (!currentUserId.isNullOrEmpty()) {
+                val previousCalibrations = MetricsDao.getCalibration(currentUserId)
                 // Если есть хотя бы одна предыдущая калибровка для этого пользователя,
                 // показываем диалог (если он еще не показывался)
                 if (previousCalibrations.isNotEmpty() && !dialogShown) {
@@ -99,13 +99,13 @@ class CalibrationViewModel @Inject constructor(
 
         // Получаем текущего пользователя
         val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
-        val currentUserName = sharedPreferences.getString("saved_username", "")
+        val currentUserId = sharedPreferences.getString("saved_user_id", "")
 
-        if (!currentUserName.isNullOrEmpty()) {
+        if (!currentUserId.isNullOrEmpty()) {
             viewModelScope.launch {
                 try {
                     // Получаем последнюю калибровку пользователя
-                    val previousCalibrations = MetricsDao.getCalibration(currentUserName)
+                    val previousCalibrations = MetricsDao.getCalibration(currentUserId)
                     if (previousCalibrations.isNotEmpty()) {
                         val lastCalibration = previousCalibrations[0]
                         // Здесь можно использовать данные из lastCalibration
