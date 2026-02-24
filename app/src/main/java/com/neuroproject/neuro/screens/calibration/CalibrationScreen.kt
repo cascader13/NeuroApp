@@ -54,6 +54,8 @@ fun CalibrationScreen(
     val state by vm.uiState.collectAsState()
     val calibrationValue by vm.state.collectAsState()
 
+
+
     LaunchedEffect(calibrationValue) {
         Log.d("Calibration", "$calibrationValue")
         if(calibrationValue.value == 6){
@@ -61,6 +63,7 @@ fun CalibrationScreen(
         }
         // Калибровка была пройдена и был вызван callback OnCalibrated
         if(calibrationValue.value == 4 || calibrationValue.value == 5){
+            vm.forceStopMetronome()
             onCalibrationComplete()
         }
     }

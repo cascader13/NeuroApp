@@ -193,6 +193,10 @@ class CalibrationViewModel @Inject constructor(
         }
     }
 
+    fun forceStopMetronome() {
+        stopMetronome()
+    }
+
     fun cancelCalibration() {
         calibrationJob?.cancel()
         stopMetronome()
