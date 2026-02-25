@@ -6,7 +6,6 @@ import com.neuroproject.neuro.data.CalibrationHistoryEntity
 import com.neuroproject.neuro.data.MetricsDao
 import com.neuroproject.neuro.models.BaselineValues
 import com.neuroproject.neuro.models.CapsuleInitializedState
-import com.neuroproject.neuro.models.DeviceConnectionState
 import com.neuroproject.neuro.models.DeviceInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +35,15 @@ enum class CapsuleStages(val value: Int) {
             CapsuleStages.entries.firstOrNull { it.value == value } ?: CALIBRATOR_UNKNOWN_STAGE
     }
 }
+
+enum class DeviceConnectionState {
+    connection, // 0
+    connected, // 1
+    disconnection, // 2
+    disconnected, // 3
+    error // 4
+}
+
 data class PhysiologicalData(
     val timeStampMilli: Long = 0,
     val relax: Float = 0f,
@@ -193,6 +201,10 @@ class CapsuleDeviceManager @Inject constructor(
                 Log.d("CAPSULE", "end thread")
             }
         }
+    }
+
+    fun getConnectionState(): DeviceConnectionState {
+        return _connectionState.value
     }
 
     fun calibrationStateChanged(stageNum: Int) {
