@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.screens.analysis
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.neuroproject.neuro.services.DeviceConnectionState
 import com.neuroproject.neuro.services.NFBData
 
 
@@ -40,7 +43,8 @@ private fun HeaderSection(
     isRecording: Boolean,
     onClear: () -> Unit,
     onStartRecording: () -> Unit,
-    onStopRecording: () -> Unit
+    onStopRecording: () -> Unit,
+    onDeviceUnconnected: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -107,10 +111,24 @@ private fun HeaderSection(
 fun AnalysisScreen(
     modifier: Modifier = Modifier,
     onBackPressed: () -> Unit = {},
-    vm: AnalysisScreenViewModel = hiltViewModel()
+    vm: AnalysisScreenViewModel = hiltViewModel(),
+    onDeviceUnconnected: () -> Unit = {}
 ) {
     val plotData by vm.plotData.collectAsState()
     val nfbData by vm.nfb.collectAsState()
+    val connectionState by vm.capsuleDM.connectionState.collectAsState()
+
+
+    LaunchedEffect(connectionState) {
+        when (connectionState) {
+            DeviceConnectionState.disconnected,
+            DeviceConnectionState.error -> {
+                Log.d("SensorCheckingScreen", "Device disconnected or error: $connectionState")
+                onDeviceUnconnected()
+            }
+            else -> {}
+        }
+    }
 
     Column(
         modifier = modifier

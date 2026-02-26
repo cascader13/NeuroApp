@@ -1,70 +1,128 @@
 package com.neuroproject.neuro.screens.devicesearch
 
 import android.util.Log
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.models.CapsuleInitializedState
-import com.neuroproject.neuro.models.DeviceConnectionState
+import com.neuroproject.neuro.services.DeviceConnectionState
 import com.neuroproject.neuro.models.DeviceInfo
 import com.neuroproject.neuro.services.CapsuleDeviceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import kotlin.coroutines.EmptyCoroutineContext
-// Hilt нужен для привязки зависимостей и для привязки к жизненному циклу navgraph
+
 @HiltViewModel
-//Если в данном скрине напрямую используется наше устройство, то нужно сделать @Inject конструктора
-class DeviceSearchScreenViewModel @Inject constructor(dm: CapsuleDeviceManager) :ViewModel() {
+class DeviceSearchScreenViewModel @Inject constructor(
+    private val dm: CapsuleDeviceManager
+) : ViewModel() {
 
-    private val scope = CoroutineScope(EmptyCoroutineContext)
     private val _foundDevices = MutableStateFlow<Array<DeviceInfo>>(emptyArray())
-
-    private val _initState = MutableStateFlow<CapsuleInitializedState>(CapsuleInitializedState.NonInitialized);
+    private val _initState = MutableStateFlow<CapsuleInitializedState>(CapsuleInitializedState.NonInitialized)
+    private val _isSearchTimeout = MutableStateFlow(false)
+    private val _isSearching = MutableStateFlow(false)
+    private var isInitialized = false // Флаг для отслеживания инициализации
 
     val foundDevices = _foundDevices.asStateFlow()
     val deviceState = dm.connectionState
+    val isSearchTimeout = _isSearchTimeout.asStateFlow()
+    val isSearching = _isSearching.asStateFlow()
 
     val capsuleDM: CapsuleDeviceManager = dm
 
     init {
-        if (deviceState.value == DeviceConnectionState.connected)
-        {}
-        else {
+        setupCallbacks()
 
-           //коллбэк на подключение
-            capsuleDM.initializeStateChanged = {state ->
-                scope.launch { _initState.emit(state) }
-                when (state) {
-                    CapsuleInitializedState.Initialized ->  capsuleDM.startSearch()
-                    CapsuleInitializedState.NonInitialized -> Log.d("Search", "Capsule is not init")
-                }
-            }
-
-            capsuleDM.devicesFound = {
-                scope.launch {
-                    _foundDevices.emit(it)
-                }
-            }
-
-
+        // Инициализируем капсулу только один раз при создании ViewModel
+        if (!isInitialized && deviceState.value != DeviceConnectionState.connected) {
+            isInitialized = true
             capsuleDM.initCapsule()
+            startSearch()
         }
     }
 
-    fun connect(id: String){
-        capsuleDM.connect(id)
+    private fun setupCallbacks() {
+        capsuleDM.initializeStateChanged = { state ->
+            viewModelScope.launch {
+                _initState.emit(state)
+                when (state) {
+                    CapsuleInitializedState.Initialized -> {
+                        // Капсула инициализирована, начинаем поиск
+                        startSearch()
+                    }
+                    CapsuleInitializedState.NonInitialized -> {
+                        Log.d("Search", "Capsule is not initialized")
+                        _isSearching.update { false }
+                    }
+                }
+            }
+        }
+
+        capsuleDM.devicesFound = { devices ->
+            viewModelScope.launch {
+                _foundDevices.emit(devices)
+                // Если нашли устройства, сбрасываем таймаут
+                if (devices.isNotEmpty()) {
+                    _isSearchTimeout.update { false }
+                }
+            }
+        }
+    }
+
+    fun startSearch() {
+        viewModelScope.launch {
+            // Если уже ищем или капсула не инициализирована, не начинаем новый поиск
+            if (_isSearching.value) {
+                Log.d("Search", "Поиск уже выполняется")
+                return@launch
+            }
+
+            _isSearching.update { true }
+            _isSearchTimeout.update { false }
+
+            // Очищаем список устройств перед новым поиском
+            _foundDevices.update { emptyArray() }
+
+            // Запускаем поиск через CapsuleDeviceManager
+            capsuleDM.startSearch()
+
+            // Запускаем таймер на 30 секунд
+            delay(30000)
+
+            // Если после 30 секунд все еще ищем и нет подключенных устройств
+            if (_isSearching.value && deviceState.value != DeviceConnectionState.connected) {
+                _isSearchTimeout.update { true }
+                _isSearching.update { false }
+                stopSearch()
+            }
+        }
+    }
+
+    fun retrySearch() {
+        viewModelScope.launch {
+            stopSearch()
+            delay(500) // Небольшая задержка перед повторным поиском
+            startSearch()
+        }
+    }
+
+    fun connect(id: String) {
+        viewModelScope.launch {
+            capsuleDM.connect(id)
+        }
     }
 
     fun stopSearch() {
+        viewModelScope.launch {
+            _isSearching.update { false }
+        }
+    }
 
+    override fun onCleared() {
+        super.onCleared()
+        stopSearch()
     }
 }

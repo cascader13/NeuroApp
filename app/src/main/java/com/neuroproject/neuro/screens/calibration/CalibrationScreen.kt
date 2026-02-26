@@ -49,7 +49,8 @@ fun CalibrationScreen(
     modifier: Modifier = Modifier,
     vm: CalibrationViewModel = hiltViewModel(),
     onBackPressed: () -> Unit = {},
-    onCalibrationComplete: () -> Unit = {}
+    onCalibrationComplete: () -> Unit = {},
+    onDeviceUnconnected: () -> Unit = {}
 ) {
     val state by vm.uiState.collectAsState()
     val calibrationValue by vm.state.collectAsState()

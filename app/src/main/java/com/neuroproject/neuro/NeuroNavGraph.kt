@@ -73,6 +73,9 @@ fun NeuroNavGraph(
                 modifier = Modifier.safeDrawingPadding(),
                 onTestFinished = {
                     navActions.navigateToAnalysis()
+                },
+                onDeviceUnconnected = {
+                    navActions.navigateToMain()
                 }
             )
         }
@@ -111,6 +114,9 @@ fun NeuroNavGraph(
                     onBackPressed = {
                         navActions.navigateBack()
                     },
+                    onDeviceUnconnected = {
+                        navActions.navigateToMain()
+                    },
                     onSensorOk = {
                         navActions.navigateToCalibration()
                     },
@@ -124,6 +130,9 @@ fun NeuroNavGraph(
                     onBackPressed = {
                         navActions.navigateBack()
                     },
+                    onDeviceUnconnected = {
+                        navActions.navigateToMain()
+                    },
                     onCalibrationComplete = {
                         navActions.navigateToSubTest()
                     },
@@ -136,6 +145,9 @@ fun NeuroNavGraph(
                 AnalysisScreen(
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
+                        navActions.navigateToMain()
+                    },
+                    onDeviceUnconnected = {
                         navActions.navigateToMain()
                     },
                     vm = hiltViewModel()

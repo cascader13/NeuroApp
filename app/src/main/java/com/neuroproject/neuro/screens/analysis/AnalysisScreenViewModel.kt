@@ -40,7 +40,7 @@ class AnalysisScreenViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val metricsRepository: MetricsRepository
 ) : ViewModel() {
-    private val capsuleDM = dm
+    val capsuleDM = dm
     private val _scope = CoroutineScope(EmptyCoroutineContext)
     private val _nfbState = MutableStateFlow(NFBData())
     val nfb = _nfbState.asStateFlow()

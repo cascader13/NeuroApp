@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
 fun SubTestScreen(
     modifier: Modifier = Modifier,
     viewModel: SubTestViewModel = hiltViewModel(),
-    onTestFinished: () -> Unit
+    onTestFinished: () -> Unit,
+    onDeviceUnconnected: () -> Unit = {}
 ) {
     val answers by viewModel.answers.collectAsState()
     val questions by viewModel.questions.collectAsState()

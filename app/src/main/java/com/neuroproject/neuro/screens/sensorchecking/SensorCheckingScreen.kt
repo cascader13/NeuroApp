@@ -40,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.R
 import com.neuroproject.neuro.components.BackButton
 import com.neuroproject.neuro.components.BackHandler
+import com.neuroproject.neuro.services.DeviceConnectionState
 import com.neuroproject.neuro.ui.theme.Bad
 import com.neuroproject.neuro.ui.theme.Ok
 
@@ -49,8 +50,10 @@ fun SensorCheckingScreen(
     modifier: Modifier = Modifier,
     vm: SensorCheckingScreenViewModel,
     onBackPressed: () -> Unit = {},
-    onSensorOk: () -> Unit = {}
+    onSensorOk: () -> Unit = {},
+    onDeviceUnconnected: () -> Unit = {}
 ) {
+    val connectionState by vm.capsuleDM.connectionState.collectAsState()
     Surface(
         color = Color.Black, modifier = Modifier
             .fillMaxWidth()
@@ -58,8 +61,25 @@ fun SensorCheckingScreen(
             .background(Color.Red)
     ) {
 
+        LaunchedEffect(connectionState) {
+            when (connectionState) {
+                DeviceConnectionState.disconnected,
+                DeviceConnectionState.error -> {
+                    Log.d("SensorCheckingScreen", "Device disconnected or error: $connectionState")
+                    vm.finish()
+                    onDeviceUnconnected()
+                }
+                else -> {}
+            }
+        }
+
+
         LaunchedEffect(Unit) {
             vm.start()
+        }
+
+        LaunchedEffect(vm.capsuleDM.getConnectionState()) {
+
         }
         DisposableEffect(Unit) {
             onDispose {

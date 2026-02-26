@@ -89,6 +89,9 @@ class MetricsRepository @Inject constructor(
 
 
     fun saveNFBMetric(time: Long, id: String, exp_id: String,  date: java.sql.Timestamp,  alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
+        if(alpha > 1.0){ // артефакты будут отсеиваться(пока только для nfb)
+            return
+        }
         scope.launch {
             try {
                 val metric = NFBMetricEntity(
