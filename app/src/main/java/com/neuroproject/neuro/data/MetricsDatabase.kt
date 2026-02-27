@@ -5,8 +5,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
-import com.neuroproject.neuro.data.subtest.SubTestDao
-import com.neuroproject.neuro.data.subtest.SubTestResultEntity
+import com.neuroproject.neuro.data.subtest.SubjectiveAnswerDao
+import com.neuroproject.neuro.data.subtest.SubjectiveAnswerEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionDao
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 
@@ -22,8 +22,9 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         EEGArtifactsMetricEntity::class,
         CardioMetricEntity::class,
         UsersEntity::class,
-        SubTestResultEntity::class,
         SubjectiveQuestionEntity::class,
+        SubjectiveAnswerEntity::class,
+        SessionEntity::class
     ],
     version = 2,
     exportSchema = false
@@ -32,8 +33,11 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 @TypeConverters(Converters::class)
 abstract class MetricsDatabase : RoomDatabase() {
     abstract fun metricsDao(): MetricsDao
-    abstract fun subTestDao(): SubTestDao
+    abstract fun subjectiveAnswerDao(): SubjectiveAnswerDao
     abstract fun subjectiveQuestionDao(): SubjectiveQuestionDao
+    abstract fun sessionDao(): SessionDao
+
+
 
     companion object {
         @Volatile
@@ -45,7 +49,12 @@ abstract class MetricsDatabase : RoomDatabase() {
                     context.applicationContext,
                     MetricsDatabase::class.java,
                     "metrics_database_v2"
-                ).fallbackToDestructiveMigrationOnDowngrade().build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .addCallback(DatabaseCallback(context))
+                    .build()
+                DatabaseCallback.INSTANCE = instance
+
                 INSTANCE = instance
                 instance
             }

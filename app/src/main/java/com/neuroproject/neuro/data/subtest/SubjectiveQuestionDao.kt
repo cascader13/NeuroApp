@@ -13,6 +13,9 @@ interface SubjectiveQuestionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(questions: List<SubjectiveQuestionEntity>)
 
-    @Query("SELECT * FROM subjective_questions WHERE category = :category ORDER BY displayOrder")
-    suspend fun getByCategory(category: String): List<SubjectiveQuestionEntity>
+    @Query("SELECT * FROM subjective_questions WHERE blockType = :blockType ORDER BY displayOrder")
+    suspend fun getByCategory(blockType: BlockType): List<SubjectiveQuestionEntity>
+
+    @Query("DELETE FROM subjective_answers WHERE sessionId = :sessionId")
+    suspend fun deleteBySession(sessionId: Long)
 }

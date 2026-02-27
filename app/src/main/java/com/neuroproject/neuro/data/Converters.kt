@@ -4,11 +4,22 @@ package com.neuroproject.neuro.data
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.neuroproject.neuro.data.subtest.BlockType
 import java.lang.reflect.Type
 import java.sql.Timestamp
 import java.util.Date
 
 class Converters {
+
+    @TypeConverter
+    fun fromBlockType(value: BlockType): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toBlockType(value: String): BlockType {
+        return BlockType.valueOf(value)
+    }
 
     // 1. Функции для java.util.Date
     @TypeConverter
