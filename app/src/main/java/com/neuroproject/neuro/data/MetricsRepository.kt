@@ -2,6 +2,7 @@ package com.neuroproject.neuro.data
 
 import android.util.Log
 import androidx.compose.material3.Card
+import androidx.room.PrimaryKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -335,6 +336,48 @@ class MetricsRepository @Inject constructor(
                 Log.e("MetricsRepository", "Error saving productivity metric", e)
             }
         }
+    }
+
+    fun saveProductivityIndexes(
+        time: Long,
+        id: String,
+        expedition_id: String,
+        session: java.sql.Timestamp,
+        relaxation: String,
+        stress: String,
+        gravityBaseline: Float,
+        productivityBaseline: Float,
+        fatiqueBaseline: Float,
+        reverseFatiqueBaseline: Float,
+        relaxationBaselines: Float,
+        concentrationBaselines: Float,
+        hasArtifacts: Boolean
+    ){
+       scope.launch {
+           try{
+               val index = ProductivityIndexesEntity(
+                   timestamp = time,
+                   id = id,
+                   expedition_id = expedition_id,
+                   session = session,
+                   relaxation = relaxation,
+                   stress = stress,
+                   gravityBaseline = gravityBaseline,
+                   productivityBaseline = productivityBaseline,
+                   fatiqueBaseline = fatiqueBaseline,
+                   reverseFatiqueBaseline = reverseFatiqueBaseline,
+                   relaxationBaselines = relaxationBaselines,
+                   concentrationBaselines = concentrationBaselines,
+                   hasArtifacts =  hasArtifacts,
+                   isMarked = false
+               )
+               metricsDao.insertProductivityIndex(index);
+           } catch (e: Exception) {
+               Log.e("MetricsRepository", "Error saving productivity index", e)
+           }
+       }
+
+
     }
 
     fun saveEmotionalMetric(

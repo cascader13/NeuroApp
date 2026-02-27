@@ -49,6 +49,10 @@ interface MetricsDao {
     suspend fun insertMEMSCompressedMetric(metric: MEMSMetricCompressedEntity)
 
     @Insert
+
+    suspend fun insertProductivityIndex(index: ProductivityIndexesEntity)
+
+    @Insert
     suspend fun insertProductivityMetric(metric: ProductivityMetricEntity)
 
     @Insert
@@ -151,6 +155,9 @@ interface MetricsDao {
     @Query("DELETE FROM productivity_metrics_compressed")
     suspend fun clearProductivityMetricsCompressed()
 
+    @Query("DELETE FROM productivity_indexes")
+    suspend fun clearProductivityIndexes()
+
     @Query("DELETE FROM emotional_metrics")
     suspend fun clearEmotionalMetrics()
 
@@ -206,6 +213,9 @@ interface MetricsDao {
 
     @Query("SELECT * FROM productivity_metrics_compressed WHERE isMarked = 0")
     suspend fun getUnmarkedProductivityMetricsCompressed(): List<ProductivityMetricCompressedEntity>
+
+    @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0")
+    suspend fun getUnmarkedProductivityIndexes(): List<ProductivityIndexesEntity>
 
     @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedEmotionalMetrics(): List<EmotionalMetricEntity>
@@ -315,6 +325,10 @@ interface MetricsDao {
 
     @Query("UPDATE productivity_metrics_compressed SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markProductivityMetricsCompressedAsSynced(timestamps: List<Long>)
+
+    @Query("UPDATE productivity_indexes SET isMarked = 1 WHERE timestamp IN (:timestamps)")
+    suspend fun markProductivityIndexAsSynced(timestamps: List<Long>)
+
     @Query("UPDATE emotional_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markEmotionalMetricsAsSynced(timestamps: List<Long>)
 
@@ -369,6 +383,9 @@ interface MetricsDao {
     @Query("SELECT * FROM productivity_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
     suspend fun getUnmarkedProductivityMetricsBatchCompressed(limit: Int): List<ProductivityMetricCompressedEntity>
 
+    @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedProductivityIndexesBatch(limit: Int): List<ProductivityIndexesEntity>
+
     @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0 LIMIT :limit")
     suspend fun getUnmarkedEmotionalMetricsBatch(limit: Int): List<EmotionalMetricEntity>
 
@@ -419,6 +436,9 @@ interface MetricsDao {
 
     @Query("SELECT COUNT(*) FROM productivity_metrics")
     suspend fun getAllProductivityMetricsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM productivity_indexes")
+    suspend fun getAllProductivityIndexesCount(): Int
 
     @Query("SELECT COUNT(*) FROM productivity_metrics_compressed")
     suspend fun getAllProductivityMetricsCountCompressed(): Int
@@ -477,6 +497,9 @@ interface MetricsDao {
 
     @Query("SELECT MAX(timestamp) FROM productivity_metrics_compressed")
     suspend fun getLastProductivityMetricTimestampCompressed(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM productivity_indexes")
+    suspend fun getLastProductivityIndexTimestamp(): Long?
 
     @Query("SELECT MAX(timestamp) FROM emotional_metrics")
     suspend fun getLastEmotionalMetricTimestamp(): Long?
@@ -602,6 +625,15 @@ interface MetricsDao {
             markProductivityMetricsCompressedAsSynced(batch)
         }
     }
+
+    @Transaction
+    suspend fun safeMarkProductivityIndexesAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markProductivityIndexAsSynced(batch)
+        }
+    }
+
 
     @Transaction
     suspend fun safeMarkEmotionalMetricsAsSynced(timestamps: List<Long>) {

@@ -127,6 +127,19 @@ data class EEGArtifactsSample(
     val qualityChannel2: Float = 0f
 )
 
+data class ProductivityIndexes(
+    val time: Long = 0,
+    val relaxation: String = "NoRecommendation",
+    val stress: String = "NoStress",
+    val gravityBaseline: Float = 1f,
+    val productivityBaseline: Float = 1f,
+    val fatigueBaseline: Float = 1f,
+    val reverseFatiqueBaseline: Float = 1f,
+    val relaxationBaseline: Float = 1f,
+    val concentrationBaseline: Float = 1f,
+    val hasArtifacts: Boolean = false
+)
+
 @Singleton
 class CapsuleDeviceManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -155,6 +168,7 @@ class CapsuleDeviceManager @Inject constructor(
     private var _memsData = MutableStateFlow(MEMSdata(0, 0f, 0f, 0f, 0f, 0f, 0f))
     private var _productivityData = MutableStateFlow(Productivitydata(0, 0.0, 0f, 0f, 0f, 0f, 0f, 0f))
     private var _emotionalData = MutableStateFlow(Emotionaldata(0, 0f, 0f, 0f, 0f, 0f))
+    private var _productivityIndexData = MutableStateFlow(ProductivityIndexes())
 
     // НОВЫЕ ПОТОКИ ДЛЯ EEG ДАННЫХ
     private var _eegRawData = MutableStateFlow(EEGRawSample())
@@ -169,11 +183,10 @@ class CapsuleDeviceManager @Inject constructor(
     var emotionalData = _emotionalData.asStateFlow()
     var nfbData = _nfbData.asStateFlow()
     var baseLineData = _baseLineData.asStateFlow()
-
+    var productivityIndexData = _productivityIndexData.asStateFlow()
     var eegRawData = _eegRawData.asStateFlow()
     var eegProcessedData = _eegProcessedData.asStateFlow()
     var eegArtifacts = _eegArtifacts.asStateFlow()
-
     var connectionState = _connectionState.asStateFlow()
     var calibrationState = _calibrationState.asStateFlow()
 
@@ -261,6 +274,29 @@ class CapsuleDeviceManager @Inject constructor(
             _connectionState.emit(DeviceConnectionState.entries[state])
         }
         Log.d("JCAPSULE", "deviceConnectionState")
+    }
+
+    fun onProductivityIndexesReceived(time: Long, relaxation: Float, stress: Float, gravityBaseline: Float, productivityBaseline: Float, fatigueBaseline: Float, reverseFatiqueBaseline: Float, relaxationBaseline: Float, concentrationBaseline: Float, hasArtifacts: Boolean ){
+        Log.d("JCAPSULE", "OnProductivityIndexesReceived: smth")
+        var relaxation_string = "NoRecommendation"
+        when (relaxation){
+            -1f -> relaxation_string = "NoRecommendation"
+            0f -> relaxation_string = "Involvement"
+            1f -> relaxation_string = "Relaxation"
+            2f -> relaxation_string = "SlightFatigue"
+            3f -> relaxation_string = "SevereFatigue"
+            4f -> relaxation_string = "ChronicFatigue"
+        }
+        var stress_string = "NoStress"
+        when (stress){
+            0f -> stress_string = "NoStress"
+            1f -> stress_string = "Anxiety"
+            2f -> stress_string = "Stress"
+        }
+        scope.launch {
+
+            _productivityIndexData.emit(ProductivityIndexes(time, relaxation_string, stress_string, gravityBaseline, productivityBaseline, fatigueBaseline, reverseFatiqueBaseline, relaxationBaseline, concentrationBaseline, hasArtifacts))
+        }
     }
 
     fun onMEMSReceived(time: Long, accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float) {

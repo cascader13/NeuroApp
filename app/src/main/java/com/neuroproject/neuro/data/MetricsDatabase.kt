@@ -20,6 +20,7 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         MEMSMetricCompressedEntity::class,
         ProductivityMetricEntity::class,
         ProductivityMetricCompressedEntity::class,
+        ProductivityIndexesEntity::class,
         EmotionalMetricEntity::class,
         EmotionalMetricCompressedEntity::class,
         EEGRawMetricEntity::class,
@@ -53,7 +54,7 @@ abstract class MetricsDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MetricsDatabase::class.java,
-                    "metrics_database_v1"
+                    "metrics_database_v2"
                 ).fallbackToDestructiveMigrationOnDowngrade().build()
                 INSTANCE = instance
                 instance

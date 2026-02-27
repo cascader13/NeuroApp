@@ -2,6 +2,7 @@ package com.neuroproject.neuro.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.sql.Timestamp
 
 
 @Entity(tableName = "Calibration_History")
@@ -177,6 +178,25 @@ data class MEMSMetricCompressedEntity(
     val gyroscopeX: Float,
     val gyroscopeY: Float,
     val gyroscopeZ: Float,
+    val isMarked: Boolean
+)
+
+@Entity(tableName = "productivity_indexes")
+
+data class ProductivityIndexesEntity(
+    @PrimaryKey val timestamp: Long,
+    val id: String,
+    val expedition_id: String,
+    val session: java.sql.Timestamp,
+    val relaxation: String,
+    val stress: String,
+    val gravityBaseline: Float,
+    val productivityBaseline: Float,
+    val fatiqueBaseline: Float,
+    val reverseFatiqueBaseline: Float,
+    val relaxationBaselines: Float,
+    val concentrationBaselines: Float,
+    val hasArtifacts: Boolean,
     val isMarked: Boolean
 )
 

@@ -167,6 +167,23 @@ class RecordManager @Inject constructor(
             }
         }
 
+        capsuleDM.productivityIndexData.collectInScope(_scope) { productivityIndexes ->
+            if (isRecording){
+                saveProductivityIndexData(
+                    productivityIndexes.time,
+                    productivityIndexes.relaxation,
+                    productivityIndexes.stress,
+                    productivityIndexes.gravityBaseline,
+                    productivityIndexes.productivityBaseline,
+                    productivityIndexes.fatigueBaseline,
+                    productivityIndexes.reverseFatiqueBaseline,
+                    productivityIndexes.relaxationBaseline,
+                    productivityIndexes.concentrationBaseline,
+                    productivityIndexes.hasArtifacts
+                )
+            }
+        }
+
         // Слушатель для эмоциональных данных
         capsuleDM.emotionalData.collectInScope(_scope) { emotion ->
             if (isRecording) {
@@ -207,11 +224,15 @@ class RecordManager @Inject constructor(
     }
 
     private fun saveNFBData(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
-        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty() && alpha <= 1.0) {
             metricsRepository.saveNFBMetric(time, userId, expeditionId, session, alpha, beta, theta, delta, smr)
             Log.d("RecordManager", "NFB data saved: alpha=$alpha, beta=$beta")
         } else {
-            Log.e("RecordManager", "Cannot save NFB data: userId or expeditionId is empty")
+            if(alpha > 1){
+                Log.e("RecordManager", "Invalid NFB data");
+            }else {
+                Log.e("RecordManager", "Cannot save NFB data: userId or expeditionId is empty")
+            }
         }
     }
 
@@ -356,6 +377,37 @@ class RecordManager @Inject constructor(
             )
         } else {
             Log.e("RecordManager", "Cannot save Productivity data: userId or expeditionId is empty")
+        }
+    }
+
+    private fun saveProductivityIndexData(
+        time: Long,
+        relaxation: String,
+        stress: String,
+        gravityBaseline: Float,
+        productivityBaseline: Float,
+        fatigueBaseline: Float,
+        reverseFatiqueBaseline: Float,
+        relaxationBaseline: Float,
+        concentrationBaseline: Float,
+        hasArtifacts: Boolean = false
+    ){
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveProductivityIndexes(
+                time,
+                userId,
+                expeditionId,
+                session,
+                relaxation,
+                stress,
+                gravityBaseline,
+                productivityBaseline,
+                fatigueBaseline,
+                reverseFatiqueBaseline,
+                relaxationBaseline,
+                concentrationBaseline,
+                hasArtifacts
+            )
         }
     }
 

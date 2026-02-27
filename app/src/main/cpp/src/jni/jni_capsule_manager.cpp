@@ -295,7 +295,46 @@ void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics*
 }
 
 void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes* indexes) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity indexes update");
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity indexes update %f", indexes->concentrationBaseline);
+    JNIEnv * env = nullptr;
+    float relax_index = 0;
+    switch (indexes->relaxation) {
+        case clCProductivity_RecommendationValue_Involvement:
+            relax_index = 0;
+        case clCProductivity_RecommendationValue_Relaxation:
+            relax_index = 1;
+        case clCProductivity_RecommendationValue_SlightFatigue:
+            relax_index = 2;
+        case clCProductivity_RecommendationValue_SevereFatigue:
+            relax_index = 3;
+        case clCProductivity_RecommendationValue_ChronicFatigue:
+            relax_index = 4;
+        case clCProductivity_RecommendationValue_NoRecommendation:
+            relax_index = -1;
+    }
+
+    float stress_index = 0;
+    switch (indexes->stress) {
+        case clCProductivity_StressValue_NoStress:
+            relax_index = 0;
+        case clCProductivity_StressValue_Anxiety:
+            relax_index = 1;
+        case clCProductivity_StressValue_Stress:
+            relax_index = 2;
+    }
+
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID prodFun = env->GetMethodID(capsuleClass, "onProductivityIndexesReceived", "(JFFFFFFFFZ)V");
+    env->CallVoidMethod(javaCapsule, prodFun, static_cast<jlong>(indexes->timestampMilli),
+                                                            static_cast<jfloat>(indexes->relaxation),
+                                                            static_cast<jfloat>(indexes->stress),
+                                                            static_cast<jfloat>(indexes->gravityBaseline),
+                                                            static_cast<jfloat>(indexes->productivityBaseline),
+                                                            static_cast<jfloat>(indexes->fatigueBaseline),
+                                                            static_cast<jfloat>(indexes->reverseFatigueBaseline),
+                                                            static_cast<jfloat>(indexes->relaxationBaseline),
+                                                            static_cast<jfloat>(indexes->concentrationBaseline),
+                                                            static_cast<jboolean>(indexes->hasArtifacts));
 }
 
 void onProductivityCalibrationProgress(clCProductivity, float progress) noexcept {
@@ -308,6 +347,7 @@ void onProductivityIndividualNFBUpdate(clCProductivity) noexcept {
 
 void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologicalStates_Baselines* baselines) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states baselines calibrated");
+
 }
 
 void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalStates_Value* value) noexcept {
@@ -426,6 +466,10 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
             env->ExceptionClear();
         }
     }
+}
+
+void onBattery(clCDevice, uint8_t charge) noexcept {
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_BATTERY", "%d", charge);
 }
 
 void removeAll() {
@@ -597,6 +641,8 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
     if (error.success) {
         clCEmotions_SetOnEmotionalStatesUpdateEvent(emotions, onEmotionalStatesUpdate);
     }
+
+    clCDevice_SetOnBatteryChargeUpdateEvent(device, onBattery);
 
     // Установка колбэков для EEG данных (без PSD)
     clCDevice_SetOnEEGDataEvent(device, onEEGData);
