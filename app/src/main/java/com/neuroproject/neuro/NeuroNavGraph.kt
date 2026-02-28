@@ -31,14 +31,14 @@ fun NeuroNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-        composable(NavDestinations.SUB_TEST) {
+       /* composable(NavDestinations.SUB_TEST) {
             com.neuroproject.neuro.screens.subtest.SubTestScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 onTestFinished = {
                     navActions.navigateToMain()
                 }
             )
-        }
+        }*/
 
         // Экран логина
         composable(NavDestinations.LOGIN) {
@@ -68,7 +68,7 @@ fun NeuroNavGraph(
             )
         }
 
-        composable(NavDestinations.SUB_TEST) {
+       /* composable(NavDestinations.SUB_TEST) {
             com.neuroproject.neuro.screens.subtest.SubTestScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 onTestFinished = {
@@ -78,7 +78,7 @@ fun NeuroNavGraph(
                     navActions.navigateToMain()
                 }
             )
-        }
+        }*/
 
         composable(NavDestinations.SETTINGS){
             com.neuroproject.neuro.screens.settings.SettingsScreen(

@@ -299,6 +299,11 @@ class CapsuleDeviceManager @Inject constructor(
         }
     }
 
+    fun onProductivityBaselineReceived(time: Long, gravity:Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float){
+        Log.d("JCAPSULE", "onProductivityBaseline: smth")
+
+    }
+
     fun onMEMSReceived(time: Long, accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float) {
         Log.d("JCAPSULE", "onMEMSReceived: smth")
         scope.launch {

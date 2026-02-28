@@ -4,7 +4,8 @@ import android.content.Context
 import com.neuroproject.neuro.data.MetricsDatabase
 import com.neuroproject.neuro.data.MetricsDao
 import com.neuroproject.neuro.data.MetricsRepository
-import com.neuroproject.neuro.data.subtest.SubTestDao
+import com.neuroproject.neuro.data.SessionDao
+import com.neuroproject.neuro.data.subtest.SubjectiveAnswerDao
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionDao
 import dagger.Module
 import dagger.Provides
@@ -37,13 +38,19 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSubTestDao(database: MetricsDatabase): SubTestDao {
-        return database.subTestDao()
+    fun provideSubTestDao(database: MetricsDatabase): SubjectiveAnswerDao {
+        return database.subjectiveAnswerDao()
     }
 
     @Provides
     @Singleton
     fun provideSubjectiveQuestionDao(database: MetricsDatabase): SubjectiveQuestionDao {
         return database.subjectiveQuestionDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSessionDao(database: MetricsDatabase): SessionDao {
+        return database.sessionDao()
     }
 }

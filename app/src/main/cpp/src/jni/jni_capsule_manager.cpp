@@ -278,6 +278,17 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
 
 void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselines* baselines) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update");
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID ProdFun = env->GetMethodID(capsuleClass, "onProductivityBaselineReceived", "(JFFFFFF)V");
+    env->CallVoidMethod(javaCapsule, ProdFun, static_cast<jlong>(baselines->timestampMilli),
+                                                static_cast<jfloat>(baselines->gravity),
+                                                static_cast<jfloat>(baselines->productivity),
+                                                static_cast<jfloat>(baselines->fatigue),
+                                                static_cast<jfloat>(baselines->reverseFatigue),
+                                                static_cast<jfloat>(baselines->relaxation),
+                                                static_cast<jfloat>(baselines->concentration));
+
 }
 
 void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics* metrics) noexcept {
