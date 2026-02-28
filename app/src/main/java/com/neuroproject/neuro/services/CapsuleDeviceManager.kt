@@ -140,6 +140,25 @@ data class ProductivityIndexes(
     val hasArtifacts: Boolean = false
 )
 
+data class ProductivityBaseline(
+    val time: Long = 0,
+    val gravity:Float = 1f,
+    val productivity: Float = 1f,
+    val fatigue: Float = 1f,
+    val reverse_fatique: Float = 1f,
+    val relaxation: Float = 1f,
+    val concentration: Float = 1f
+)
+
+data class PhysiologicalBaseline(
+    val time: Long = 0,
+    val alpha: Float = 1f,
+    val beta: Float = 1f,
+    val alphaGravity: Float = 1f,
+    val betaGravity: Float = 1f,
+    val concentration: Float = 1f
+)
+
 @Singleton
 class CapsuleDeviceManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -169,6 +188,8 @@ class CapsuleDeviceManager @Inject constructor(
     private var _productivityData = MutableStateFlow(Productivitydata(0, 0.0, 0f, 0f, 0f, 0f, 0f, 0f))
     private var _emotionalData = MutableStateFlow(Emotionaldata(0, 0f, 0f, 0f, 0f, 0f))
     private var _productivityIndexData = MutableStateFlow(ProductivityIndexes())
+    private var _productivityBaselineData = MutableStateFlow(ProductivityBaseline())
+    private var _physiologicalBaselineData = MutableStateFlow(PhysiologicalBaseline())
 
     // НОВЫЕ ПОТОКИ ДЛЯ EEG ДАННЫХ
     private var _eegRawData = MutableStateFlow(EEGRawSample())
@@ -178,12 +199,14 @@ class CapsuleDeviceManager @Inject constructor(
     var calibrationStage = _calibrationState.asStateFlow()
     var hrData = _hrData.asStateFlow()
     var physiologicalData = _physiologicalData.asStateFlow()
+    var physiologicalBaselineData = _physiologicalBaselineData.asStateFlow()
     var memsData = _memsData.asStateFlow()
     var productivityData = _productivityData.asStateFlow()
     var emotionalData = _emotionalData.asStateFlow()
     var nfbData = _nfbData.asStateFlow()
     var baseLineData = _baseLineData.asStateFlow()
     var productivityIndexData = _productivityIndexData.asStateFlow()
+    var productivityBaselineData = _productivityBaselineData.asStateFlow()
     var eegRawData = _eegRawData.asStateFlow()
     var eegProcessedData = _eegProcessedData.asStateFlow()
     var eegArtifacts = _eegArtifacts.asStateFlow()
@@ -301,7 +324,17 @@ class CapsuleDeviceManager @Inject constructor(
 
     fun onProductivityBaselineReceived(time: Long, gravity:Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float){
         Log.d("JCAPSULE", "onProductivityBaseline: smth")
+        scope.launch {
+            _productivityBaselineData.emit(ProductivityBaseline(time, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration ))
+        }
 
+    }
+
+    fun onPhysiologicalBaselineReceived(time: Long, alpha: Float, beta: Float, alphaGravity: Float, betaGravity: Float, concentration: Float){
+        Log.d("JCAPSULE", "onPhysiologicalReceived: smth")
+        scope.launch {
+            _physiologicalBaselineData.emit(PhysiologicalBaseline(time, alpha, beta, alphaGravity, betaGravity, concentration))
+        }
     }
 
     fun onMEMSReceived(time: Long, accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float) {

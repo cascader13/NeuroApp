@@ -151,6 +151,20 @@ data class PhysiologicalMetricCompressedEntity(
     val isMarked: Boolean
 )
 
+@Entity(tableName = "physiological_baselines")
+data class PhysiologicalBaselinesEntity(
+    @PrimaryKey val timestamp: Long,
+    val id: String,
+    val expedition_id: String,
+    val session : java.sql.Timestamp,
+    val alpha  : Float,
+    val beta: Float,
+    val alphaGravity: Float,
+    val betaGravity: Float,
+    val concentration: Float,
+    val isMarked: Boolean
+)
+
 @Entity(tableName = "mems_metrics")
 data class MEMSMetricEntity(
     @PrimaryKey val timestamp: Long,
@@ -202,6 +216,21 @@ data class ProductivityIndexesEntity(
 
 @Entity(tableName = "productivity_metrics")
 data class ProductivityMetricEntity(
+    @PrimaryKey val timestamp: Long,
+    val id: String,
+    val expedition_id: String,
+    val session : java.sql.Timestamp,
+    val gravity: Float,
+    val productivity: Float,
+    val fatigue: Float,
+    val reverseFatigue: Float,
+    val relaxation: Float,
+    val concentration: Float,
+    val isMarked: Boolean
+)
+
+@Entity(tableName = "productivity_baselines")
+data class ProductivityBaselinesEntity(
     @PrimaryKey val timestamp: Long,
     val id: String,
     val expedition_id: String,

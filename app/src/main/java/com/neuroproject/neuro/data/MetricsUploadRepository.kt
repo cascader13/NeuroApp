@@ -22,39 +22,45 @@ class MetricsUploadRepository @Inject constructor(
 ) {
 
     /**
-     * Подготовить данные для отправки (включая compressed таблицы)
+     * Подготовить данные для отправки
      */
     suspend fun prepareDataForUpload(): UploadPreparationResult {
         return try {
             // Uncompressed данные
             val nfbMetrics = metricsDao.getUnmarkedNFBMetrics()
             val physiologicalMetrics = metricsDao.getUnmarkedPhysiologicalMetrics()
+            val eegRawMetrics = metricsDao.getUnmarkedEEGRAWMetrics()
+            val eegProceedMetrics = metricsDao.getUnmarkedEEGPROCEEDMetrics()
+            val eegArtifactsMetrics = metricsDao.getUnmarkedEEGArtifactsMetrics()
             val memsMetrics = metricsDao.getUnmarkedMEMSMetrics()
             val productivityMetrics = metricsDao.getUnmarkedProductivityMetrics()
             val emotionalMetrics = metricsDao.getUnmarkedEmotionalMetrics()
             val cardioMetrics = metricsDao.getUnmarkedCardioMetrics()
-            val EEGRawMetrics = metricsDao.getUnmarkedEEGRAWMetrics()
-            val EEGProceedMetrics = metricsDao.getUnmarkedEEGPROCEEDMetrics()
-            val EEGArtifactMetrics = metricsDao.getUnmarkedEEGArtifactsMetrics()
 
             // Compressed данные
             val nfbMetricsCompressed = metricsDao.getUnmarkedNFBMetricsCompressed()
             val physiologicalMetricsCompressed = metricsDao.getUnmarkedPhysiologicalMetricsCompressed()
+            val eegRawMetricsCompressed = metricsDao.getUnmarkedEEGRAWMetricsCompressed()
+            val eegProceedMetricsCompressed = metricsDao.getUnmarkedEEGPROCEEDMetricsCompressed()
+            val eegArtifactsMetricsCompressed = metricsDao.getUnmarkedEEGArtifactsMetricsCompressed()
             val memsMetricsCompressed = metricsDao.getUnmarkedMEMSMetricsCompressed()
             val productivityMetricsCompressed = metricsDao.getUnmarkedProductivityMetricsCompressed()
             val emotionalMetricsCompressed = metricsDao.getUnmarkedEmotionalMetricsCompressed()
             val cardioMetricsCompressed = metricsDao.getUnmarkedCardioMetricsCompressed()
-            val EEGRawMetricsCompressed = metricsDao.getUnmarkedEEGRAWMetricsCompressed()
-            val EEGProceedMetricsCompressed = metricsDao.getUnmarkedEEGPROCEEDMetricsCompressed()
-            val EEGArtifactMetricsCompressed = metricsDao.getUnmarkedEEGArtifactsMetricsCompressed()
 
-            val totalRecords =
-                nfbMetrics.size + physiologicalMetrics.size + memsMetrics.size +
-                        productivityMetrics.size + emotionalMetrics.size + cardioMetrics.size +
-                        EEGArtifactMetrics.size + EEGProceedMetrics.size + EEGRawMetrics.size +
-                        nfbMetricsCompressed.size + physiologicalMetricsCompressed.size + memsMetricsCompressed.size +
-                        productivityMetricsCompressed.size + emotionalMetricsCompressed.size + cardioMetricsCompressed.size +
-                        EEGArtifactMetricsCompressed.size + EEGProceedMetricsCompressed.size + EEGRawMetricsCompressed.size
+            // Baseline и Indexes данные
+            val physiologicalBaselines = metricsDao.getUnmarkedPhysiologicalBaseline()
+            val productivityBaselines = metricsDao.getUnmarkedProductivityBaseline()
+            val productivityIndexes = metricsDao.getUnmarkedProductivityIndexes()
+
+            val totalRecords = calculateTotalRecords(
+                nfbMetrics, physiologicalMetrics, eegRawMetrics, eegProceedMetrics,
+                eegArtifactsMetrics, memsMetrics, productivityMetrics, emotionalMetrics, cardioMetrics,
+                nfbMetricsCompressed, physiologicalMetricsCompressed, eegRawMetricsCompressed,
+                eegProceedMetricsCompressed, eegArtifactsMetricsCompressed, memsMetricsCompressed,
+                productivityMetricsCompressed, emotionalMetricsCompressed, cardioMetricsCompressed,
+                physiologicalBaselines, productivityBaselines, productivityIndexes
+            )
 
             if (totalRecords == 0) {
                 return UploadPreparationResult.NoData
@@ -63,54 +69,69 @@ class MetricsUploadRepository @Inject constructor(
             // Создаем DTO для отправки
             val uploadRequest = UploadRequest(
                 // Uncompressed данные
-                cardioMetrics = cardioMetrics.map { it.toServerDto() },
-                emotionalMetrics = emotionalMetrics.map { it.toServerDto() },
-                memsMetrics = memsMetrics.map { it.toServerDto() },
                 nfbMetrics = nfbMetrics.map { it.toServerDto() },
                 physiologicalMetrics = physiologicalMetrics.map { it.toServerDto() },
+                eegRawMetrics = eegRawMetrics.map { it.toServerDto() },
+                eegProceedMetrics = eegProceedMetrics.map { it.toServerDto() },
+                eegArtifactsMetrics = eegArtifactsMetrics.map { it.toServerDto() },
+                memsMetrics = memsMetrics.map { it.toServerDto() },
                 productivityMetrics = productivityMetrics.map { it.toServerDto() },
-                EEGRawMetrics = EEGRawMetrics.map { it.toServerDto() },
-                EEGProceedMetrics = EEGProceedMetrics.map { it.toServerDto() },
-                EEGArtifactsMetrics = EEGArtifactMetrics.map { it.toServerDto() },
+                emotionalMetrics = emotionalMetrics.map { it.toServerDto() },
+                cardioMetrics = cardioMetrics.map { it.toServerDto() },
 
                 // Compressed данные
                 nfbMetricsCompressed = nfbMetricsCompressed.map { it.toServerDto() },
                 physiologicalMetricsCompressed = physiologicalMetricsCompressed.map { it.toServerDto() },
+                eegRawMetricsCompressed = eegRawMetricsCompressed.map { it.toServerDto() },
+                eegProceedMetricsCompressed = eegProceedMetricsCompressed.map { it.toServerDto() },
+                eegArtifactsMetricsCompressed = eegArtifactsMetricsCompressed.map { it.toServerDto() },
                 memsMetricsCompressed = memsMetricsCompressed.map { it.toServerDto() },
                 productivityMetricsCompressed = productivityMetricsCompressed.map { it.toServerDto() },
                 emotionalMetricsCompressed = emotionalMetricsCompressed.map { it.toServerDto() },
                 cardioMetricsCompressed = cardioMetricsCompressed.map { it.toServerDto() },
-                EEGRawMetricsCompressed = EEGRawMetricsCompressed.map { it.toServerDto() },
-                EEGProceedMetricsCompressed = EEGProceedMetricsCompressed.map { it.toServerDto() },
-                EEGArtifactsMetricsCompressed = EEGArtifactMetricsCompressed.map { it.toServerDto() }
+
+                // Baseline и Indexes данные
+                physiologicalBaselines = physiologicalBaselines.map { it.toServerDto() },
+                productivityBaselines = productivityBaselines.map { it.toServerDto() },
+                productivityIndexes = productivityIndexes.map { it.toServerDto() }
             )
 
             UploadPreparationResult.Ready(
                 request = uploadRequest,
                 totalRecords = totalRecords,
+                // Uncompressed counts
                 nfbCount = nfbMetrics.size,
                 physiologicalCount = physiologicalMetrics.size,
+                eegRawCount = eegRawMetrics.size,
+                eegProceedCount = eegProceedMetrics.size,
+                eegArtifactsCount = eegArtifactsMetrics.size,
                 memsCount = memsMetrics.size,
                 productivityCount = productivityMetrics.size,
                 emotionalCount = emotionalMetrics.size,
                 cardioCount = cardioMetrics.size,
-                EEGRAWCount = EEGRawMetrics.size,
-                EEGPROCEEDCount = EEGProceedMetrics.size,
-                EEGArtifactsCount = EEGArtifactMetrics.size,
+                // Compressed counts
                 nfbCompressedCount = nfbMetricsCompressed.size,
                 physiologicalCompressedCount = physiologicalMetricsCompressed.size,
+                eegRawCompressedCount = eegRawMetricsCompressed.size,
+                eegProceedCompressedCount = eegProceedMetricsCompressed.size,
+                eegArtifactsCompressedCount = eegArtifactsMetricsCompressed.size,
                 memsCompressedCount = memsMetricsCompressed.size,
                 productivityCompressedCount = productivityMetricsCompressed.size,
                 emotionalCompressedCount = emotionalMetricsCompressed.size,
                 cardioCompressedCount = cardioMetricsCompressed.size,
-                EEGRAWCompressedCount = EEGRawMetricsCompressed.size,
-                EEGPROCEEDCompressedCount = EEGProceedMetricsCompressed.size,
-                EEGArtifactsCompressedCount = EEGArtifactMetricsCompressed.size
+                // Baseline counts
+                physiologicalBaselinesCount = physiologicalBaselines.size,
+                productivityBaselinesCount = productivityBaselines.size,
+                productivityIndexesCount = productivityIndexes.size
             )
 
         } catch (e: Exception) {
             UploadPreparationResult.Error("Ошибка подготовки данных: ${e.message}")
         }
+    }
+
+    private fun calculateTotalRecords(vararg lists: List<*>): Int {
+        return lists.sumOf { it.size }
     }
 
     /**
@@ -131,15 +152,10 @@ class MetricsUploadRepository @Inject constructor(
                     val response = apiService.uploadMetrics(preparationResult.request)
 
                     if (response.isSuccessful) {
-                        val responseBody = response.body()
-                        if (response.isSuccessful) {
-                            markDataAsUploaded()
-                            UploadResult.Success(
-                                sentCount = preparationResult.totalRecords
-                            )
-                        } else {
-                            UploadResult.Error("Неизвестная ошибка сервера")
-                        }
+                        markDataAsUploaded(preparationResult)
+                        UploadResult.Success(
+                            sentCount = preparationResult.totalRecords
+                        )
                     } else {
                         val errorMessage = when (response.code()) {
                             400 -> "Некорректный запрос"
@@ -200,6 +216,80 @@ class MetricsUploadRepository @Inject constructor(
     }
 
     /**
+     * Пометить данные как отправленные
+     */
+    private suspend fun markDataAsUploaded(preparationResult: UploadPreparationResult.Ready) {
+        // Uncompressed timestamps
+        if (preparationResult.request.nfbMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkNFBMetricsAsSynced(preparationResult.request.nfbMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.physiologicalMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkPhysiologicalMetricsAsSynced(preparationResult.request.physiologicalMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.eegRawMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGRAWMetricsAsSynced(preparationResult.request.eegRawMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.eegProceedMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGProceedMetricsAsSynced(preparationResult.request.eegProceedMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.eegArtifactsMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGArtifactsMetricsAsSynced(preparationResult.request.eegArtifactsMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.memsMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkMEMSMetricsAsSynced(preparationResult.request.memsMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.productivityMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkProductivityMetricsAsSynced(preparationResult.request.productivityMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.emotionalMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEmotionalMetricsAsSynced(preparationResult.request.emotionalMetrics.map { it.timestamp })
+        }
+        if (preparationResult.request.cardioMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkCardioMetricsAsSynced(preparationResult.request.cardioMetrics.map { it.timestamp })
+        }
+
+        // Compressed timestamps
+        if (preparationResult.request.nfbMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkNFBMetricsCompressedAsSynced(preparationResult.request.nfbMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.physiologicalMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(preparationResult.request.physiologicalMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.eegRawMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(preparationResult.request.eegRawMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.eegProceedMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(preparationResult.request.eegProceedMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.eegArtifactsMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(preparationResult.request.eegArtifactsMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.memsMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkMEMSMetricsCompressedAsSynced(preparationResult.request.memsMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.productivityMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkProductivityMetricsCompressedAsSynced(preparationResult.request.productivityMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.emotionalMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEmotionalMetricsCompressedAsSynced(preparationResult.request.emotionalMetricsCompressed.map { it.timestamp })
+        }
+        if (preparationResult.request.cardioMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkCardioMetricsCompressedAsSynced(preparationResult.request.cardioMetricsCompressed.map { it.timestamp })
+        }
+
+        // Baseline timestamps
+        if (preparationResult.request.physiologicalBaselines?.isNotEmpty() == true) {
+            metricsDao.safeMarkPhysiologicalBaselineAsSynced(preparationResult.request.physiologicalBaselines.map { it.timestamp })
+        }
+        if (preparationResult.request.productivityBaselines?.isNotEmpty() == true) {
+            metricsDao.safeMarkProductivityBaselineAsSynced(preparationResult.request.productivityBaselines.map { it.timestamp })
+        }
+        if (preparationResult.request.productivityIndexes?.isNotEmpty() == true) {
+            metricsDao.safeMarkProductivityIndexesAsSynced(preparationResult.request.productivityIndexes.map { it.timestamp })
+        }
+    }
+
+    /**
      * Сохранить данные в JSON файл (для отладки)
      */
     suspend fun saveToJsonFile(): FileSaveResult {
@@ -238,59 +328,6 @@ class MetricsUploadRepository @Inject constructor(
         }
     }
 
-    private suspend fun markDataAsUploaded() {
-        val preparationResult = prepareDataForUpload()
-
-        when (preparationResult) {
-            is UploadPreparationResult.Ready -> {
-                // Uncompressed timestamps
-                val nfbTimestamps = preparationResult.request.nfbMetrics?.map { it.timestamp } ?: emptyList()
-                val physioTimestamps = preparationResult.request.physiologicalMetrics?.map { it.timestamp } ?: emptyList()
-                val memsTimestamps = preparationResult.request.memsMetrics?.map { it.timestamp } ?: emptyList()
-                val prodTimestamps = preparationResult.request.productivityMetrics?.map { it.timestamp } ?: emptyList()
-                val emotTimestamps = preparationResult.request.emotionalMetrics?.map { it.timestamp } ?: emptyList()
-                val cardioTimestamps = preparationResult.request.cardioMetrics?.map { it.timestamp } ?: emptyList()
-                val EEGRAWTimestamps = preparationResult.request.EEGRawMetrics?.map { it.timestamp } ?: emptyList()
-                val EEGProceedTimestamps = preparationResult.request.EEGProceedMetrics?.map { it.timestamp } ?: emptyList()
-                val EEGArtifactsTimestamps = preparationResult.request.EEGArtifactsMetrics?.map { it.timestamp } ?: emptyList()
-
-                // Compressed timestamps
-                val nfbCompressedTimestamps = preparationResult.request.nfbMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val physioCompressedTimestamps = preparationResult.request.physiologicalMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val memsCompressedTimestamps = preparationResult.request.memsMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val prodCompressedTimestamps = preparationResult.request.productivityMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val emotCompressedTimestamps = preparationResult.request.emotionalMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val cardioCompressedTimestamps = preparationResult.request.cardioMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val EEGRAWCompressedTimestamps = preparationResult.request.EEGRawMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val EEGProceedCompressedTimestamps = preparationResult.request.EEGProceedMetricsCompressed?.map { it.timestamp } ?: emptyList()
-                val EEGArtifactsCompressedTimestamps = preparationResult.request.EEGArtifactsMetricsCompressed?.map { it.timestamp } ?: emptyList()
-
-                // Помечаем uncompressed данные
-                if (nfbTimestamps.isNotEmpty()) metricsDao.safeMarkNFBMetricsAsSynced(nfbTimestamps)
-                if (physioTimestamps.isNotEmpty()) metricsDao.safeMarkPhysiologicalMetricsAsSynced(physioTimestamps)
-                if (memsTimestamps.isNotEmpty()) metricsDao.safeMarkMEMSMetricsAsSynced(memsTimestamps)
-                if (prodTimestamps.isNotEmpty()) metricsDao.safeMarkProductivityMetricsAsSynced(prodTimestamps)
-                if (emotTimestamps.isNotEmpty()) metricsDao.safeMarkEmotionalMetricsAsSynced(emotTimestamps)
-                if (cardioTimestamps.isNotEmpty()) metricsDao.safeMarkCardioMetricsAsSynced(cardioTimestamps)
-                if (EEGRAWTimestamps.isNotEmpty()) metricsDao.safeMarkEEGRAWMetricsAsSynced(EEGRAWTimestamps)
-                if (EEGProceedTimestamps.isNotEmpty()) metricsDao.safeMarkEEGProceedMetricsAsSynced(EEGProceedTimestamps)
-                if (EEGArtifactsTimestamps.isNotEmpty()) metricsDao.safeMarkEEGArtifactsMetricsAsSynced(EEGArtifactsTimestamps)
-
-                // Помечаем compressed данные
-                if (nfbCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkNFBMetricsCompressedAsSynced(nfbCompressedTimestamps)
-                if (physioCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(physioCompressedTimestamps)
-                if (memsCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkMEMSMetricsCompressedAsSynced(memsCompressedTimestamps)
-                if (prodCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkProductivityMetricsCompressedAsSynced(prodCompressedTimestamps)
-                if (emotCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkEmotionalMetricsCompressedAsSynced(emotCompressedTimestamps)
-                if (cardioCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkCardioMetricsCompressedAsSynced(cardioCompressedTimestamps)
-                if (EEGRAWCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(EEGRAWCompressedTimestamps)
-                if (EEGProceedCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkEEGProceedMetricsAsSynced(EEGProceedCompressedTimestamps)
-                if (EEGArtifactsCompressedTimestamps.isNotEmpty()) metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(EEGArtifactsCompressedTimestamps)
-            }
-            else -> { /* Нет данных для пометки */ }
-        }
-    }
-
     /**
      * Получить статистику
      */
@@ -298,98 +335,120 @@ class MetricsUploadRepository @Inject constructor(
         // Uncompressed counts
         val nfbCount = metricsDao.getAllNFBMetricsCount()
         val physiologicalCount = metricsDao.getAllPhysiologicalMetricsCount()
+        val eegRawCount = metricsDao.getAllEEGRAWMetricsCount()
+        val eegProceedCount = metricsDao.getAllEEGPROCEEDMetricsCount()
+        val eegArtifactsCount = metricsDao.getAllEEGArtifactsMetricsCount()
         val memsCount = metricsDao.getAllMEMSMetricsCount()
         val productivityCount = metricsDao.getAllProductivityMetricsCount()
         val emotionalCount = metricsDao.getAllEmotionalMetricsCount()
         val cardioCount = metricsDao.getAllCardioMetricsCount()
-        val EEGRAWCount = metricsDao.getAllEEGRAWMetricsCount()
-        val EEGPROCEEDCount = metricsDao.getAllEEGPROCEEDMetricsCount()
-        val EEGArtifactsCount = metricsDao.getAllEEGArtifactsMetricsCount()
 
         // Compressed counts
         val nfbCompressedCount = metricsDao.getAllNFBMetricsCountCompressed()
         val physiologicalCompressedCount = metricsDao.getAllPhysiologicalMetricsCountCompressed()
+        val eegRawCompressedCount = metricsDao.getAllEEGRAWMetricsCountCompressed()
+        val eegProceedCompressedCount = metricsDao.getAllEEGPROCEEDMetricsCountCompressed()
+        val eegArtifactsCompressedCount = metricsDao.getAllEEGArtifactsMetricsCountCompressed()
         val memsCompressedCount = metricsDao.getAllMEMSMetricsCountCompressed()
         val productivityCompressedCount = metricsDao.getAllProductivityMetricsCountCompressed()
         val emotionalCompressedCount = metricsDao.getAllEmotionalMetricsCountCompressed()
         val cardioCompressedCount = metricsDao.getAllCardioMetricsCountCompressed()
-        val EEGRAWCompressedCount = metricsDao.getAllEEGRAWMetricsCountCompressed()
-        val EEGPROCEEDCompressedCount = metricsDao.getAllEEGPROCEEDMetricsCountCompressed()
-        val EEGArtifactsCompressedCount = metricsDao.getAllEEGArtifactsMetricsCountCompressed()
+
+        // Baseline counts
+        val physiologicalBaselinesCount = metricsDao.getAllPhysiologicalBaselineCount()
+        val productivityBaselinesCount = metricsDao.getAllProductivityBaselineCount()
+        val productivityIndexesCount = metricsDao.getAllProductivityIndexesCount()
 
         // Uncompressed unsynced counts
         val nfbUnsynced = metricsDao.getUnmarkedNFBMetricsCount()
         val physiologicalUnsynced = metricsDao.getUnmarkedPhysiologicalMetricsCount()
+        val eegRawUnsynced = metricsDao.getUnmarkedEEGRAWMetricsCount()
+        val eegProceedUnsynced = metricsDao.getUnmarkedEEGPROCEEDMetricsCount()
+        val eegArtifactsUnsynced = metricsDao.getUnmarkedEEGArtifactMetricsCount()
         val memsUnsynced = metricsDao.getUnmarkedMEMSMetricsCount()
         val productivityUnsynced = metricsDao.getUnmarkedProductivityMetricsCount()
         val emotionalUnsynced = metricsDao.getUnmarkedEmotionalMetricsCount()
         val cardioUnsynced = metricsDao.getUnmarkedCardioMetricsCount()
-        val EEGRAWUnsynced = metricsDao.getUnmarkedEEGRAWMetricsCount()
-        val EEGPROCEEDUnsynced = metricsDao.getUnmarkedEEGPROCEEDMetricsCount()
-        val EEGArtifactsUnsynced = metricsDao.getUnmarkedEEGArtifactMetricsCount()
 
         // Compressed unsynced counts
         val nfbCompressedUnsynced = metricsDao.getUnmarkedNFBMetricsCountCompressed()
         val physiologicalCompressedUnsynced = metricsDao.getUnmarkedPhysiologicalMetricsCountCompressed()
+        val eegRawCompressedUnsynced = metricsDao.getUnmarkedEEGRAWMetricsCountCompressed()
+        val eegProceedCompressedUnsynced = metricsDao.getUnmarkedEEGPROCEEDMetricsCountCompressed()
+        val eegArtifactsCompressedUnsynced = metricsDao.getUnmarkedEEGArtifactMetricsCountCompressed()
         val memsCompressedUnsynced = metricsDao.getUnmarkedMEMSMetricsCountCompressed()
         val productivityCompressedUnsynced = metricsDao.getUnmarkedProductivityMetricsCountCompressed()
         val emotionalCompressedUnsynced = metricsDao.getUnmarkedEmotionalMetricsCountCompressed()
         val cardioCompressedUnsynced = metricsDao.getUnmarkedCardioMetricsCountCompressed()
-        val EEGRAWCompressedUnsynced = metricsDao.getUnmarkedEEGRAWMetricsCountCompressed()
-        val EEGPROCEEDCompressedUnsynced = metricsDao.getUnmarkedEEGPROCEEDMetricsCountCompressed()
-        val EEGArtifactsCompressedUnsynced = metricsDao.getUnmarkedEEGArtifactMetricsCountCompressed()
 
-        val totalRecords = nfbCount + physiologicalCount + memsCount + productivityCount +
-                emotionalCount + cardioCount + EEGRAWCount + EEGPROCEEDCount + EEGArtifactsCount +
-                nfbCompressedCount + physiologicalCompressedCount + memsCompressedCount +
+        // Baseline unsynced counts
+        val physiologicalBaselinesUnsynced = metricsDao.getUnmarkedPhysiologicalBaseline().size
+        val productivityBaselinesUnsynced = metricsDao.getUnmarkedProductivityBaseline().size
+        val productivityIndexesUnsynced = metricsDao.getUnmarkedProductivityIndexes().size
+
+        val totalRecords = nfbCount + physiologicalCount + eegRawCount + eegProceedCount +
+                eegArtifactsCount + memsCount + productivityCount + emotionalCount + cardioCount +
+                nfbCompressedCount + physiologicalCompressedCount + eegRawCompressedCount +
+                eegProceedCompressedCount + eegArtifactsCompressedCount + memsCompressedCount +
                 productivityCompressedCount + emotionalCompressedCount + cardioCompressedCount +
-                EEGRAWCompressedCount + EEGPROCEEDCompressedCount + EEGArtifactsCompressedCount
+                physiologicalBaselinesCount + productivityBaselinesCount + productivityIndexesCount
 
-        val unsyncedRecords = nfbUnsynced + physiologicalUnsynced + memsUnsynced + productivityUnsynced +
-                emotionalUnsynced + cardioUnsynced + EEGRAWUnsynced + EEGPROCEEDUnsynced + EEGArtifactsUnsynced +
-                nfbCompressedUnsynced + physiologicalCompressedUnsynced + memsCompressedUnsynced +
+        val unsyncedRecords = nfbUnsynced + physiologicalUnsynced + eegRawUnsynced + eegProceedUnsynced +
+                eegArtifactsUnsynced + memsUnsynced + productivityUnsynced + emotionalUnsynced + cardioUnsynced +
+                nfbCompressedUnsynced + physiologicalCompressedUnsynced + eegRawCompressedUnsynced +
+                eegProceedCompressedUnsynced + eegArtifactsCompressedUnsynced + memsCompressedUnsynced +
                 productivityCompressedUnsynced + emotionalCompressedUnsynced + cardioCompressedUnsynced +
-                EEGRAWCompressedUnsynced + EEGPROCEEDCompressedUnsynced + EEGArtifactsCompressedUnsynced
+                physiologicalBaselinesUnsynced + productivityBaselinesUnsynced + productivityIndexesUnsynced
 
         return UploadStats(
             totalRecords = totalRecords,
             unsyncedRecords = unsyncedRecords,
+            // Uncompressed counts
             nfbCount = nfbCount,
             physiologicalCount = physiologicalCount,
+            eegRawCount = eegRawCount,
+            eegProceedCount = eegProceedCount,
+            eegArtifactsCount = eegArtifactsCount,
             memsCount = memsCount,
             productivityCount = productivityCount,
             emotionalCount = emotionalCount,
             cardioCount = cardioCount,
-            EEGRAWCount = EEGRAWCount,
-            EEGPROCEEDCount = EEGPROCEEDCount,
-            EEGArtifactsCount = EEGArtifactsCount,
+            // Compressed counts
             nfbCompressedCount = nfbCompressedCount,
             physiologicalCompressedCount = physiologicalCompressedCount,
+            eegRawCompressedCount = eegRawCompressedCount,
+            eegProceedCompressedCount = eegProceedCompressedCount,
+            eegArtifactsCompressedCount = eegArtifactsCompressedCount,
             memsCompressedCount = memsCompressedCount,
             productivityCompressedCount = productivityCompressedCount,
             emotionalCompressedCount = emotionalCompressedCount,
             cardioCompressedCount = cardioCompressedCount,
-            EEGRAWCompressedCount = EEGRAWCompressedCount,
-            EEGPROCEEDCompressedCount = EEGPROCEEDCompressedCount,
-            EEGArtifactsCompressedCount = EEGArtifactsCompressedCount,
+            // Baseline counts
+            physiologicalBaselinesCount = physiologicalBaselinesCount,
+            productivityBaselinesCount = productivityBaselinesCount,
+            productivityIndexesCount = productivityIndexesCount,
+            // Unsynced counts
             nfbUnsynced = nfbUnsynced,
             physiologicalUnsynced = physiologicalUnsynced,
+            eegRawUnsynced = eegRawUnsynced,
+            eegProceedUnsynced = eegProceedUnsynced,
+            eegArtifactsUnsynced = eegArtifactsUnsynced,
             memsUnsynced = memsUnsynced,
             productivityUnsynced = productivityUnsynced,
             emotionalUnsynced = emotionalUnsynced,
             cardioUnsynced = cardioUnsynced,
-            EEGRAWUnsynced = EEGRAWUnsynced,
-            EEGPROCEEDUnsynced = EEGPROCEEDUnsynced,
-            EEGArtifactsUnsynced = EEGArtifactsUnsynced,
             nfbCompressedUnsynced = nfbCompressedUnsynced,
             physiologicalCompressedUnsynced = physiologicalCompressedUnsynced,
+            eegRawCompressedUnsynced = eegRawCompressedUnsynced,
+            eegProceedCompressedUnsynced = eegProceedCompressedUnsynced,
+            eegArtifactsCompressedUnsynced = eegArtifactsCompressedUnsynced,
             memsCompressedUnsynced = memsCompressedUnsynced,
             productivityCompressedUnsynced = productivityCompressedUnsynced,
             emotionalCompressedUnsynced = emotionalCompressedUnsynced,
             cardioCompressedUnsynced = cardioCompressedUnsynced,
-            EEGRAWCompressedUnsynced = EEGRAWCompressedUnsynced,
-            EEGPROCEEDCompressedUnsynced = EEGPROCEEDCompressedUnsynced,
-            EEGArtifactsCompressedUnsynced = EEGArtifactsCompressedUnsynced
+            physiologicalBaselinesUnsynced = physiologicalBaselinesUnsynced,
+            productivityBaselinesUnsynced = productivityBaselinesUnsynced,
+            productivityIndexesUnsynced = productivityIndexesUnsynced
         )
     }
 }
@@ -400,24 +459,30 @@ sealed class UploadPreparationResult {
     data class Ready(
         val request: UploadRequest,
         val totalRecords: Int,
+        // Uncompressed counts
         val nfbCount: Int,
         val physiologicalCount: Int,
+        val eegRawCount: Int,
+        val eegProceedCount: Int,
+        val eegArtifactsCount: Int,
         val memsCount: Int,
         val productivityCount: Int,
         val emotionalCount: Int,
         val cardioCount: Int,
-        val EEGRAWCount: Int,
-        val EEGPROCEEDCount: Int,
-        val EEGArtifactsCount: Int,
+        // Compressed counts
         val nfbCompressedCount: Int,
         val physiologicalCompressedCount: Int,
+        val eegRawCompressedCount: Int,
+        val eegProceedCompressedCount: Int,
+        val eegArtifactsCompressedCount: Int,
         val memsCompressedCount: Int,
         val productivityCompressedCount: Int,
         val emotionalCompressedCount: Int,
         val cardioCompressedCount: Int,
-        val EEGRAWCompressedCount: Int,
-        val EEGPROCEEDCompressedCount: Int,
-        val EEGArtifactsCompressedCount: Int
+        // Baseline counts
+        val physiologicalBaselinesCount: Int,
+        val productivityBaselinesCount: Int,
+        val productivityIndexesCount: Int
     ) : UploadPreparationResult()
     data class Error(val message: String) : UploadPreparationResult()
 }
@@ -448,40 +513,50 @@ sealed class FileSaveResult {
 data class UploadStats(
     val totalRecords: Int,
     val unsyncedRecords: Int,
+    // Uncompressed counts
     val nfbCount: Int,
     val physiologicalCount: Int,
+    val eegRawCount: Int,
+    val eegProceedCount: Int,
+    val eegArtifactsCount: Int,
     val memsCount: Int,
     val productivityCount: Int,
     val emotionalCount: Int,
     val cardioCount: Int,
-    val EEGRAWCount: Int,
-    val EEGPROCEEDCount: Int,
-    val EEGArtifactsCount: Int,
+    // Compressed counts
     val nfbCompressedCount: Int,
     val physiologicalCompressedCount: Int,
+    val eegRawCompressedCount: Int,
+    val eegProceedCompressedCount: Int,
+    val eegArtifactsCompressedCount: Int,
     val memsCompressedCount: Int,
     val productivityCompressedCount: Int,
     val emotionalCompressedCount: Int,
     val cardioCompressedCount: Int,
-    val EEGRAWCompressedCount: Int,
-    val EEGPROCEEDCompressedCount: Int,
-    val EEGArtifactsCompressedCount: Int,
+    // Baseline counts
+    val physiologicalBaselinesCount: Int,
+    val productivityBaselinesCount: Int,
+    val productivityIndexesCount: Int,
+    // Unsynced counts
     val nfbUnsynced: Int,
     val physiologicalUnsynced: Int,
+    val eegRawUnsynced: Int,
+    val eegProceedUnsynced: Int,
+    val eegArtifactsUnsynced: Int,
     val memsUnsynced: Int,
     val productivityUnsynced: Int,
     val emotionalUnsynced: Int,
     val cardioUnsynced: Int,
-    val EEGRAWUnsynced: Int,
-    val EEGPROCEEDUnsynced: Int,
-    val EEGArtifactsUnsynced: Int,
     val nfbCompressedUnsynced: Int,
     val physiologicalCompressedUnsynced: Int,
+    val eegRawCompressedUnsynced: Int,
+    val eegProceedCompressedUnsynced: Int,
+    val eegArtifactsCompressedUnsynced: Int,
     val memsCompressedUnsynced: Int,
     val productivityCompressedUnsynced: Int,
     val emotionalCompressedUnsynced: Int,
     val cardioCompressedUnsynced: Int,
-    val EEGRAWCompressedUnsynced: Int,
-    val EEGPROCEEDCompressedUnsynced: Int,
-    val EEGArtifactsCompressedUnsynced: Int
+    val physiologicalBaselinesUnsynced: Int,
+    val productivityBaselinesUnsynced: Int,
+    val productivityIndexesUnsynced: Int
 )

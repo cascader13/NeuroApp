@@ -379,6 +379,76 @@ class MetricsRepository @Inject constructor(
 
     }
 
+    fun saveProductivityBaselines(
+        time: Long,
+        id: String,
+        expedition_id: String,
+        session: java.sql.Timestamp,
+        gravity: Float,
+        productivity: Float,
+        fatigue: Float,
+        reverseFatigue: Float,
+        relaxation: Float,
+        concentration: Float
+    ){
+        scope.launch {
+            try{
+                val index = ProductivityBaselinesEntity(
+                    timestamp = time,
+                    id = id,
+                    expedition_id = expedition_id,
+                    session = session,
+                    gravity = gravity,
+                    productivity = productivity,
+                    fatigue = fatigue,
+                    reverseFatigue = reverseFatigue,
+                    relaxation = relaxation,
+                    concentration = concentration,
+                    isMarked = false
+                )
+                metricsDao.insertProductivityBaselines(index);
+            } catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving productivity baseline", e)
+            }
+        }
+
+
+    }
+
+    fun savePhysiologicalBaselines(
+        time: Long,
+        id: String,
+        expedition_id: String,
+        session: java.sql.Timestamp,
+        alpha: Float,
+        beta: Float,
+        alphaGravity: Float,
+        betaGravity: Float,
+        concentration: Float
+    ){
+        scope.launch {
+            try{
+                val index = PhysiologicalBaselinesEntity(
+                    timestamp = time,
+                    id = id,
+                    expedition_id = expedition_id,
+                    session = session,
+                    alpha = alpha,
+                    beta = beta,
+                    alphaGravity = alphaGravity,
+                    betaGravity = betaGravity,
+                    concentration = concentration,
+                    isMarked = false
+                )
+                metricsDao.insertPhysiologicalBaselines(index);
+            } catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving physiological baseline", e)
+            }
+        }
+
+
+    }
+
     fun saveEmotionalMetric(
         time: Long,
         id: String,

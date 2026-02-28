@@ -49,8 +49,13 @@ interface MetricsDao {
     suspend fun insertMEMSCompressedMetric(metric: MEMSMetricCompressedEntity)
 
     @Insert
-
     suspend fun insertProductivityIndex(index: ProductivityIndexesEntity)
+
+    @Insert
+    suspend fun insertProductivityBaselines(baseline: ProductivityBaselinesEntity)
+
+    @Insert
+    suspend fun insertPhysiologicalBaselines(baseline: PhysiologicalBaselinesEntity)
 
     @Insert
     suspend fun insertProductivityMetric(metric: ProductivityMetricEntity)
@@ -143,11 +148,18 @@ interface MetricsDao {
     @Query("DELETE FROM physiological_metrics_compressed")
     suspend fun clearPhysiologicalMetricsCompressed()
 
+    @Query("DELETE FROM physiological_baselines")
+    suspend fun clearPhysiologicalBaseline()
+
     @Query("DELETE FROM mems_metrics")
     suspend fun clearMEMSMetrics()
 
     @Query("DELETE FROM mems_metrics_compressed")
     suspend fun clearMEMSMetricsCompressed()
+
+
+    @Query("DELETE FROM productivity_baselines")
+    suspend fun clearProductivityBaseline()
 
     @Query("DELETE FROM productivity_metrics")
     suspend fun clearProductivityMetrics()
@@ -211,11 +223,18 @@ interface MetricsDao {
     @Query("SELECT * FROM productivity_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedProductivityMetrics(): List<ProductivityMetricEntity>
 
+    @Query("SELECT * FROM productivity_baselines WHERE isMarked = 0")
+    suspend fun getUnmarkedProductivityBaseline(): List<ProductivityBaselinesEntity>
+
+    @Query("SELECT * FROM physiological_baselines WHERE isMarked = 0")
+    suspend fun getUnmarkedPhysiologicalBaseline(): List<PhysiologicalBaselinesEntity>
+
     @Query("SELECT * FROM productivity_metrics_compressed WHERE isMarked = 0")
     suspend fun getUnmarkedProductivityMetricsCompressed(): List<ProductivityMetricCompressedEntity>
 
     @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0")
     suspend fun getUnmarkedProductivityIndexes(): List<ProductivityIndexesEntity>
+
 
     @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0")
     suspend fun getUnmarkedEmotionalMetrics(): List<EmotionalMetricEntity>
@@ -329,6 +348,12 @@ interface MetricsDao {
     @Query("UPDATE productivity_indexes SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markProductivityIndexAsSynced(timestamps: List<Long>)
 
+    @Query("UPDATE productivity_baselines SET isMarked = 1 WHERE timestamp IN (:timestamps)")
+    suspend fun markProductivityBaselineAsSynced(timestamps: List<Long>)
+
+    @Query("UPDATE physiological_baselines SET isMarked = 1 WHERE timestamp IN (:timestamps)")
+    suspend fun markPhysiologicalBaselineAsSynced(timestamps: List<Long>)
+
     @Query("UPDATE emotional_metrics SET isMarked = 1 WHERE timestamp IN (:timestamps)")
     suspend fun markEmotionalMetricsAsSynced(timestamps: List<Long>)
 
@@ -386,6 +411,12 @@ interface MetricsDao {
     @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0 LIMIT :limit")
     suspend fun getUnmarkedProductivityIndexesBatch(limit: Int): List<ProductivityIndexesEntity>
 
+    @Query("SELECT * FROM productivity_baselines WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedProductivityBaselineBatch(limit: Int): List<ProductivityBaselinesEntity>
+
+    @Query("SELECT * FROM physiological_baselines WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedPhysiologicalBaselineBatch(limit: Int): List<PhysiologicalBaselinesEntity>
+
     @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0 LIMIT :limit")
     suspend fun getUnmarkedEmotionalMetricsBatch(limit: Int): List<EmotionalMetricEntity>
 
@@ -439,6 +470,12 @@ interface MetricsDao {
 
     @Query("SELECT COUNT(*) FROM productivity_indexes")
     suspend fun getAllProductivityIndexesCount(): Int
+
+    @Query("SELECT COUNT(*) FROM productivity_baselines")
+    suspend fun getAllProductivityBaselineCount(): Int
+
+    @Query("SELECT COUNT(*) FROM physiological_baselines")
+    suspend fun getAllPhysiologicalBaselineCount(): Int
 
     @Query("SELECT COUNT(*) FROM productivity_metrics_compressed")
     suspend fun getAllProductivityMetricsCountCompressed(): Int
@@ -500,6 +537,12 @@ interface MetricsDao {
 
     @Query("SELECT MAX(timestamp) FROM productivity_indexes")
     suspend fun getLastProductivityIndexTimestamp(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM productivity_baselines")
+    suspend fun getLastProductivityBaselineTimestamp(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM physiological_baselines")
+    suspend fun getLastPhysiologicalBaselineTimestamp(): Long?
 
     @Query("SELECT MAX(timestamp) FROM emotional_metrics")
     suspend fun getLastEmotionalMetricTimestamp(): Long?
@@ -631,6 +674,22 @@ interface MetricsDao {
         val BATCH_SIZE = 500
         timestamps.chunked(BATCH_SIZE).forEach { batch ->
             markProductivityIndexAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkProductivityBaselineAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markProductivityBaselineAsSynced(batch)
+        }
+    }
+
+    @Transaction
+    suspend fun safeMarkPhysiologicalBaselineAsSynced(timestamps: List<Long>) {
+        val BATCH_SIZE = 500
+        timestamps.chunked(BATCH_SIZE).forEach { batch ->
+            markPhysiologicalBaselineAsSynced(batch)
         }
     }
 

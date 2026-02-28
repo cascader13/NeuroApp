@@ -16,11 +16,13 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         NFBMetricCompressedEntity::class,
         PhysiologicalMetricEntity::class,
         PhysiologicalMetricCompressedEntity::class,
+        PhysiologicalBaselinesEntity::class,
         MEMSMetricEntity::class,
         MEMSMetricCompressedEntity::class,
         ProductivityMetricEntity::class,
         ProductivityMetricCompressedEntity::class,
         ProductivityIndexesEntity::class,
+        ProductivityBaselinesEntity::class,
         EmotionalMetricEntity::class,
         EmotionalMetricCompressedEntity::class,
         EEGRawMetricEntity::class,
@@ -56,7 +58,7 @@ abstract class MetricsDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MetricsDatabase::class.java,
-                    "metrics_database_v2"
+                    "metrics_database_v3"
                 )
                 .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback(context))

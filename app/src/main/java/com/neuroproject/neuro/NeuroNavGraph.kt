@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.navigation
 import com.neuroproject.neuro.screens.analysis.AnalysisScreen
+import com.neuroproject.neuro.screens.blank.BlankScreen
 import com.neuroproject.neuro.screens.calibration.CalibrationScreen
 import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
 import com.neuroproject.neuro.screens.login.LoginScreen
@@ -31,12 +32,14 @@ fun NeuroNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-       /* composable(NavDestinations.SUB_TEST) {
+       /*composable(NavDestinations.SUB_TEST) {
             com.neuroproject.neuro.screens.subtest.SubTestScreen(
-                modifier = Modifier.safeDrawingPadding(),
-                onTestFinished = {
+                onFinished = {
                     navActions.navigateToMain()
                 }
+                /*onDeviceUnconnected = {
+                    navActions.navigateToMain()
+                }*/
             )
         }*/
 
@@ -68,17 +71,16 @@ fun NeuroNavGraph(
             )
         }
 
-       /* composable(NavDestinations.SUB_TEST) {
-            com.neuroproject.neuro.screens.subtest.SubTestScreen(
-                modifier = Modifier.safeDrawingPadding(),
-                onTestFinished = {
-                    navActions.navigateToAnalysis()
-                },
-                onDeviceUnconnected = {
-                    navActions.navigateToMain()
-                }
-            )
-        }*/
+//       composable(NavDestinations.SUB_TEST) {
+//            com.neuroproject.neuro.screens.subtest.SubTestScreen(
+//                onFinished = {
+//                    navActions.navigateToAnalysis()
+//                },
+//                /*onDeviceUnconnected = {
+//                    navActions.navigateToMain()
+//                }*/
+//            )
+//        }
 
         composable(NavDestinations.SETTINGS){
             com.neuroproject.neuro.screens.settings.SettingsScreen(
@@ -134,15 +136,28 @@ fun NeuroNavGraph(
                         navActions.navigateToMain()
                     },
                     onCalibrationComplete = {
-                        navActions.navigateToSubTest()
+                        navActions.navigateToBlank()
                     },
                     vm = hiltViewModel()
                 )
 
             }
 
-            composable(NavDestinations.ANALYSIS) {
-                AnalysisScreen(
+//            composable(NavDestinations.ANALYSIS) {
+//                AnalysisScreen(
+//                    modifier = Modifier.safeDrawingPadding(),
+//                    onBackPressed = {
+//                        navActions.navigateToMain()
+//                    },
+//                    onDeviceUnconnected = {
+//                        navActions.navigateToMain()
+//                    },
+//                    vm = hiltViewModel()
+//                )
+//            }
+
+            composable(NavDestinations.BLANK) {
+                BlankScreen(
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
                         navActions.navigateToMain()

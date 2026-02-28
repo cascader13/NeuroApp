@@ -23,6 +23,13 @@ class NeuroNavigationActions(val navController: NavController) {
         }
     }
 
+    fun navigateToBlank(){
+
+        navController.navigate(NavDestinations.BLANK){
+            launchSingleTop = true
+        }
+    }
+
     fun navigateToSensorCheck() {
         navController.navigate(NavDestinations.SENSOR_CHECK) {
             launchSingleTop = true

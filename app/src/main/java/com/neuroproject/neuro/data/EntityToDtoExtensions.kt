@@ -3,11 +3,11 @@ package com.neuroproject.neuro.data
 import com.neuroproject.neuro.data.remote.*
 import java.sql.Timestamp
 
-// Существующие функции расширения для uncompressed entities...
-
+// Существующие функции расширения для uncompressed entities
 fun NFBMetricEntity.toServerDto(): NfbMetricDto {
     return NfbMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         alpha = this.alpha.toDouble(),
@@ -21,6 +21,7 @@ fun NFBMetricEntity.toServerDto(): NfbMetricDto {
 fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
     return PhysiologicalMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         relax = this.relax.toDouble(),
@@ -37,6 +38,7 @@ fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
 fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto {
     return EEGRawMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         channel1 = this.channel1,
@@ -47,6 +49,7 @@ fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto {
 fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto {
     return EEGProceedMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         channel1 = this.channel1,
@@ -57,6 +60,7 @@ fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto {
 fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto {
     return EEGArtifactMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         artifactsChannel1 = this.artifactsChannel1,
@@ -69,6 +73,7 @@ fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto {
 fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
     return MemsMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         accelerometerX = this.accelerometerX.toDouble(),
@@ -83,6 +88,7 @@ fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
 fun ProductivityMetricEntity.toServerDto(): ProductivityMetricDto {
     return ProductivityMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         gravity = this.gravity.toDouble(),
@@ -97,6 +103,7 @@ fun ProductivityMetricEntity.toServerDto(): ProductivityMetricDto {
 fun EmotionalMetricEntity.toServerDto(): EmotionalMetricDto {
     return EmotionalMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         attention = this.attention.toDouble(),
@@ -110,6 +117,7 @@ fun EmotionalMetricEntity.toServerDto(): EmotionalMetricDto {
 fun CardioMetricEntity.toServerDto(): CardioMetricDto {
     return CardioMetricDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         heartRate = this.heartRate.toDouble(),
@@ -122,11 +130,11 @@ fun CardioMetricEntity.toServerDto(): CardioMetricDto {
     )
 }
 
-// НОВЫЕ ФУНКЦИИ ДЛЯ COMPRESSED ENTITIES
-
+// Функции расширения для compressed entities
 fun NFBMetricCompressedEntity.toServerDto(): NfbMetricCompressedDto {
     return NfbMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         alpha = this.alpha.toDouble(),
@@ -140,6 +148,7 @@ fun NFBMetricCompressedEntity.toServerDto(): NfbMetricCompressedDto {
 fun PhysiologicalMetricCompressedEntity.toServerDto(): PhysiologicalMetricCompressedDto {
     return PhysiologicalMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         relax = this.relax.toDouble(),
@@ -156,6 +165,7 @@ fun PhysiologicalMetricCompressedEntity.toServerDto(): PhysiologicalMetricCompre
 fun EEGRawMetricCompressedEntity.toServerDto(): EEGRawMetricCompressedDto {
     return EEGRawMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         channel1 = this.channel1,
@@ -166,6 +176,7 @@ fun EEGRawMetricCompressedEntity.toServerDto(): EEGRawMetricCompressedDto {
 fun EEGProceedMetricCompressedEntity.toServerDto(): EEGProceedMetricCompressedDto {
     return EEGProceedMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         channel1 = this.channel1,
@@ -176,6 +187,7 @@ fun EEGProceedMetricCompressedEntity.toServerDto(): EEGProceedMetricCompressedDt
 fun EEGArtifactsMetricCompressedEntity.toServerDto(): EEGArtifactMetricCompressedDto {
     return EEGArtifactMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         artifactsChannel1 = this.artifactsChannel1,
@@ -188,6 +200,7 @@ fun EEGArtifactsMetricCompressedEntity.toServerDto(): EEGArtifactMetricCompresse
 fun MEMSMetricCompressedEntity.toServerDto(): MemsMetricCompressedDto {
     return MemsMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         accelerometerX = this.accelerometerX.toDouble(),
@@ -202,6 +215,7 @@ fun MEMSMetricCompressedEntity.toServerDto(): MemsMetricCompressedDto {
 fun ProductivityMetricCompressedEntity.toServerDto(): ProductivityMetricCompressedDto {
     return ProductivityMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         gravity = this.gravity.toDouble(),
@@ -216,6 +230,7 @@ fun ProductivityMetricCompressedEntity.toServerDto(): ProductivityMetricCompress
 fun EmotionalMetricCompressedEntity.toServerDto(): EmotionalMetricCompressedDto {
     return EmotionalMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         attention = this.attention.toDouble(),
@@ -229,6 +244,7 @@ fun EmotionalMetricCompressedEntity.toServerDto(): EmotionalMetricCompressedDto 
 fun CardioMetricCompressedEntity.toServerDto(): CardioMetricCompressedDto {
     return CardioMetricCompressedDto(
         individualNumber = this.id,
+        expeditionId = this.expedition_id,
         timestamp = this.timestamp,
         session = this.session.toInt(),
         heartRate = this.heartRate.toDouble(),
@@ -238,6 +254,54 @@ fun CardioMetricCompressedEntity.toServerDto(): CardioMetricCompressedDto {
         motionArtifacts = if (this.motionArtifacts) 1 else 0,
         skinContact = if (this.skinContact) 1 else 0,
         stressIndex = this.stressIndex.toDouble()
+    )
+}
+
+// Функции расширения для baseline и index entities
+fun PhysiologicalBaselinesEntity.toServerDto(): PhysiologicalBaselineDto {
+    return PhysiologicalBaselineDto(
+        individualNumber = this.id,
+        expeditionId = this.expedition_id,
+        timestamp = this.timestamp,
+        session = this.session.toInt(),
+        alpha = this.alpha.toDouble(),
+        beta = this.beta.toDouble(),
+        alphaGravity = this.alphaGravity.toDouble(),
+        betaGravity = this.betaGravity.toDouble(),
+        concentration = this.concentration.toDouble()
+    )
+}
+
+fun ProductivityBaselinesEntity.toServerDto(): ProductivityBaselineDto {
+    return ProductivityBaselineDto(
+        individualNumber = this.id,
+        expeditionId = this.expedition_id,
+        timestamp = this.timestamp,
+        session = this.session.toInt(),
+        gravity = this.gravity.toDouble(),
+        productivity = this.productivity.toDouble(),
+        fatigue = this.fatigue.toDouble(),
+        reverseFatigue = this.reverseFatigue.toDouble(),
+        relaxation = this.relaxation.toDouble(),
+        concentration = this.concentration.toDouble()
+    )
+}
+
+fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
+    return ProductivityIndexDto(
+        individualNumber = this.id,
+        expeditionId = this.expedition_id,
+        timestamp = this.timestamp,
+        session = this.session.toInt(),
+        relaxation = this.relaxation,
+        stress = this.stress,
+        gravityBaseline = this.gravityBaseline.toDouble(),
+        productivityBaseline = this.productivityBaseline.toDouble(),
+        fatigueBaseline = this.fatiqueBaseline.toDouble(),
+        reverseFatigueBaseline = this.reverseFatiqueBaseline.toDouble(),
+        relaxationBaseline = this.relaxationBaselines.toDouble(),
+        concentrationBaseline = this.concentrationBaselines.toDouble(),
+        hasArtifacts = this.hasArtifacts
     )
 }
 

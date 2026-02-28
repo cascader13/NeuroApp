@@ -206,6 +206,8 @@ class AnalysisScreenViewModel @Inject constructor(
                     eegArt.qualityChannel2)
             }
         }
+
+
     }
 
     // Методы для сохранения данных в БД

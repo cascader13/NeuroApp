@@ -358,6 +358,15 @@ void onProductivityIndividualNFBUpdate(clCProductivity) noexcept {
 
 void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologicalStates_Baselines* baselines) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states baselines calibrated");
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+    jmethodID physioFun = env->GetMethodID(capsuleClass, "onPhysiologicalBaselineReceived", "(JFFFFF)V");
+    env->CallVoidMethod(javaCapsule, physioFun, static_cast<jlong>(baselines->timestampMilli),
+                                                static_cast<jfloat>(baselines->alpha),
+                                                static_cast<jfloat>(baselines->beta),
+                                                static_cast<jfloat>(baselines->alphaGravity),
+                                                static_cast<jfloat>(baselines->betaGravity),
+                                                static_cast<jfloat>(baselines->concentration));
 
 }
 

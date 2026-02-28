@@ -39,6 +39,10 @@ class RecordManager @Inject constructor(
     private val _nfbState = MutableStateFlow(NFBData())
     private var session = java.sql.Timestamp(System.currentTimeMillis())
 
+    fun getSession(): Timestamp{
+        return session
+    }
+
 
 
     // ID пользователя и экспедиции из SharedPreferences
@@ -180,6 +184,33 @@ class RecordManager @Inject constructor(
                     productivityIndexes.relaxationBaseline,
                     productivityIndexes.concentrationBaseline,
                     productivityIndexes.hasArtifacts
+                )
+            }
+        }
+
+        capsuleDM.productivityBaselineData.collectInScope(_scope) {productivityBaseline ->
+            if (isRecording){
+                saveProductivityBaselineData(
+                    productivityBaseline.time,
+                    productivityBaseline.gravity,
+                    productivityBaseline.productivity,
+                    productivityBaseline.fatigue,
+                    productivityBaseline.reverse_fatique,
+                    productivityBaseline.relaxation,
+                    productivityBaseline.concentration
+                )
+            }
+        }
+
+        capsuleDM.physiologicalBaselineData.collectInScope(_scope) {physiologicalBaseline ->
+            if(isRecording){
+                savePhysiologicalBaselineData(
+                    physiologicalBaseline.time,
+                    physiologicalBaseline.alpha,
+                    physiologicalBaseline.beta,
+                    physiologicalBaseline.alphaGravity,
+                    physiologicalBaseline.betaGravity,
+                    physiologicalBaseline.concentration
                 )
             }
         }
@@ -410,6 +441,55 @@ class RecordManager @Inject constructor(
             )
         }
     }
+
+    private fun saveProductivityBaselineData(
+        time: Long,
+        gravity: Float,
+        productivity: Float,
+        fatigue: Float,
+        reverseFatigue: Float,
+        relaxation: Float,
+        concentration: Float
+    ){
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.saveProductivityBaselines(
+                time,
+                userId,
+                expeditionId,
+                session,
+                gravity,
+                productivity,
+                fatigue,
+                reverseFatigue,
+                relaxation,
+                concentration
+            )
+        }
+    }
+
+    private fun savePhysiologicalBaselineData(
+        time: Long,
+        alpha: Float,
+        beta: Float,
+        alphaGravity: Float,
+        betaGravity: Float,
+        concentration: Float
+    ){
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
+            metricsRepository.savePhysiologicalBaselines(
+                time,
+                userId,
+                expeditionId,
+                session,
+                alpha,
+                beta,
+                alphaGravity,
+                betaGravity,
+                concentration
+            )
+        }
+    }
+
 
     private fun saveEmotionalData(
         time: Long,
