@@ -1,8 +1,6 @@
 package com.neuroproject.neuro.data
 
 import android.util.Log
-import androidx.compose.material3.Card
-import androidx.room.PrimaryKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -10,8 +8,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.collections.map
-import kotlin.math.exp
 
 @Singleton
 class MetricsRepository @Inject constructor(
@@ -78,18 +74,18 @@ class MetricsRepository @Inject constructor(
     private val mutex = Mutex()
 
 
-
-
-
-
-
-
-
-
-
-
-    fun saveNFBMetric(time: Long, id: String, exp_id: String,  date: java.sql.Timestamp,  alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
-        if(alpha > 1.0){ // артефакты будут отсеиваться(пока только для nfb)
+    fun saveNFBMetric(
+        time: Long,
+        id: String,
+        exp_id: String,
+        sessionId: Long,
+        alpha: Float,
+        beta: Float,
+        theta: Float,
+        delta: Float,
+        smr: Float
+    ) {
+        if (alpha > 1.0) { // артефакты будут отсеиваться(пока только для nfb)
             return
         }
         scope.launch {
@@ -97,8 +93,8 @@ class MetricsRepository @Inject constructor(
                 val metric = NFBMetricEntity(
                     timestamp = time,
                     id = id,
-                    exp_id,
-                    session = date,
+                    expedition_id = exp_id,
+                    sessionId = sessionId,
                     alpha = alpha,
                     beta = beta,
                     theta = theta,
@@ -108,12 +104,12 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertNFBMetric(metric)
                 mutex.withLock {
-                    if(nfbBuffer.firstTimestamp == null){
+                    if (nfbBuffer.firstTimestamp == null) {
                         nfbBuffer.firstTimestamp = time
                     }
                     nfbBuffer.values.add(metric)
 
-                    if(time - nfbBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - nfbBuffer.firstTimestamp!! >= 10_000) {
                         flushNfbBuffer()
                     }
                 }
@@ -123,71 +119,94 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveEEGRAWMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp,  channel1: Float, channel2: Float) {
+    fun saveEEGRAWMetric(
+        time: Long,
+        id: String,
+        exp_id: String,
+        sessionId: Long,
+        channel1: Float,
+        channel2: Float
+    ) {
         scope.launch {
             try {
                 val metric = EEGRawMetricEntity(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     channel1 = channel1,
                     channel2 = channel2,
                     isMarked = false
                 )
                 metricsDao.insertEEGRAWMetric(metric)
                 mutex.withLock {
-                    if(EEGRAWBuffer.firstTimestamp == null){
+                    if (EEGRAWBuffer.firstTimestamp == null) {
                         EEGRAWBuffer.firstTimestamp = time
                     }
                     EEGRAWBuffer.values.add(metric)
-                    if(time - EEGRAWBuffer.firstTimestamp!! >= 10_000){
+                    if (time - EEGRAWBuffer.firstTimestamp!! >= 10_000) {
                         flushEEGRAWBuffer()
                     }
                 }
-            }catch (e: Exception) {
+            } catch (e: Exception) {
                 Log.e("MetricsRepository", "Error saving EEG RAW metric", e)
             }
         }
     }
 
-    fun saveEEGPROCEEDMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, channel1: Float, channel2: Float) {
+    fun saveEEGPROCEEDMetric(
+        time: Long,
+        id: String,
+        exp_id: String,
+        sessionId: Long,
+        channel1: Float,
+        channel2: Float
+    ) {
         scope.launch {
             try {
                 val metric = EEGProceedMetricEntity(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     channel1 = channel1,
                     channel2 = channel2,
                     isMarked = false
                 )
                 metricsDao.insertEEGPROCEEDMetric(metric)
                 mutex.withLock {
-                    if(EEGPROCEEDBuffer.firstTimestamp == null){
+                    if (EEGPROCEEDBuffer.firstTimestamp == null) {
                         EEGPROCEEDBuffer.firstTimestamp = time
                     }
                     EEGPROCEEDBuffer.values.add(metric)
 
-                    if(time - EEGPROCEEDBuffer.firstTimestamp!! >= 10_000){
+                    if (time - EEGPROCEEDBuffer.firstTimestamp!! >= 10_000) {
                         flushEEGPROCEEDBuffer()
                     }
                 }
-            }catch (e: Exception) {
+            } catch (e: Exception) {
                 Log.e("MetricsRepository", "Error saving EEG PROCEED metric", e)
             }
         }
     }
 
-    fun saveEEGArtifactMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, artifactsChannel1: Boolean, artifactsChannel2: Boolean, qualityChannel1: Float, qualityChannel2: Float,) {
+    fun saveEEGArtifactMetric(
+        time: Long,
+        id: String,
+        exp_id: String,
+        sessionId: Long,
+        artifactsChannel1: Boolean,
+        artifactsChannel2: Boolean,
+        qualityChannel1: Float,
+        qualityChannel2: Float,
+    ) {
         scope.launch {
             try {
                 val metric = EEGArtifactsMetricEntity(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     artifactsChannel1 = artifactsChannel1,
                     artifactsChannel2 = artifactsChannel2,
                     qualityChannel1 = qualityChannel1,
@@ -196,15 +215,15 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertEEGArtifactsMetric(metric)
                 mutex.withLock {
-                    if(EEGArtifactBuffer.firstTimestamp == null){
+                    if (EEGArtifactBuffer.firstTimestamp == null) {
                         EEGArtifactBuffer.firstTimestamp = time
                     }
                     EEGArtifactBuffer.values.add(metric)
-                    if(time - EEGArtifactBuffer.firstTimestamp!! >= 10_000){
+                    if (time - EEGArtifactBuffer.firstTimestamp!! >= 10_000) {
                         flushEEGArtifactBuffer()
                     }
                 }
-            }catch (e: Exception) {
+            } catch (e: Exception) {
                 Log.e("MetricsRepository", "Error saving EEG Artifact metric", e)
             }
         }
@@ -214,7 +233,7 @@ class MetricsRepository @Inject constructor(
         time: Long,
         id: String,
         exp_id: String,
-        date: java.sql.Timestamp,
+        sessionId: Long,
         relax: Float,
         fatigue: Float,
         none: Float,
@@ -230,7 +249,7 @@ class MetricsRepository @Inject constructor(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     relax = relax,
                     fatigue = fatigue,
                     none = none,
@@ -243,11 +262,11 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertPhysiologicalMetric(metric)
                 mutex.withLock {
-                    if(PhysiologicalBuffer.firstTimestamp == null){
+                    if (PhysiologicalBuffer.firstTimestamp == null) {
                         PhysiologicalBuffer.firstTimestamp = time
                     }
                     PhysiologicalBuffer.values.add(metric)
-                    if(time - PhysiologicalBuffer.firstTimestamp!! >= 10_000){
+                    if (time - PhysiologicalBuffer.firstTimestamp!! >= 10_000) {
                         flushPhysiologicalBuffer()
                     }
                 }
@@ -258,8 +277,16 @@ class MetricsRepository @Inject constructor(
     }
 
     fun saveMEMSMetric(
-        time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, accX: Float, accY: Float, accZ: Float,
-        gyroX: Float, gyroY: Float, gyroZ: Float
+        time: Long,
+        id: String,
+        exp_id: String,
+        sessionId: Long,
+        accX: Float,
+        accY: Float,
+        accZ: Float,
+        gyroX: Float,
+        gyroY: Float,
+        gyroZ: Float
     ) {
         scope.launch {
             try {
@@ -267,7 +294,7 @@ class MetricsRepository @Inject constructor(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     accelerometerX = accX,
                     accelerometerY = accY,
                     accelerometerZ = accZ,
@@ -278,11 +305,11 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertMEMSMetric(metric)
                 mutex.withLock {
-                    if(MEMSBuffer.firstTimestamp == null){
+                    if (MEMSBuffer.firstTimestamp == null) {
                         MEMSBuffer.firstTimestamp = time
                     }
                     MEMSBuffer.values.add(metric)
-                    if(time - MEMSBuffer.firstTimestamp!! >= 10_000){
+                    if (time - MEMSBuffer.firstTimestamp!! >= 10_000) {
                         flushMEMSBuffer()
                     }
                 }
@@ -296,7 +323,7 @@ class MetricsRepository @Inject constructor(
         time: Long,
         id: String,
         exp_id: String,
-        date: java.sql.Timestamp,
+        sessionId: Long,
         gravity: Float,
         productivity: Float,
         fatigue: Float,
@@ -310,7 +337,7 @@ class MetricsRepository @Inject constructor(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     gravity = gravity,
                     productivity = productivity,
                     fatigue = fatigue,
@@ -321,13 +348,13 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertProductivityMetric(metric)
                 mutex.withLock {
-                    if(ProductivityBuffer.firstTimestamp == null){
+                    if (ProductivityBuffer.firstTimestamp == null) {
                         ProductivityBuffer.firstTimestamp = time
                     }
 
                     ProductivityBuffer.values.add(metric)
 
-                    if(time - ProductivityBuffer.firstTimestamp!! >= 10_000){
+                    if (time - ProductivityBuffer.firstTimestamp!! >= 10_000) {
                         flushProductivityBuffer()
                     }
                 }
@@ -341,7 +368,7 @@ class MetricsRepository @Inject constructor(
         time: Long,
         id: String,
         expedition_id: String,
-        session: java.sql.Timestamp,
+        sessionId: Long,
         relaxation: String,
         stress: String,
         gravityBaseline: Float,
@@ -351,30 +378,30 @@ class MetricsRepository @Inject constructor(
         relaxationBaselines: Float,
         concentrationBaselines: Float,
         hasArtifacts: Boolean
-    ){
-       scope.launch {
-           try{
-               val index = ProductivityIndexesEntity(
-                   timestamp = time,
-                   id = id,
-                   expedition_id = expedition_id,
-                   session = session,
-                   relaxation = relaxation,
-                   stress = stress,
-                   gravityBaseline = gravityBaseline,
-                   productivityBaseline = productivityBaseline,
-                   fatiqueBaseline = fatiqueBaseline,
-                   reverseFatiqueBaseline = reverseFatiqueBaseline,
-                   relaxationBaselines = relaxationBaselines,
-                   concentrationBaselines = concentrationBaselines,
-                   hasArtifacts =  hasArtifacts,
-                   isMarked = false
-               )
-               metricsDao.insertProductivityIndex(index);
-           } catch (e: Exception) {
-               Log.e("MetricsRepository", "Error saving productivity index", e)
-           }
-       }
+    ) {
+        scope.launch {
+            try {
+                val index = ProductivityIndexesEntity(
+                    timestamp = time,
+                    id = id,
+                    expedition_id = expedition_id,
+                    sessionId = sessionId,
+                    relaxation = relaxation,
+                    stress = stress,
+                    gravityBaseline = gravityBaseline,
+                    productivityBaseline = productivityBaseline,
+                    fatiqueBaseline = fatiqueBaseline,
+                    reverseFatiqueBaseline = reverseFatiqueBaseline,
+                    relaxationBaselines = relaxationBaselines,
+                    concentrationBaselines = concentrationBaselines,
+                    hasArtifacts = hasArtifacts,
+                    isMarked = false
+                )
+                metricsDao.insertProductivityIndex(index);
+            } catch (e: Exception) {
+                Log.e("MetricsRepository", "Error saving productivity index", e)
+            }
+        }
 
 
     }
@@ -383,21 +410,21 @@ class MetricsRepository @Inject constructor(
         time: Long,
         id: String,
         expedition_id: String,
-        session: java.sql.Timestamp,
+        sessionId: Long,
         gravity: Float,
         productivity: Float,
         fatigue: Float,
         reverseFatigue: Float,
         relaxation: Float,
         concentration: Float
-    ){
+    ) {
         scope.launch {
-            try{
+            try {
                 val index = ProductivityBaselinesEntity(
                     timestamp = time,
                     id = id,
                     expedition_id = expedition_id,
-                    session = session,
+                    sessionId = sessionId,
                     gravity = gravity,
                     productivity = productivity,
                     fatigue = fatigue,
@@ -419,20 +446,20 @@ class MetricsRepository @Inject constructor(
         time: Long,
         id: String,
         expedition_id: String,
-        session: java.sql.Timestamp,
+        sessionId: Long,
         alpha: Float,
         beta: Float,
         alphaGravity: Float,
         betaGravity: Float,
         concentration: Float
-    ){
+    ) {
         scope.launch {
-            try{
+            try {
                 val index = PhysiologicalBaselinesEntity(
                     timestamp = time,
                     id = id,
                     expedition_id = expedition_id,
-                    session = session,
+                    sessionId = sessionId,
                     alpha = alpha,
                     beta = beta,
                     alphaGravity = alphaGravity,
@@ -453,7 +480,7 @@ class MetricsRepository @Inject constructor(
         time: Long,
         id: String,
         exp_id: String,
-        date: java.sql.Timestamp,
+        sessionId: Long,
         attention: Float,
         relaxation: Float,
         cognitiveLoad: Float,
@@ -466,7 +493,7 @@ class MetricsRepository @Inject constructor(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     attention = attention,
                     relaxation = relaxation,
                     cognitiveLoad = cognitiveLoad,
@@ -476,13 +503,13 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertEmotionalMetric(metric)
                 mutex.withLock {
-                    if(EmotionalBuffer.firstTimestamp == null){
+                    if (EmotionalBuffer.firstTimestamp == null) {
                         EmotionalBuffer.firstTimestamp = time
                     }
 
                     EmotionalBuffer.values.add(metric)
 
-                    if(time - EmotionalBuffer.firstTimestamp!! >= 10_000){
+                    if (time - EmotionalBuffer.firstTimestamp!! >= 10_000) {
                         flushEmotionalBuffer()
                     }
                 }
@@ -492,14 +519,26 @@ class MetricsRepository @Inject constructor(
         }
     }
 
-    fun saveCardioMetric(time: Long, id: String,  exp_id: String, date: java.sql.Timestamp, heartRate: Float, hasArtifacts:Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionAtrifacts: Boolean, skinContact: Boolean, stressIndex: Float) {
+    fun saveCardioMetric(
+        time: Long,
+        id: String,
+        exp_id: String,
+        sessionId: Long,
+        heartRate: Float,
+        hasArtifacts: Boolean,
+        kaplanIndex: Float,
+        metricsAvailable: Boolean,
+        motionAtrifacts: Boolean,
+        skinContact: Boolean,
+        stressIndex: Float
+    ) {
         scope.launch {
             try {
                 val metric = CardioMetricEntity(
                     timestamp = time,
                     id = id,
                     expedition_id = exp_id,
-                    session = date,
+                    sessionId = sessionId,
                     heartRate = heartRate,
                     hasArtifacts = hasArtifacts,
                     kaplanIndex = kaplanIndex,
@@ -511,13 +550,13 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertCardioMetric(metric)
                 mutex.withLock {
-                    if(CardioBuffer.firstTimestamp == null){
+                    if (CardioBuffer.firstTimestamp == null) {
                         CardioBuffer.firstTimestamp = time
                     }
 
                     CardioBuffer.values.add(metric)
 
-                    if(time - CardioBuffer.firstTimestamp!! >= 10_000){
+                    if (time - CardioBuffer.firstTimestamp!! >= 10_000) {
                         flushCardioBuffer()
                     }
                 }
@@ -565,7 +604,7 @@ class MetricsRepository @Inject constructor(
             timestamp = nfbBuffer.firstTimestamp!!, // начало минутного интервала
             id = nfbBuffer.values.first().id,
             expedition_id = nfbBuffer.values.first().expedition_id,
-            session = nfbBuffer.values.first().session,
+            sessionId = nfbBuffer.values.first().sessionId,
             alpha = nfbBuffer.values.map { it.alpha }.median(),
             beta = nfbBuffer.values.map { it.beta }.median(),
             theta = nfbBuffer.values.map { it.theta }.median(),
@@ -588,9 +627,9 @@ class MetricsRepository @Inject constructor(
             timestamp = EEGRAWBuffer.firstTimestamp!!, // начало минутного интервала
             id = EEGRAWBuffer.values.first().id,
             expedition_id = EEGRAWBuffer.values.first().expedition_id,
-            session = EEGRAWBuffer.values.first().session,
+            sessionId = EEGRAWBuffer.values.first().sessionId,
             channel1 = EEGRAWBuffer.values.map { it.channel1 }.median(),
-            channel2 = EEGRAWBuffer.values.map {it.channel2}.median(),
+            channel2 = EEGRAWBuffer.values.map { it.channel2 }.median(),
             isMarked = false
         )
         metricsDao.insertEEGRAWCompressedMetric(compressed)
@@ -608,9 +647,9 @@ class MetricsRepository @Inject constructor(
             timestamp = EEGPROCEEDBuffer.firstTimestamp!!, // начало минутного интервала
             id = EEGPROCEEDBuffer.values.first().id,
             expedition_id = EEGPROCEEDBuffer.values.first().expedition_id,
-            session = EEGPROCEEDBuffer.values.first().session,
+            sessionId = EEGPROCEEDBuffer.values.first().sessionId,
             channel1 = EEGPROCEEDBuffer.values.map { it.channel1 }.median(),
-            channel2 = EEGPROCEEDBuffer.values.map {it.channel2}.median(),
+            channel2 = EEGPROCEEDBuffer.values.map { it.channel2 }.median(),
             isMarked = false
         )
         metricsDao.insertEEGPROCEEDCompressedMetric(compressed)
@@ -628,11 +667,11 @@ class MetricsRepository @Inject constructor(
             timestamp = EEGArtifactBuffer.firstTimestamp!!, // начало минутного интервала
             id = EEGArtifactBuffer.values.first().id,
             expedition_id = EEGArtifactBuffer.values.first().expedition_id,
-            session = EEGArtifactBuffer.values.first().session,
+            sessionId = EEGArtifactBuffer.values.first().sessionId,
             artifactsChannel1 = EEGArtifactBuffer.values.map { it.artifactsChannel1 }.majority(),
             artifactsChannel2 = EEGArtifactBuffer.values.map { it.artifactsChannel2 }.majority(),
             qualityChannel1 = EEGArtifactBuffer.values.map { it.qualityChannel1 }.median(),
-            qualityChannel2 = EEGArtifactBuffer.values.map {it.qualityChannel2}.median(),
+            qualityChannel2 = EEGArtifactBuffer.values.map { it.qualityChannel2 }.median(),
             isMarked = false
         )
         metricsDao.insertEEGArtifactsCompressedMetric(compressed)
@@ -642,7 +681,7 @@ class MetricsRepository @Inject constructor(
         EEGArtifactBuffer.firstTimestamp = null
     }
 
-    private suspend fun flushPhysiologicalBuffer(){
+    private suspend fun flushPhysiologicalBuffer() {
         if (PhysiologicalBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
@@ -650,7 +689,7 @@ class MetricsRepository @Inject constructor(
             timestamp = PhysiologicalBuffer.firstTimestamp!!, // начало минутного интервала
             id = PhysiologicalBuffer.values.first().id,
             expedition_id = PhysiologicalBuffer.values.first().expedition_id,
-            session = PhysiologicalBuffer.values.first().session,
+            sessionId = PhysiologicalBuffer.values.first().sessionId,
             relax = PhysiologicalBuffer.values.map { it.relax }.median(),
             fatigue = PhysiologicalBuffer.values.map { it.fatigue }.median(),
             none = PhysiologicalBuffer.values.map { it.none }.median(),
@@ -668,7 +707,7 @@ class MetricsRepository @Inject constructor(
         PhysiologicalBuffer.firstTimestamp = null
     }
 
-    private suspend fun flushEmotionalBuffer(){
+    private suspend fun flushEmotionalBuffer() {
         if (EmotionalBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
@@ -676,12 +715,12 @@ class MetricsRepository @Inject constructor(
             timestamp = EmotionalBuffer.firstTimestamp!!, // начало минутного интервала
             id = EmotionalBuffer.values.first().id,
             expedition_id = EmotionalBuffer.values.first().expedition_id,
-            session = EmotionalBuffer.values.first().session,
+            sessionId = EmotionalBuffer.values.first().sessionId,
             attention = EmotionalBuffer.values.map { it.attention }.median(),
             relaxation = EmotionalBuffer.values.map { it.relaxation }.median(),
             cognitiveLoad = EmotionalBuffer.values.map { it.cognitiveLoad }.median(),
             cognitiveControl = EmotionalBuffer.values.map { it.cognitiveControl }.median(),
-            selfControl = EmotionalBuffer.values.map {it.selfControl}.median(),
+            selfControl = EmotionalBuffer.values.map { it.selfControl }.median(),
             isMarked = false
         )
         metricsDao.insertEmotionalCompressedMetric(compressed)
@@ -691,7 +730,7 @@ class MetricsRepository @Inject constructor(
         EmotionalBuffer.firstTimestamp = null
     }
 
-    private suspend fun flushProductivityBuffer(){
+    private suspend fun flushProductivityBuffer() {
         if (ProductivityBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
@@ -699,7 +738,7 @@ class MetricsRepository @Inject constructor(
             timestamp = ProductivityBuffer.firstTimestamp!!, // начало минутного интервала
             id = ProductivityBuffer.values.first().id,
             expedition_id = ProductivityBuffer.values.first().id,
-            session = ProductivityBuffer.values.first().session,
+            sessionId = ProductivityBuffer.values.first().sessionId,
             gravity = ProductivityBuffer.values.map { it.gravity }.median(),
             productivity = ProductivityBuffer.values.map { it.productivity }.median(),
             fatigue = ProductivityBuffer.values.map { it.fatigue }.median(),
@@ -715,7 +754,7 @@ class MetricsRepository @Inject constructor(
         ProductivityBuffer.firstTimestamp = null
     }
 
-    suspend fun flushMEMSBuffer(){
+    suspend fun flushMEMSBuffer() {
         if (MEMSBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
@@ -723,7 +762,7 @@ class MetricsRepository @Inject constructor(
             timestamp = MEMSBuffer.firstTimestamp!!, // начало минутного интервала
             id = MEMSBuffer.values.first().id,
             expedition_id = MEMSBuffer.values.first().id,
-            session = MEMSBuffer.values.first().session,
+            sessionId = MEMSBuffer.values.first().sessionId,
             accelerometerX = MEMSBuffer.values.map { it.accelerometerX }.median(),
             accelerometerY = MEMSBuffer.values.map { it.accelerometerY }.median(),
             accelerometerZ = MEMSBuffer.values.map { it.accelerometerZ }.median(),
@@ -739,7 +778,7 @@ class MetricsRepository @Inject constructor(
         MEMSBuffer.firstTimestamp = null
     }
 
-    private suspend fun flushCardioBuffer(){
+    private suspend fun flushCardioBuffer() {
         if (CardioBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
@@ -747,7 +786,7 @@ class MetricsRepository @Inject constructor(
             timestamp = CardioBuffer.firstTimestamp!!, // начало минутного интервала
             id = CardioBuffer.values.first().id,
             expedition_id = CardioBuffer.values.first().expedition_id,
-            session = CardioBuffer.values.first().session,
+            sessionId = CardioBuffer.values.first().sessionId,
             heartRate = CardioBuffer.values.map { it.heartRate }.median(),
             hasArtifacts = CardioBuffer.values.map { it.hasArtifacts }.majority(),
             kaplanIndex = CardioBuffer.values.map { it.kaplanIndex }.median(),
@@ -763,7 +802,6 @@ class MetricsRepository @Inject constructor(
         CardioBuffer.values.clear()
         CardioBuffer.firstTimestamp = null
     }
-
 
 
     private fun List<Float>.median(): Float {

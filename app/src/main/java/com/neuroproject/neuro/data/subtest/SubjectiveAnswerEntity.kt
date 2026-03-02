@@ -23,7 +23,7 @@ data class SubjectiveAnswerEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
-    val sessionId: java.sql.Timestamp,   // К какой сессии относится
+    val sessionId: Long,   // К какой сессии относится
     val questionId: Int,   // Какой вопрос
     val value: Int,        // Ответ 1-10
 )

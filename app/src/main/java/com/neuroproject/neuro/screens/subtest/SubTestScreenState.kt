@@ -1,7 +1,9 @@
-//package com.neuroproject.neuro.screens.subtest
-//
-//sealed class SubTestScreenState {
-//    object Instruction : SubTestScreenState()
-//    object Question : SubTestScreenState()
-//    object Comment : SubTestScreenState()
-//}
+package com.neuroproject.neuro.screens.subtest
+
+sealed class SubTestScreenState {
+    object Instruction : SubTestScreenState() // Вывод инструкции к тесту, кнопка начать
+    object Question : SubTestScreenState()    // Вывод всех вопросов по очереди
+    object Comment : SubTestScreenState()     // Окно для ввода комментария по сессии
+    object Waiting : SubTestScreenState() // Ожидание, если тест закончился, таймер не закончился
+    object Result : SubTestScreenState() // Вывод результатов
+}

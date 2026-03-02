@@ -7,7 +7,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import java.sql.Timestamp
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.EmptyCoroutineContext
@@ -23,7 +22,8 @@ class RecordManager @Inject constructor(
 ) {
     private var _instance = this
 
-    private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+    private val sharedPreferences =
+        context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
 
     init {
         _instance = this
@@ -37,12 +37,16 @@ class RecordManager @Inject constructor(
 
     private var isSetup = false
     private val _nfbState = MutableStateFlow(NFBData())
-    private var session = java.sql.Timestamp(System.currentTimeMillis())
 
-    fun getSession(): Timestamp{
-        return session
+    private var currentSessionId: Long? = null
+
+    fun setSessionId(sessionId: Long) {
+        currentSessionId = sessionId
     }
 
+    fun getSession(): Long? {
+        return currentSessionId
+    }
 
 
     // ID пользователя и экспедиции из SharedPreferences
@@ -63,16 +67,15 @@ class RecordManager @Inject constructor(
         Log.d("RecordManager", "IDs refreshed - userId: $userId, expeditionId: $expeditionId")
     }
 
-    fun setSession(Tsession: Timestamp) {
-        session = Tsession
-    }
-
     fun startRecording() {
         if (!isSetup) setupCapsuleListeners()
         // Обновляем ID перед началом записи, чтобы использовать актуальные значения
         refreshIds()
         isRecording = true
-        Log.d("Record Manager", "Recording started with userId: $userId, expeditionId: $expeditionId")
+        Log.d(
+            "Record Manager",
+            "Recording started with userId: $userId, expeditionId: $expeditionId"
+        )
     }
 
     suspend fun stopRecording() {
@@ -96,17 +99,18 @@ class RecordManager @Inject constructor(
     private fun setupCapsuleListeners() {
         isSetup = true
         // Слушатель для NFB данных
-        capsuleDM.nfbReceived = { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->
-            _scope.launch {
-                // Обновляем NFB данные
-                _nfbState.emit(NFBData(time, alpha, beta, theta, delta, smr))
+        capsuleDM.nfbReceived =
+            { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->
+                _scope.launch {
+                    // Обновляем NFB данные
+                    _nfbState.emit(NFBData(time, alpha, beta, theta, delta, smr))
 
-                // Автоматически сохраняем данные при записи
-                if (isRecording) {
-                    saveNFBData(time, alpha, beta, theta, delta, smr)
+                    // Автоматически сохраняем данные при записи
+                    if (isRecording) {
+                        saveNFBData(time, alpha, beta, theta, delta, smr)
+                    }
                 }
             }
-        }
 
         // Слушатель для физиологических данных
         capsuleDM.physiologicalData.collectInScope(_scope) { data ->
@@ -172,7 +176,7 @@ class RecordManager @Inject constructor(
         }
 
         capsuleDM.productivityIndexData.collectInScope(_scope) { productivityIndexes ->
-            if (isRecording){
+            if (isRecording) {
                 saveProductivityIndexData(
                     productivityIndexes.time,
                     productivityIndexes.relaxation,
@@ -188,8 +192,8 @@ class RecordManager @Inject constructor(
             }
         }
 
-        capsuleDM.productivityBaselineData.collectInScope(_scope) {productivityBaseline ->
-            if (isRecording){
+        capsuleDM.productivityBaselineData.collectInScope(_scope) { productivityBaseline ->
+            if (isRecording) {
                 saveProductivityBaselineData(
                     productivityBaseline.time,
                     productivityBaseline.gravity,
@@ -202,8 +206,8 @@ class RecordManager @Inject constructor(
             }
         }
 
-        capsuleDM.physiologicalBaselineData.collectInScope(_scope) {physiologicalBaseline ->
-            if(isRecording){
+        capsuleDM.physiologicalBaselineData.collectInScope(_scope) { physiologicalBaseline ->
+            if (isRecording) {
                 savePhysiologicalBaselineData(
                     physiologicalBaseline.time,
                     physiologicalBaseline.alpha,
@@ -237,7 +241,11 @@ class RecordManager @Inject constructor(
 
         capsuleDM.eegProcessedData.collectInScope(_scope) { eegProceed ->
             if (isRecording) {
-                saveEEGPROCEEDData(eegProceed.timeStampMilli, eegProceed.channel1, eegProceed.channel2)
+                saveEEGPROCEEDData(
+                    eegProceed.timeStampMilli,
+                    eegProceed.channel1,
+                    eegProceed.channel2
+                )
             }
         }
 
@@ -254,14 +262,31 @@ class RecordManager @Inject constructor(
         }
     }
 
-    private fun saveNFBData(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
+    private fun saveNFBData(
+        time: Long,
+        alpha: Float,
+        beta: Float,
+        theta: Float,
+        delta: Float,
+        smr: Float
+    ) {
         if (userId.isNotEmpty() && expeditionId.isNotEmpty() && alpha <= 1.0) {
-            metricsRepository.saveNFBMetric(time, userId, expeditionId, session, alpha, beta, theta, delta, smr)
+            metricsRepository.saveNFBMetric(
+                time,
+                userId,
+                expeditionId,
+                currentSessionId ?: return,
+                alpha,
+                beta,
+                theta,
+                delta,
+                smr
+            )
             Log.d("RecordManager", "NFB data saved: alpha=$alpha, beta=$beta")
         } else {
-            if(alpha > 1){
+            if (alpha > 1) {
                 Log.e("RecordManager", "Invalid NFB data");
-            }else {
+            } else {
                 Log.e("RecordManager", "Cannot save NFB data: userId or expeditionId is empty")
             }
         }
@@ -269,7 +294,14 @@ class RecordManager @Inject constructor(
 
     private fun saveEEGRAWData(time: Long, channel1: Float, channel2: Float) {
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
-            metricsRepository.saveEEGRAWMetric(time, userId, expeditionId, session, channel1, channel2)
+            metricsRepository.saveEEGRAWMetric(
+                time,
+                userId,
+                expeditionId,
+                currentSessionId ?: return,
+                channel1,
+                channel2
+            )
         } else {
             Log.e("RecordManager", "Cannot save EEG RAW data: userId or expeditionId is empty")
         }
@@ -277,7 +309,14 @@ class RecordManager @Inject constructor(
 
     private fun saveEEGPROCEEDData(time: Long, channel1: Float, channel2: Float) {
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
-            metricsRepository.saveEEGPROCEEDMetric(time, userId, expeditionId, session, channel1, channel2)
+            metricsRepository.saveEEGPROCEEDMetric(
+                time,
+                userId,
+                expeditionId,
+                currentSessionId ?: return,
+                channel1,
+                channel2
+            )
         } else {
             Log.e("RecordManager", "Cannot save EEG PROCEED data: userId or expeditionId is empty")
         }
@@ -295,7 +334,7 @@ class RecordManager @Inject constructor(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 ArtifactChannel1,
                 ArtifactChannel2,
                 QualityChannel1,
@@ -322,7 +361,7 @@ class RecordManager @Inject constructor(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 relax,
                 fatigue,
                 none,
@@ -333,7 +372,10 @@ class RecordManager @Inject constructor(
                 cardioArtifacts
             )
         } else {
-            Log.e("RecordManager", "Cannot save Physiological data: userId or expeditionId is empty")
+            Log.e(
+                "RecordManager",
+                "Cannot save Physiological data: userId or expeditionId is empty"
+            )
         }
     }
 
@@ -352,7 +394,7 @@ class RecordManager @Inject constructor(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 heartRate,
                 hasArtifacts,
                 kaplanIndex,
@@ -375,7 +417,7 @@ class RecordManager @Inject constructor(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 accX, accY, accZ,
                 gyroX, gyroY, gyroZ
             )
@@ -398,7 +440,7 @@ class RecordManager @Inject constructor(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 gravity,
                 productivity,
                 fatigue,
@@ -422,13 +464,13 @@ class RecordManager @Inject constructor(
         relaxationBaseline: Float,
         concentrationBaseline: Float,
         hasArtifacts: Boolean = false
-    ){
+    ) {
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
             metricsRepository.saveProductivityIndexes(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 relaxation,
                 stress,
                 gravityBaseline,
@@ -450,13 +492,13 @@ class RecordManager @Inject constructor(
         reverseFatigue: Float,
         relaxation: Float,
         concentration: Float
-    ){
+    ) {
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
             metricsRepository.saveProductivityBaselines(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 gravity,
                 productivity,
                 fatigue,
@@ -474,13 +516,13 @@ class RecordManager @Inject constructor(
         alphaGravity: Float,
         betaGravity: Float,
         concentration: Float
-    ){
+    ) {
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
             metricsRepository.savePhysiologicalBaselines(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 alpha,
                 beta,
                 alphaGravity,
@@ -504,7 +546,7 @@ class RecordManager @Inject constructor(
                 time,
                 userId,
                 expeditionId,
-                session,
+                currentSessionId ?: return,
                 attention,
                 relaxation,
                 cognitiveLoad,

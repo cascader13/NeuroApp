@@ -1,7 +1,30 @@
 package com.neuroproject.neuro.data
 
-import com.neuroproject.neuro.data.remote.*
-import java.sql.Timestamp
+import com.neuroproject.neuro.data.remote.CardioMetricCompressedDto
+import com.neuroproject.neuro.data.remote.CardioMetricDto
+import com.neuroproject.neuro.data.remote.EEGArtifactMetricCompressedDto
+import com.neuroproject.neuro.data.remote.EEGArtifactMetricDto
+import com.neuroproject.neuro.data.remote.EEGProceedMetricCompressedDto
+import com.neuroproject.neuro.data.remote.EEGProceedMetricDto
+import com.neuroproject.neuro.data.remote.EEGRawMetricCompressedDto
+import com.neuroproject.neuro.data.remote.EEGRawMetricDto
+import com.neuroproject.neuro.data.remote.EmotionalMetricCompressedDto
+import com.neuroproject.neuro.data.remote.EmotionalMetricDto
+import com.neuroproject.neuro.data.remote.MemsMetricCompressedDto
+import com.neuroproject.neuro.data.remote.MemsMetricDto
+import com.neuroproject.neuro.data.remote.NfbMetricCompressedDto
+import com.neuroproject.neuro.data.remote.NfbMetricDto
+import com.neuroproject.neuro.data.remote.PhysiologicalBaselineDto
+import com.neuroproject.neuro.data.remote.PhysiologicalMetricCompressedDto
+import com.neuroproject.neuro.data.remote.PhysiologicalMetricDto
+import com.neuroproject.neuro.data.remote.ProductivityBaselineDto
+import com.neuroproject.neuro.data.remote.ProductivityIndexDto
+import com.neuroproject.neuro.data.remote.ProductivityMetricCompressedDto
+import com.neuroproject.neuro.data.remote.ProductivityMetricDto
+
+
+// Для преобразования sessionId к инту
+fun Long.toSecondsInt(): Int = (this / 1000).toInt()
 
 // Существующие функции расширения для uncompressed entities
 fun NFBMetricEntity.toServerDto(): NfbMetricDto {
@@ -9,7 +32,7 @@ fun NFBMetricEntity.toServerDto(): NfbMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         alpha = this.alpha.toDouble(),
         beta = this.beta.toDouble(),
         theta = this.theta.toDouble(),
@@ -23,7 +46,7 @@ fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         relax = this.relax.toDouble(),
         fatigue = this.fatigue.toDouble(),
         none = this.none.toDouble(),
@@ -40,7 +63,7 @@ fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
         channel2 = this.channel2
     )
@@ -51,7 +74,7 @@ fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
         channel2 = this.channel2
     )
@@ -62,7 +85,7 @@ fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         artifactsChannel1 = this.artifactsChannel1,
         artifactsChannel2 = this.artifactsChannel2,
         qualityChannel1 = this.qualityChannel1,
@@ -75,7 +98,7 @@ fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         accelerometerX = this.accelerometerX.toDouble(),
         accelerometerY = this.accelerometerY.toDouble(),
         accelerometerZ = this.accelerometerZ.toDouble(),
@@ -90,7 +113,7 @@ fun ProductivityMetricEntity.toServerDto(): ProductivityMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         gravity = this.gravity.toDouble(),
         productivity = this.productivity.toDouble(),
         fatigue = this.fatigue.toDouble(),
@@ -105,7 +128,7 @@ fun EmotionalMetricEntity.toServerDto(): EmotionalMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         attention = this.attention.toDouble(),
         relaxation = this.relaxation.toDouble(),
         cognitiveLoad = this.cognitiveLoad.toDouble(),
@@ -119,7 +142,7 @@ fun CardioMetricEntity.toServerDto(): CardioMetricDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         heartRate = this.heartRate.toDouble(),
         hasArtifacts = if (this.hasArtifacts) 1 else 0,
         kaplanIndex = this.kaplanIndex.toDouble(),
@@ -136,7 +159,7 @@ fun NFBMetricCompressedEntity.toServerDto(): NfbMetricCompressedDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         alpha = this.alpha.toDouble(),
         beta = this.beta.toDouble(),
         theta = this.theta.toDouble(),
@@ -150,7 +173,7 @@ fun PhysiologicalMetricCompressedEntity.toServerDto(): PhysiologicalMetricCompre
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         relax = this.relax.toDouble(),
         fatigue = this.fatigue.toDouble(),
         none = this.none.toDouble(),
@@ -167,7 +190,7 @@ fun EEGRawMetricCompressedEntity.toServerDto(): EEGRawMetricCompressedDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
         channel2 = this.channel2
     )
@@ -178,7 +201,7 @@ fun EEGProceedMetricCompressedEntity.toServerDto(): EEGProceedMetricCompressedDt
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
         channel2 = this.channel2
     )
@@ -189,7 +212,7 @@ fun EEGArtifactsMetricCompressedEntity.toServerDto(): EEGArtifactMetricCompresse
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         artifactsChannel1 = this.artifactsChannel1,
         artifactsChannel2 = this.artifactsChannel2,
         qualityChannel1 = this.qualityChannel1,
@@ -202,7 +225,7 @@ fun MEMSMetricCompressedEntity.toServerDto(): MemsMetricCompressedDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         accelerometerX = this.accelerometerX.toDouble(),
         accelerometerY = this.accelerometerY.toDouble(),
         accelerometerZ = this.accelerometerZ.toDouble(),
@@ -217,7 +240,7 @@ fun ProductivityMetricCompressedEntity.toServerDto(): ProductivityMetricCompress
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         gravity = this.gravity.toDouble(),
         productivity = this.productivity.toDouble(),
         fatigue = this.fatigue.toDouble(),
@@ -232,7 +255,7 @@ fun EmotionalMetricCompressedEntity.toServerDto(): EmotionalMetricCompressedDto 
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         attention = this.attention.toDouble(),
         relaxation = this.relaxation.toDouble(),
         cognitiveLoad = this.cognitiveLoad.toDouble(),
@@ -246,7 +269,7 @@ fun CardioMetricCompressedEntity.toServerDto(): CardioMetricCompressedDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         heartRate = this.heartRate.toDouble(),
         hasArtifacts = if (this.hasArtifacts) 1 else 0,
         kaplanIndex = this.kaplanIndex.toDouble(),
@@ -263,7 +286,7 @@ fun PhysiologicalBaselinesEntity.toServerDto(): PhysiologicalBaselineDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         alpha = this.alpha.toDouble(),
         beta = this.beta.toDouble(),
         alphaGravity = this.alphaGravity.toDouble(),
@@ -277,7 +300,7 @@ fun ProductivityBaselinesEntity.toServerDto(): ProductivityBaselineDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         gravity = this.gravity.toDouble(),
         productivity = this.productivity.toDouble(),
         fatigue = this.fatigue.toDouble(),
@@ -292,7 +315,7 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
         individualNumber = this.id,
         expeditionId = this.expedition_id,
         timestamp = this.timestamp,
-        session = this.session.toInt(),
+        session = this.sessionId.toSecondsInt(),
         relaxation = this.relaxation,
         stress = this.stress,
         gravityBaseline = this.gravityBaseline.toDouble(),
@@ -303,9 +326,4 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
         concentrationBaseline = this.concentrationBaselines.toDouble(),
         hasArtifacts = this.hasArtifacts
     )
-}
-
-// Extension для преобразования Timestamp в Int
-fun Timestamp.toInt(): Int {
-    return (this.time / 1000).toInt()
 }

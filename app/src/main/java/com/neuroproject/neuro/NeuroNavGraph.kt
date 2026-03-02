@@ -9,14 +9,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.navigation
-import com.neuroproject.neuro.screens.analysis.AnalysisScreen
-import com.neuroproject.neuro.screens.blank.BlankScreen
+import androidx.navigation.compose.rememberNavController
 import com.neuroproject.neuro.screens.calibration.CalibrationScreen
 import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
 import com.neuroproject.neuro.screens.login.LoginScreen
 import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
+import com.neuroproject.neuro.screens.subtest.SubTestScreen
 
 @Composable
 fun NeuroNavGraph(
@@ -32,16 +31,6 @@ fun NeuroNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-       /*composable(NavDestinations.SUB_TEST) {
-            com.neuroproject.neuro.screens.subtest.SubTestScreen(
-                onFinished = {
-                    navActions.navigateToMain()
-                }
-                /*onDeviceUnconnected = {
-                    navActions.navigateToMain()
-                }*/
-            )
-        }*/
 
         // Экран логина
         composable(NavDestinations.LOGIN) {
@@ -71,17 +60,7 @@ fun NeuroNavGraph(
             )
         }
 
-//       composable(NavDestinations.SUB_TEST) {
-//            com.neuroproject.neuro.screens.subtest.SubTestScreen(
-//                onFinished = {
-//                    navActions.navigateToAnalysis()
-//                },
-//                /*onDeviceUnconnected = {
-//                    navActions.navigateToMain()
-//                }*/
-//            )
-//        }
-
+        // Экран настроек
         composable(NavDestinations.SETTINGS){
             com.neuroproject.neuro.screens.settings.SettingsScreen(
                 modifier = Modifier.safeDrawingPadding(),
@@ -91,7 +70,6 @@ fun NeuroNavGraph(
                 vm = hiltViewModel(),
             )
         }
-
 
         navigation(
             startDestination = NavDestinations.SEARCH,
@@ -136,39 +114,19 @@ fun NeuroNavGraph(
                         navActions.navigateToMain()
                     },
                     onCalibrationComplete = {
-                        navActions.navigateToBlank()
-                    },
-                    vm = hiltViewModel()
-                )
-
-            }
-
-//            composable(NavDestinations.ANALYSIS) {
-//                AnalysisScreen(
-//                    modifier = Modifier.safeDrawingPadding(),
-//                    onBackPressed = {
-//                        navActions.navigateToMain()
-//                    },
-//                    onDeviceUnconnected = {
-//                        navActions.navigateToMain()
-//                    },
-//                    vm = hiltViewModel()
-//                )
-//            }
-
-            composable(NavDestinations.BLANK) {
-                BlankScreen(
-                    modifier = Modifier.safeDrawingPadding(),
-                    onBackPressed = {
-                        navActions.navigateToMain()
-                    },
-                    onDeviceUnconnected = {
-                        navActions.navigateToMain()
+                        navActions.navigateToSubTest()
                     },
                     vm = hiltViewModel()
                 )
             }
 
+            composable(NavDestinations.SUB_TEST) {
+                SubTestScreen(
+                    onFinish = {
+                        navActions.navigateToMain()
+                    }
+                )
+            }
         }
     }
 }

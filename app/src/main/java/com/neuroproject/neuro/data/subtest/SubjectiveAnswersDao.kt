@@ -11,5 +11,5 @@ interface SubjectiveAnswerDao {
     suspend fun insert(answer: SubjectiveAnswerEntity)
 
     @Query("SELECT * FROM subjective_answers WHERE sessionId = :sessionId")
-    suspend fun getBySession(sessionId: java.sql.Timestamp): List<SubjectiveAnswerEntity>
+    suspend fun getBySession(sessionId: Long): List<SubjectiveAnswerEntity>
 }
