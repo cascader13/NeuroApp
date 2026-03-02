@@ -7,6 +7,7 @@ import com.neuroproject.neuro.data.SessionDao
 import com.neuroproject.neuro.data.SessionEntity
 import com.neuroproject.neuro.data.subtest.BlockType
 import com.neuroproject.neuro.data.subtest.SubjectiveAnswerDao
+import com.neuroproject.neuro.data.subtest.SubjectiveAnswerEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionRepository
 import com.neuroproject.neuro.services.RecordManager
@@ -135,12 +136,12 @@ class SubTestViewModel @Inject constructor(
         // Сохраняем ответ в БД
         viewModelScope.launch {
             sessionId?.let { sid ->
-//                val answerEntity = SubjectiveAnswerEntity(
-//                    sessionId = Timestamp(sid),
-//                    questionId = question.id,
-//                    value = answer
-//                )
-//                answerDao.insert(answerEntity)
+                val answerEntity = SubjectiveAnswerEntity(
+                    sessionId = sid,  // Убираем Timestamp, т.к. sessionId это Long
+                    questionId = question.id,
+                    value = answer
+                )
+                answerDao.insert(answerEntity)
             }
         }
 
