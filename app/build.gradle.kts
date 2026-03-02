@@ -34,11 +34,13 @@ android {
             abiFilters.add("arm64-v8a")
         }
     }
+
     externalNativeBuild {
         cmake {
             path = File("src/main/cpp/CMakeLists.txt")
         }
     }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -48,16 +50,20 @@ android {
             )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
+
     buildFeatures {
         compose = true
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -68,11 +74,18 @@ android {
 dependencies {
     implementation(libs.androidx.material.icons.extended)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.common.jvm)
-    annotationProcessor(libs.androidx.room.compiler)
-    kapt(libs.androidx.room.compiler)
-    implementation(libs.androidx.room.ktx)
+
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+
+
+    kapt("androidx.room:room-compiler:$roomVersion") {
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-metadata-jvm")
+    }
+
+
+    kapt("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.9.0")
 
     implementation("com.geyifeng.immersionbar:immersionbar:3.2.2")
     implementation("com.geyifeng.immersionbar:immersionbar-ktx:3.2.2")
@@ -90,7 +103,10 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation(files("libs/CapsuleService.aar"))
     implementation(files("libs/devicedriver.aar"))
+
+
     kapt("com.google.dagger:hilt-android-compiler:2.49")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -108,9 +124,21 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 
+
+kapt {
+    correctErrorTypes = true
+    useBuildCache = false
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.incremental", "true")
+        arg("room.expandProjection", "true")
+    }
+}
+
 fun Task.findCapsuleSharedLib(aarPath: String): List<File> {
     return project.zipTree(aarPath).filter { it.name.endsWith(".so") }.toList()
 }
+
 data class AarSharedLibFileInfo(val name:String,val path:String,val architecture: String)
 
 val capsuleSharedUnpackTaskName ="capsule_shared_unpack"
@@ -126,7 +154,6 @@ tasks.register<Copy>(capsuleSharedUnpackTaskName){
     libs.forEach {
         from(it.path).into(Path(destination.pathString,it.architecture))
     }
-    // copy to modules build folder (app/build/capsule_shared)
 }
-// TODO fix. It called after each build
+
 tasks.named("preBuild").dependsOn(capsuleSharedUnpackTaskName)

@@ -63,7 +63,7 @@ class AnalysisScreenViewModel @Inject constructor(
     private var lastSaveTime = 0L
 
 
-    private var date = java.sql.Timestamp(System.currentTimeMillis())
+    private var date: Long = 5;
 
 
     // !!!!Костыль. С появлением настроек его нужно убрать!!!!
