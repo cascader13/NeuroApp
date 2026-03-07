@@ -205,10 +205,10 @@ data class ProductivityIndexesEntity(
     val stress: String,
     val gravityBaseline: Float,
     val productivityBaseline: Float,
-    val fatiqueBaseline: Float,
-    val reverseFatiqueBaseline: Float,
-    val relaxationBaselines: Float,
-    val concentrationBaselines: Float,
+    val fatigueBaseline: Float,
+    val reverseFatigueBaseline: Float,
+    val relaxationBaseline: Float,
+    val concentrationBaseline: Float,
     val hasArtifacts: Boolean,
     val isMarked: Boolean
 )

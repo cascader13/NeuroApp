@@ -11,13 +11,13 @@ data class UploadRequest(
     val physiologicalMetrics: List<PhysiologicalMetricDto>? = emptyList(),
 
     @SerializedName("eegRawMetrics")
-    val eegRawMetrics: List<EEGRawMetricDto>? = emptyList(),
+    val EEGRawMetrics: List<EEGRawMetricDto>? = emptyList(),
 
     @SerializedName("eegProceedMetrics")
-    val eegProceedMetrics: List<EEGProceedMetricDto>? = emptyList(),
+    val EEGProceedMetrics: List<EEGProceedMetricDto>? = emptyList(),
 
     @SerializedName("eegArtifactsMetrics")
-    val eegArtifactsMetrics: List<EEGArtifactMetricDto>? = emptyList(),
+    val EEGArtifactsMetrics: List<EEGArtifactMetricDto>? = emptyList(),
 
     @SerializedName("memsMetrics")
     val memsMetrics: List<MemsMetricDto>? = emptyList(),
@@ -39,13 +39,13 @@ data class UploadRequest(
     val physiologicalMetricsCompressed: List<PhysiologicalMetricCompressedDto>? = emptyList(),
 
     @SerializedName("eegRawMetricsCompressed")
-    val eegRawMetricsCompressed: List<EEGRawMetricCompressedDto>? = emptyList(),
+    val EEGRawMetricsCompressed: List<EEGRawMetricCompressedDto>? = emptyList(),
 
     @SerializedName("eegProceedMetricsCompressed")
-    val eegProceedMetricsCompressed: List<EEGProceedMetricCompressedDto>? = emptyList(),
+    val EEGProceedMetricsCompressed: List<EEGProceedMetricCompressedDto>? = emptyList(),
 
     @SerializedName("eegArtifactsMetricsCompressed")
-    val eegArtifactsMetricsCompressed: List<EEGArtifactMetricCompressedDto>? = emptyList(),
+    val EEGArtifactsMetricsCompressed: List<EEGArtifactMetricCompressedDto>? = emptyList(),
 
     @SerializedName("memsMetricsCompressed")
     val memsMetricsCompressed: List<MemsMetricCompressedDto>? = emptyList(),
@@ -61,13 +61,13 @@ data class UploadRequest(
 
     // Baseline данные
     @SerializedName("physiologicalBaselines")
-    val physiologicalBaselines: List<PhysiologicalBaselineDto>? = emptyList(),
+    val physiologicalBaseline: List<PhysiologicalBaselineDto>? = emptyList(),
 
     @SerializedName("productivityBaselines")
-    val productivityBaselines: List<ProductivityBaselineDto>? = emptyList(),
+    val productivityBaseline: List<ProductivityBaselineDto>? = emptyList(),
 
     @SerializedName("productivityIndexes")
-    val productivityIndexes: List<ProductivityIndexDto>? = emptyList()
+    val productivityIndex: List<ProductivityIndexDto>? = emptyList()
 )
 
 // NFB Metrics

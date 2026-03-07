@@ -71,9 +71,9 @@ class MetricsUploadRepository @Inject constructor(
                 // Uncompressed данные
                 nfbMetrics = nfbMetrics.map { it.toServerDto() },
                 physiologicalMetrics = physiologicalMetrics.map { it.toServerDto() },
-                eegRawMetrics = eegRawMetrics.map { it.toServerDto() },
-                eegProceedMetrics = eegProceedMetrics.map { it.toServerDto() },
-                eegArtifactsMetrics = eegArtifactsMetrics.map { it.toServerDto() },
+                EEGRawMetrics = eegRawMetrics.map { it.toServerDto() },
+                EEGProceedMetrics = eegProceedMetrics.map { it.toServerDto() },
+                EEGArtifactsMetrics = eegArtifactsMetrics.map { it.toServerDto() },
                 memsMetrics = memsMetrics.map { it.toServerDto() },
                 productivityMetrics = productivityMetrics.map { it.toServerDto() },
                 emotionalMetrics = emotionalMetrics.map { it.toServerDto() },
@@ -82,18 +82,18 @@ class MetricsUploadRepository @Inject constructor(
                 // Compressed данные
                 nfbMetricsCompressed = nfbMetricsCompressed.map { it.toServerDto() },
                 physiologicalMetricsCompressed = physiologicalMetricsCompressed.map { it.toServerDto() },
-                eegRawMetricsCompressed = eegRawMetricsCompressed.map { it.toServerDto() },
-                eegProceedMetricsCompressed = eegProceedMetricsCompressed.map { it.toServerDto() },
-                eegArtifactsMetricsCompressed = eegArtifactsMetricsCompressed.map { it.toServerDto() },
+                EEGRawMetricsCompressed = eegRawMetricsCompressed.map { it.toServerDto() },
+                EEGProceedMetricsCompressed = eegProceedMetricsCompressed.map { it.toServerDto() },
+                EEGArtifactsMetricsCompressed = eegArtifactsMetricsCompressed.map { it.toServerDto() },
                 memsMetricsCompressed = memsMetricsCompressed.map { it.toServerDto() },
                 productivityMetricsCompressed = productivityMetricsCompressed.map { it.toServerDto() },
                 emotionalMetricsCompressed = emotionalMetricsCompressed.map { it.toServerDto() },
                 cardioMetricsCompressed = cardioMetricsCompressed.map { it.toServerDto() },
 
                 // Baseline и Indexes данные
-                physiologicalBaselines = physiologicalBaselines.map { it.toServerDto() },
-                productivityBaselines = productivityBaselines.map { it.toServerDto() },
-                productivityIndexes = productivityIndexes.map { it.toServerDto() }
+                physiologicalBaseline = physiologicalBaselines.map { it.toServerDto() },
+                productivityBaseline = productivityBaselines.map { it.toServerDto() },
+                productivityIndex = productivityIndexes.map { it.toServerDto() }
             )
 
             UploadPreparationResult.Ready(
@@ -226,14 +226,14 @@ class MetricsUploadRepository @Inject constructor(
         if (preparationResult.request.physiologicalMetrics?.isNotEmpty() == true) {
             metricsDao.safeMarkPhysiologicalMetricsAsSynced(preparationResult.request.physiologicalMetrics.map { it.timestamp })
         }
-        if (preparationResult.request.eegRawMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGRAWMetricsAsSynced(preparationResult.request.eegRawMetrics.map { it.timestamp })
+        if (preparationResult.request.EEGRawMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGRAWMetricsAsSynced(preparationResult.request.EEGRawMetrics.map { it.timestamp })
         }
-        if (preparationResult.request.eegProceedMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGProceedMetricsAsSynced(preparationResult.request.eegProceedMetrics.map { it.timestamp })
+        if (preparationResult.request.EEGProceedMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGProceedMetricsAsSynced(preparationResult.request.EEGProceedMetrics.map { it.timestamp })
         }
-        if (preparationResult.request.eegArtifactsMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGArtifactsMetricsAsSynced(preparationResult.request.eegArtifactsMetrics.map { it.timestamp })
+        if (preparationResult.request.EEGArtifactsMetrics?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGArtifactsMetricsAsSynced(preparationResult.request.EEGArtifactsMetrics.map { it.timestamp })
         }
         if (preparationResult.request.memsMetrics?.isNotEmpty() == true) {
             metricsDao.safeMarkMEMSMetricsAsSynced(preparationResult.request.memsMetrics.map { it.timestamp })
@@ -255,14 +255,14 @@ class MetricsUploadRepository @Inject constructor(
         if (preparationResult.request.physiologicalMetricsCompressed?.isNotEmpty() == true) {
             metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(preparationResult.request.physiologicalMetricsCompressed.map { it.timestamp })
         }
-        if (preparationResult.request.eegRawMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(preparationResult.request.eegRawMetricsCompressed.map { it.timestamp })
+        if (preparationResult.request.EEGRawMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(preparationResult.request.EEGRawMetricsCompressed.map { it.timestamp })
         }
-        if (preparationResult.request.eegProceedMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(preparationResult.request.eegProceedMetricsCompressed.map { it.timestamp })
+        if (preparationResult.request.EEGProceedMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(preparationResult.request.EEGProceedMetricsCompressed.map { it.timestamp })
         }
-        if (preparationResult.request.eegArtifactsMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(preparationResult.request.eegArtifactsMetricsCompressed.map { it.timestamp })
+        if (preparationResult.request.EEGArtifactsMetricsCompressed?.isNotEmpty() == true) {
+            metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(preparationResult.request.EEGArtifactsMetricsCompressed.map { it.timestamp })
         }
         if (preparationResult.request.memsMetricsCompressed?.isNotEmpty() == true) {
             metricsDao.safeMarkMEMSMetricsCompressedAsSynced(preparationResult.request.memsMetricsCompressed.map { it.timestamp })
@@ -278,14 +278,14 @@ class MetricsUploadRepository @Inject constructor(
         }
 
         // Baseline timestamps
-        if (preparationResult.request.physiologicalBaselines?.isNotEmpty() == true) {
-            metricsDao.safeMarkPhysiologicalBaselineAsSynced(preparationResult.request.physiologicalBaselines.map { it.timestamp })
+        if (preparationResult.request.physiologicalBaseline?.isNotEmpty() == true) {
+            metricsDao.safeMarkPhysiologicalBaselineAsSynced(preparationResult.request.physiologicalBaseline.map { it.timestamp })
         }
-        if (preparationResult.request.productivityBaselines?.isNotEmpty() == true) {
-            metricsDao.safeMarkProductivityBaselineAsSynced(preparationResult.request.productivityBaselines.map { it.timestamp })
+        if (preparationResult.request.productivityBaseline?.isNotEmpty() == true) {
+            metricsDao.safeMarkProductivityBaselineAsSynced(preparationResult.request.productivityBaseline.map { it.timestamp })
         }
-        if (preparationResult.request.productivityIndexes?.isNotEmpty() == true) {
-            metricsDao.safeMarkProductivityIndexesAsSynced(preparationResult.request.productivityIndexes.map { it.timestamp })
+        if (preparationResult.request.productivityIndex?.isNotEmpty() == true) {
+            metricsDao.safeMarkProductivityIndexesAsSynced(preparationResult.request.productivityIndex.map { it.timestamp })
         }
     }
 

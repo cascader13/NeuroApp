@@ -320,10 +320,10 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
         stress = this.stress,
         gravityBaseline = this.gravityBaseline.toDouble(),
         productivityBaseline = this.productivityBaseline.toDouble(),
-        fatigueBaseline = this.fatiqueBaseline.toDouble(),
-        reverseFatigueBaseline = this.reverseFatiqueBaseline.toDouble(),
-        relaxationBaseline = this.relaxationBaselines.toDouble(),
-        concentrationBaseline = this.concentrationBaselines.toDouble(),
+        fatigueBaseline = this.fatigueBaseline.toDouble(),
+        reverseFatigueBaseline = this.reverseFatigueBaseline.toDouble(),
+        relaxationBaseline = this.relaxationBaseline.toDouble(),
+        concentrationBaseline = this.concentrationBaseline.toDouble(),
         hasArtifacts = this.hasArtifacts
     )
 }

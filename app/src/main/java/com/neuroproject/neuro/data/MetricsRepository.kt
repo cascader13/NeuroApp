@@ -390,10 +390,10 @@ class MetricsRepository @Inject constructor(
                     stress = stress,
                     gravityBaseline = gravityBaseline,
                     productivityBaseline = productivityBaseline,
-                    fatiqueBaseline = fatiqueBaseline,
-                    reverseFatiqueBaseline = reverseFatiqueBaseline,
-                    relaxationBaselines = relaxationBaselines,
-                    concentrationBaselines = concentrationBaselines,
+                    fatigueBaseline = fatiqueBaseline,
+                    reverseFatigueBaseline = reverseFatiqueBaseline,
+                    relaxationBaseline = relaxationBaselines,
+                    concentrationBaseline = concentrationBaselines,
                     hasArtifacts = hasArtifacts,
                     isMarked = false
                 )

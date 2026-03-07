@@ -1,4 +1,4 @@
-    #include <jni.h>
+#include <jni.h>
 // Initial INIT(just checking)
 //
 // Created by aseatari on 20.09.2024.
@@ -46,6 +46,13 @@ void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noex
 
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping deviceConnectionState call");
+        return;
+    }
+
     jmethodID fun = env->GetMethodID(capsuleClass, "deviceConnectionState", "(I)V");
     if (!fun) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method deviceConnectionState not found");
@@ -77,6 +84,13 @@ void onDeviceError(clCDevice, const char* error) noexcept {
 
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onConnectionError call");
+        return;
+    }
+
     jmethodID fun = env->GetMethodID(capsuleClass, "onConnectionError", "(Ljava/lang/String;)V");
     if (!fun) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method onConnectionError not found");
@@ -114,10 +128,22 @@ void onDeviceList(clCDeviceLocator, clCDeviceInfoList devices, clCDeviceLocator_
 
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping locatorEvent call");
+        return;
+    }
+
     int32_t szSensors = clCDeviceInfoList_GetCount(devices, &error);
     auto sensorsArray = env->NewObjectArray(static_cast<jsize>(szSensors),
                                             deviceInfo,
                                             nullptr);
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return;
+    }
+
     jmethodID fun = env->GetMethodID(capsuleClass, "locatorEvent", "([Lcom/neuroproject/neuro/models/DeviceInfo;)V");
 
     if (clCDeviceInfoList_GetCount(devices, &error) != 0) {
@@ -134,9 +160,17 @@ void onDeviceList(clCDeviceLocator, clCDeviceInfoList devices, clCDeviceLocator_
 
             env->SetObjectArrayElement(sensorsArray, szSensors, scObject);
             env->PopLocalFrame(nullptr);
+
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
         }
     }
     env->CallVoidMethod(javaCapsule, fun, sensorsArray);
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
@@ -147,11 +181,22 @@ void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
     double t4 = clCResistance_GetValue(resistance, 2);
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onResistanceReceived call");
+        return;
+    }
+
     jmethodID resistFun = env->GetMethodID(capsuleClass, "onResistanceReceived", "(DDDD)V");
     env->CallVoidMethod(javaCapsule, resistFun, static_cast<jdouble>(o1),
                         static_cast<jdouble>(o2),
                         static_cast<jdouble>(t3),
                         static_cast<jdouble>(t4));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept {
@@ -161,6 +206,13 @@ void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept
     }
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onCardioReceived call");
+        return;
+    }
+
     jmethodID cardioFun = env->GetMethodID(capsuleClass, "onCardioReceived", "(JFZFZZZF)V");
     env->CallVoidMethod(javaCapsule, cardioFun, static_cast<jlong>(cardioData->timestampMilli),
                         static_cast<jfloat>(cardioData->heartRate),
@@ -170,11 +222,22 @@ void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept
                         static_cast<jboolean>(cardioData->motionArtifacts),
                         static_cast<jboolean>(cardioData->skinContact),
                         static_cast<jboolean>(cardioData->stressIndex));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping calibration calls");
+        return;
+    }
+
     jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     jmethodID calibDataFun = env->GetMethodID(capsuleClass, "onCalibrationReceived", "(FFFFFFFF)V");
     // ЗДЕСЬ НУЖНО СДЕЛАТЬ УХОД НА ОШИБКУ(ЛИБО С ПОМОЩЬЮ КОНТРОЛЯ СОСТОЯНИЙ)
@@ -206,11 +269,22 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
     clCPhysiologicalStates_StartBaselineCalibration(ps);
     env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(5));
     clCProductivity_StartBaselineCalibration(productivity);
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping calibrationStateChanged call");
+        return;
+    }
+
     jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     clCError error;
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Event");
@@ -237,12 +311,23 @@ void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
             __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 4");
             break;
     }
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_NFB", "NFB update state: alpha = %f , beta = %f , theta = %f", userState->alpha, userState->beta, userState->theta);
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onNFBReceived call");
+        return;
+    }
+
     jmethodID nfbFun = env->GetMethodID(capsuleClass, "onNFBReceived", "(JFFFFF)V");
     env->CallVoidMethod(javaCapsule, nfbFun, static_cast<jlong>(userState->timestampMilli),
                         static_cast<jfloat>(userState->alpha),
@@ -250,6 +335,10 @@ void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
                         static_cast<jfloat>(userState->theta),
                         static_cast<jfloat>(userState->delta),
                         static_cast<jfloat>(userState->smr));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onNFBErrorEvent(clCNFB, const char* error) noexcept {
@@ -265,6 +354,13 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
 
         JNIEnv* env = nullptr;
         javaVM->AttachCurrentThread(&env, nullptr);
+
+        // NEW: Safety check
+        if (javaCapsule == nullptr) {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onMEMSReceived call");
+            return;
+        }
+
         jmethodID MEMSFun = env->GetMethodID(capsuleClass, "onMEMSReceived", "(JFFFFFF)V");
         env->CallVoidMethod(javaCapsule, MEMSFun, static_cast<jlong>(timestamp),
                             static_cast<jfloat>(accelerometer.x),
@@ -273,6 +369,10 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
                             static_cast<jfloat>(gyroscope.x),
                             static_cast<jfloat>(gyroscope.y),
                             static_cast<jfloat>(gyroscope.z));
+
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
     }
 }
 
@@ -280,20 +380,37 @@ void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselin
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update");
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onProductivityBaselineReceived call");
+        return;
+    }
+
     jmethodID ProdFun = env->GetMethodID(capsuleClass, "onProductivityBaselineReceived", "(JFFFFFF)V");
     env->CallVoidMethod(javaCapsule, ProdFun, static_cast<jlong>(baselines->timestampMilli),
-                                                static_cast<jfloat>(baselines->gravity),
-                                                static_cast<jfloat>(baselines->productivity),
-                                                static_cast<jfloat>(baselines->fatigue),
-                                                static_cast<jfloat>(baselines->reverseFatigue),
-                                                static_cast<jfloat>(baselines->relaxation),
-                                                static_cast<jfloat>(baselines->concentration));
+                        static_cast<jfloat>(baselines->gravity),
+                        static_cast<jfloat>(baselines->productivity),
+                        static_cast<jfloat>(baselines->fatigue),
+                        static_cast<jfloat>(baselines->reverseFatigue),
+                        static_cast<jfloat>(baselines->relaxation),
+                        static_cast<jfloat>(baselines->concentration));
 
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics* metrics) noexcept {
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onProductivityReceived call");
+        return;
+    }
+
     jmethodID ProdFun = env->GetMethodID(capsuleClass, "onProductivityReceived", "(JDFFFFFF)V");
     env->CallVoidMethod(javaCapsule, ProdFun, static_cast<jlong>(metrics->timestampMilli),
                         static_cast<jdouble>(metrics->timestampMilli),
@@ -303,6 +420,10 @@ void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics*
                         static_cast<jfloat>(metrics->reverseFatigueScore),
                         static_cast<jfloat>(metrics->relaxationScore),
                         static_cast<jfloat>(metrics->concentrationScore));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes* indexes) noexcept {
@@ -327,25 +448,36 @@ void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes*
     float stress_index = 0;
     switch (indexes->stress) {
         case clCProductivity_StressValue_NoStress:
-            relax_index = 0;
+            stress_index = 0;
         case clCProductivity_StressValue_Anxiety:
-            relax_index = 1;
+            stress_index = 1;
         case clCProductivity_StressValue_Stress:
-            relax_index = 2;
+            stress_index = 2;
     }
 
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onProductivityIndexesReceived call");
+        return;
+    }
+
     jmethodID prodFun = env->GetMethodID(capsuleClass, "onProductivityIndexesReceived", "(JFFFFFFFFZ)V");
     env->CallVoidMethod(javaCapsule, prodFun, static_cast<jlong>(indexes->timestampMilli),
-                                                            static_cast<jfloat>(indexes->relaxation),
-                                                            static_cast<jfloat>(indexes->stress),
-                                                            static_cast<jfloat>(indexes->gravityBaseline),
-                                                            static_cast<jfloat>(indexes->productivityBaseline),
-                                                            static_cast<jfloat>(indexes->fatigueBaseline),
-                                                            static_cast<jfloat>(indexes->reverseFatigueBaseline),
-                                                            static_cast<jfloat>(indexes->relaxationBaseline),
-                                                            static_cast<jfloat>(indexes->concentrationBaseline),
-                                                            static_cast<jboolean>(indexes->hasArtifacts));
+                        static_cast<jfloat>(indexes->relaxation),
+                        static_cast<jfloat>(indexes->stress),
+                        static_cast<jfloat>(indexes->gravityBaseline),
+                        static_cast<jfloat>(indexes->productivityBaseline),
+                        static_cast<jfloat>(indexes->fatigueBaseline),
+                        static_cast<jfloat>(indexes->reverseFatigueBaseline),
+                        static_cast<jfloat>(indexes->relaxationBaseline),
+                        static_cast<jfloat>(indexes->concentrationBaseline),
+                        static_cast<jboolean>(indexes->hasArtifacts));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onProductivityCalibrationProgress(clCProductivity, float progress) noexcept {
@@ -360,19 +492,36 @@ void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologi
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological states baselines calibrated");
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onPhysiologicalBaselineReceived call");
+        return;
+    }
+
     jmethodID physioFun = env->GetMethodID(capsuleClass, "onPhysiologicalBaselineReceived", "(JFFFFF)V");
     env->CallVoidMethod(javaCapsule, physioFun, static_cast<jlong>(baselines->timestampMilli),
-                                                static_cast<jfloat>(baselines->alpha),
-                                                static_cast<jfloat>(baselines->beta),
-                                                static_cast<jfloat>(baselines->alphaGravity),
-                                                static_cast<jfloat>(baselines->betaGravity),
-                                                static_cast<jfloat>(baselines->concentration));
+                        static_cast<jfloat>(baselines->alpha),
+                        static_cast<jfloat>(baselines->beta),
+                        static_cast<jfloat>(baselines->alphaGravity),
+                        static_cast<jfloat>(baselines->betaGravity),
+                        static_cast<jfloat>(baselines->concentration));
 
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalStates_Value* value) noexcept {
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onPhysiologicalReceived call");
+        return;
+    }
+
     jmethodID resistFun = env->GetMethodID(capsuleClass, "onPhysiologicalReceived", "(JFFFFFFZZ)V");
     env->CallVoidMethod(javaCapsule, resistFun, static_cast<jlong>(value->timestampMilli),
                         static_cast<jfloat>(value->relaxation),
@@ -383,6 +532,10 @@ void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalS
                         static_cast<jfloat>(value->stress),
                         static_cast<jboolean>(value->nfbArtifacts),
                         static_cast<jboolean>(value->cardioArtifacts));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onPhysiologicalStatesIndividualNFBUpdate(clCPhysiologicalStates) noexcept {
@@ -392,6 +545,13 @@ void onPhysiologicalStatesIndividualNFBUpdate(clCPhysiologicalStates) noexcept {
 void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noexcept {
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onEmotionReceived call");
+        return;
+    }
+
     jmethodID EmFun = env->GetMethodID(capsuleClass, "onEmotionReceived", "(JFFFFF)V");
     env->CallVoidMethod(javaCapsule, EmFun, static_cast<jlong>(states->timestampMilli),
                         static_cast<jfloat>(states->attention),
@@ -399,6 +559,10 @@ void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noex
                         static_cast<jfloat>(states->cognitiveLoad),
                         static_cast<jfloat>(states->cognitiveControl),
                         static_cast<jfloat>(states->selfControl));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onCardioCalibrated(clCCardio) noexcept {
@@ -415,6 +579,12 @@ void onEEGData(clCDevice, clCEEGTimedData eegData) noexcept {
 
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping EEG data calls");
+        return;
+    }
 
     // Для каждого сэмпла отправляем отдельный вызов
     for (int32_t sampleIndex = 0; sampleIndex < /*Костыль*/1; ++sampleIndex) {
@@ -464,6 +634,12 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
     if (channels >= 2) {
         JNIEnv* env = nullptr;
         javaVM->AttachCurrentThread(&env, nullptr);
+
+        // NEW: Safety check
+        if (javaCapsule == nullptr) {
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onEEGArtifactsReceived call");
+            return;
+        }
 
         // Получаем артефакты и качество для каждого канала
         bool artifact1 = clCEEGArtifacts_GetArtifactByChannel(eegArtifacts, 0, &error);
@@ -522,6 +698,15 @@ void removeAll() {
     if (ps) {
         ps = nullptr;
     }
+
+    // NEW: Cleanup javaCapsule
+    if (javaCapsule) {
+        JNIEnv* env = nullptr;
+        if (javaVM->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+            env->DeleteGlobalRef(javaCapsule);
+        }
+        javaCapsule = nullptr;
+    }
 }
 
 // MAIN LOOP
@@ -550,7 +735,7 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeInitCapsule(
         JNIEnv* env, jobject thiz, jobject impl) {
-    javaCapsule = env->NewGlobalRef(impl);
+    // NEW: Release old ref if it exists (prevents leak on multiple calls)
     if (javaCapsule) {
         env->DeleteGlobalRef(javaCapsule);
         javaCapsule = nullptr;
@@ -558,7 +743,7 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
 
     javaCapsule = env->NewGlobalRef(impl);
     if (!javaCapsule) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create global ref for javaCapsule");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create global ref for javaCapsule (impl may be null or OOM)");
         return;
     }
 
@@ -696,11 +881,22 @@ JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeStartSignalAndHR(
         JNIEnv* env, jobject thiz) {
     javaVM->AttachCurrentThread(&env, nullptr);
+
+    // NEW: Safety check
+    if (javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping calibrationStateChanged call");
+        return;
+    }
+
     jmethodID calibFun = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
     clCError error;
     env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(0));
     clCNFBCalibrator_CalibrateIndividualNFBQuick(calibrator, &error);
     // Поменять если используется долгая калибровка
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 extern "C"
