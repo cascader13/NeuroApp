@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.neuroproject.neuro.data.CalibrationHistoryEntity
 import com.neuroproject.neuro.data.MetricsDao
+import com.neuroproject.neuro.data.MonitorUploadRepository
 import com.neuroproject.neuro.models.BaselineValues
 import com.neuroproject.neuro.models.CapsuleInitializedState
 import com.neuroproject.neuro.models.DeviceInfo
@@ -162,7 +163,9 @@ data class PhysiologicalBaseline(
 @Singleton
 class CapsuleDeviceManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val metricsDao: MetricsDao
+    private val metricsDao: MetricsDao,
+
+    private val uploadMonitor: MonitorUploadRepository
 ) {
 
     private var _instance = this
@@ -190,8 +193,6 @@ class CapsuleDeviceManager @Inject constructor(
     private var _productivityIndexData = MutableStateFlow(ProductivityIndexes())
     private var _productivityBaselineData = MutableStateFlow(ProductivityBaseline())
     private var _physiologicalBaselineData = MutableStateFlow(PhysiologicalBaseline())
-
-    // НОВЫЕ ПОТОКИ ДЛЯ EEG ДАННЫХ
     private var _eegRawData = MutableStateFlow(EEGRawSample())
     private var _eegProcessedData = MutableStateFlow(EEGProcessedSample())
     private var _eegArtifacts = MutableStateFlow(EEGArtifactsSample())
@@ -316,8 +317,18 @@ class CapsuleDeviceManager @Inject constructor(
             1f -> stress_string = "Anxiety"
             2f -> stress_string = "Stress"
         }
-        scope.launch {
 
+        scope.launch {
+            val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+            val userId = sharedPreferences.getString("saved_user_id", "")
+
+            val success = uploadMonitor.sendStringSimple(userId, "concentrationBaseline $concentrationBaseline")
+
+            if (success) {
+                Log.d("UPLOAD", "Данные отправлены: concentrationBaseline=$concentrationBaseline")
+            } else {
+                Log.e("UPLOAD", "Ошибка отправки")
+            }
             _productivityIndexData.emit(ProductivityIndexes(time, relaxation_string, stress_string, gravityBaseline, productivityBaseline, fatigueBaseline, reverseFatiqueBaseline, relaxationBaseline, concentrationBaseline, hasArtifacts))
         }
     }
@@ -325,6 +336,16 @@ class CapsuleDeviceManager @Inject constructor(
     fun onProductivityBaselineReceived(time: Long, gravity:Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float){
         Log.d("JCAPSULE", "onProductivityBaseline: smth")
         scope.launch {
+            val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+            val userId = sharedPreferences.getString("saved_user_id", "")
+
+            val success = uploadMonitor.sendStringSimple(userId, "concentrationBaseline $concentration")
+
+            if (success) {
+                Log.d("UPLOAD", "Данные отправлены: concentrationBaseline=$concentration")
+            } else {
+                Log.e("UPLOAD", "Ошибка отправки")
+            }
             _productivityBaselineData.emit(ProductivityBaseline(time, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration ))
         }
 
@@ -347,6 +368,16 @@ class CapsuleDeviceManager @Inject constructor(
     fun onEmotionReceived(time: Long, attention: Float, relaxation: Float, cognitive_load: Float, cognitive_control: Float, self_control: Float) {
         Log.d("JCAPSULE", "onEmotionReceived: smth")
         scope.launch {
+            val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+            val userId = sharedPreferences.getString("saved_user_id", "")
+
+            val success = uploadMonitor.sendStringSimple(userId, "relax $relaxation")
+
+            if (success) {
+                Log.d("UPLOAD", "Данные отправлены: relax=$relaxation")
+            } else {
+                Log.e("UPLOAD", "Ошибка отправки")
+            }
             _emotionalData.emit(Emotionaldata(time, attention, relaxation, cognitive_load, cognitive_control, self_control))
         }
     }
@@ -354,6 +385,16 @@ class CapsuleDeviceManager @Inject constructor(
     fun onProductivityReceived(time: Long, timestamp_prod: Double, gravity: Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float) {
         Log.d("JCAPSULE", "onProductivityReceived: smth")
         scope.launch {
+            val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+            val userId = sharedPreferences.getString("saved_user_id", "")
+
+            val success = uploadMonitor.sendStringSimple(userId, "concentration $concentration")
+
+            if (success) {
+                Log.d("UPLOAD", "Данные отправлены: concentration=$concentration")
+            } else {
+                Log.e("UPLOAD", "Ошибка отправки")
+            }
             _productivityData.emit(Productivitydata(time, timestamp_prod, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration))
         }
     }

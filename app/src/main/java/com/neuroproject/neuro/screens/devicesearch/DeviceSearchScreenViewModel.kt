@@ -39,8 +39,11 @@ class DeviceSearchScreenViewModel @Inject constructor(
         // Инициализируем капсулу только один раз при создании ViewModel
         if (!isInitialized && deviceState.value != DeviceConnectionState.connected) {
             isInitialized = true
-            capsuleDM.initCapsule()
-            startSearch()
+            viewModelScope.launch {
+                capsuleDM.initCapsule()
+                delay(2000)
+                startSearch()
+            }
         }
     }
 
