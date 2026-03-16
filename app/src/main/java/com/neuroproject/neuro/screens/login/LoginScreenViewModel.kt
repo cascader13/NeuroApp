@@ -23,7 +23,8 @@ class LoginScreenViewModel @Inject constructor(
     val userId = mutableStateOf("")
     val errorMessage = mutableStateOf<String?>(null)
 
-    private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+    private val sharedPreferences =
+        context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
 
     init {
         loadSavedData()
@@ -93,8 +94,6 @@ class LoginScreenViewModel @Inject constructor(
     }
 
     private suspend fun performLogin(userId: String): Boolean {
-        // В реальном приложении здесь будет аутентификация через API
-        // Пока что просто имитируем успешный вход
         return userId.isNotEmpty() && userId.length >= 3
     }
 

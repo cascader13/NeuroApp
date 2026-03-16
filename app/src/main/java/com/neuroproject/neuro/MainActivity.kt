@@ -14,11 +14,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        immersionBar {
-            transparentStatusBar()
-            transparentNavigationBar()
-        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         CapsuleNative.initCapsule()
         CapsuleNative.requestPermissions(this)
 
@@ -27,4 +23,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
- 

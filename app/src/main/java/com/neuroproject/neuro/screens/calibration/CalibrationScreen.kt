@@ -1,10 +1,10 @@
 package com.neuroproject.neuro.screens.calibration
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,15 +29,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.R
@@ -55,15 +52,13 @@ fun CalibrationScreen(
     val state by vm.uiState.collectAsState()
     val calibrationValue by vm.state.collectAsState()
 
-
-
+    // Логика калибровки
     LaunchedEffect(calibrationValue) {
         Log.d("Calibration", "$calibrationValue")
-        if(calibrationValue.value == 6){
-            vm.cancelCalibration();
+        if (calibrationValue.value == 6) {
+            vm.cancelCalibration()
         }
-        // Калибровка была пройдена и был вызван callback OnCalibrated
-        if(calibrationValue.value == 4 || calibrationValue.value == 5){
+        if (calibrationValue.value == 4 || calibrationValue.value == 5) {
             vm.forceStopMetronome()
             onCalibrationComplete()
         }
@@ -92,47 +87,45 @@ fun CalibrationScreen(
     if (state.showPreviousCalibrationDialog) {
         AlertDialog(
             onDismissRequest = {
-                // При нажатии вне диалога - считаем, что пользователь хочет новую калибровку
                 vm.performNewCalibration()
             },
             title = {
                 Text(
                     text = "Использовать предыдущие данные?",
-                    color = Color.White,
-                    fontSize = 20.sp
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     text = "Хотите использовать данные о калибровке с прошлых сессий?",
-                    color = Color.White,
-                    fontSize = 16.sp
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        vm.usePreviousCalibrationData()
-                    },
+                    onClick = { vm.usePreviousCalibrationData() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
-                    ),
-                    modifier = Modifier.padding(end = 8.dp)
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Text("Да", color = Color.White)
+                    Text("Да")
                 }
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = {
-                        vm.performNewCalibration()
-                    },
-                    border = BorderStroke(1.dp, Color(0xFF757575))
+                    onClick = { vm.performNewCalibration() },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
-                    Text("Нет", color = Color.White)
+                    Text("Нет")
                 }
             },
-            containerColor = Color(0xFF1E1E1E),
+            containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             properties = DialogProperties(
                 dismissOnBackPress = false,
@@ -142,56 +135,54 @@ fun CalibrationScreen(
     }
 
     Surface(
-        color = Color.Black,
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFF000000), Color(0xFF272727)))),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp)
         ) {
             BackButton {
-                if (state.isCalibrating) {
-                    vm.cancelCalibration()
-                }
+                if (state.isCalibrating) vm.cancelCalibration()
                 onBackPressed()
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "Калибровка",
+                text = "Калибровка",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
-                color = Color.White,
-                fontSize = 36.sp,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
             // Иконка закрытых глаз
             Image(
                 painter = painterResource(R.drawable.ic_eyes_closed),
-                contentDescription = "Eyes closed",
+                contentDescription = null,
                 modifier = Modifier
                     .size(120.dp)
                     .aspectRatio(1f)
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Инструкция
             Text(
-                "Закройте глаза и\nсфокусируйтесь на звуке",
+                text = "Закройте глаза и\nсфокусируйтесь на звуке",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                color = Color.White,
-                fontSize = 18.sp,
-                lineHeight = 24.sp,
+                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Круговой секундомер
             CircularCountdownTimer(
@@ -200,7 +191,7 @@ fun CalibrationScreen(
                 modifier = Modifier.size(200.dp)
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
             Column(
                 verticalArrangement = Arrangement.Bottom,
@@ -210,18 +201,25 @@ fun CalibrationScreen(
             ) {
                 if (!state.isCalibrating && !state.isComplete) {
                     Button(
+                        onClick = { vm.startCalibration() },
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { vm.startCalibration() }
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
-                        Text("Начать калибровку", color = Color.Black)
+                        Text("Начать калибровку")
                     }
                 } else if (state.isCalibrating) {
                     OutlinedButton(
+                        onClick = { vm.cancelCalibration() },
                         modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(2.dp, Color.Red),
-                        onClick = { vm.cancelCalibration() }
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
                     ) {
-                        Text("Отмена", color = Color.Red)
+                        Text("Отмена")
                     }
                 }
             }
@@ -229,12 +227,18 @@ fun CalibrationScreen(
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun CircularCountdownTimer(
     progress: Float,
     timeRemaining: Long,
     modifier: Modifier = Modifier
 ) {
+    // Получаем цвета из темы до вызова Canvas
+    val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+    val progressColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onBackground
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
@@ -245,7 +249,7 @@ fun CircularCountdownTimer(
 
             // Фоновая окружность
             drawArc(
-                color = Color(0xFF333333),
+                color = backgroundColor,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -255,7 +259,7 @@ fun CircularCountdownTimer(
 
             // Прогресс
             drawArc(
-                color = Color(0xFF4CAF50),
+                color = progressColor,
                 startAngle = -90f,
                 sweepAngle = 360f * progress,
                 useCenter = false,
@@ -269,14 +273,8 @@ fun CircularCountdownTimer(
         val seconds = TimeUnit.MILLISECONDS.toSeconds(timeRemaining) % 60
         Text(
             text = String.format("%02d:%02d", minutes, seconds),
-            color = Color.White,
-            fontSize = 24.sp
+            style = MaterialTheme.typography.headlineMedium,
+            color = textColor
         )
     }
-}
-
-@Preview
-@Composable
-fun PreviewCalibrationScreen() {
-    CalibrationScreen()
 }
