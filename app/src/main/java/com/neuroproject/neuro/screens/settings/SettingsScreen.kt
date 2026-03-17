@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -23,44 +23,44 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import kotlinx.coroutines.flow.collectLatest
+import com.neuroproject.neuro.ui.theme.ThemeMode
+import com.neuroproject.neuro.ui.theme.ThemeViewModel
 
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
-    vm: SettingsViewModel = hiltViewModel()
+    vm: SettingsViewModel = hiltViewModel(),
+    themeViewModel: ThemeViewModel = hiltViewModel()
 ) {
     val state by vm.state.collectAsState()
+    val themeMode by themeViewModel.themeMode.collectAsState()
 
     SettingsScreenContent(
         modifier = modifier,
         state = state,
+        themeMode = themeMode,
+        onThemeModeChange = { themeViewModel.setThemeMode(it) },
         onBackClick = onBackClick,
         onMobileIdChanged = vm::onMobileIdChanged,
         onExpeditionIdChanged = vm::onExpeditionIdChanged,
@@ -68,11 +68,14 @@ fun SettingsScreen(
     )
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreenContent(
     modifier: Modifier = Modifier,
     state: SettingsState,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onBackClick: () -> Unit,
     onMobileIdChanged: (String) -> Unit,
     onExpeditionIdChanged: (String) -> Unit,
@@ -85,9 +88,8 @@ private fun SettingsScreenContent(
                 title = {
                     Text(
                         text = "Профиль",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
@@ -95,94 +97,101 @@ private fun SettingsScreenContent(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Назад",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color.Black
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // Невидимый прогресс-бар (отображается только при загрузке)
             InvisibleProgressBar(
                 isVisible = state.isUploading,
                 progress = state.uploadProgress
             )
+            ThemeModeSelector(
+                selectedMode = themeMode,
+                onModeSelected = onThemeModeChange
+            )
 
-
+            // Поле ID мобильного пользователя
             MobileIdField(
                 mobileId = state.mobileId,
                 onValueChange = onMobileIdChanged
             )
 
+            // Поле ID экспедиции
             ExpeditionIdField(
                 expeditionId = state.expeditionId,
                 onValueChange = onExpeditionIdChanged
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
+            // Кнопка выгрузки
             UploadButton(
                 isLoading = state.isUploading,
                 isEnabled = !state.isUploading,
                 onClick = onUploadClicked
             )
 
+            // Статус выгрузки
             if (state.isUploading) {
-                UploadProgressStatus(
-                    progress = state.uploadProgress
-                )
+                UploadProgressStatus(progress = state.uploadProgress)
             }
 
+            // Сообщение об ошибке
             state.errorMessage?.let { errorMessage ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFF5252).copy(alpha = 0.2f))
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.errorContainer)
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = errorMessage,
-                        color = Color(0xFFFF5252),
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
 
+            // Сообщение об успехе
             state.successMessage?.let { successMessage ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF4CAF50).copy(alpha = 0.2f))
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = successMessage,
-                        color = Color(0xFF4CAF50),
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
+            // Информация о приложении
             Text(
                 text = state.appInfo,
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
@@ -201,11 +210,12 @@ private fun InvisibleProgressBar(
             .alpha(if (isVisible) 1f else 0f)
     ) {
         LinearProgressIndicator(
-            progress = {progress},
+            progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp),
-            color = Color(0xFF4FC3F7),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
             strokeCap = StrokeCap.Square
         )
     }
@@ -222,36 +232,37 @@ private fun UploadProgressStatus(
     ) {
         Text(
             text = "Выгрузка данных...",
-            color = Color(0xFF4FC3F7),
-            fontSize = 16.sp
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary
         )
 
         Text(
             text = "${(progress * 100).toInt()}%",
-            color = Color.White.copy(alpha = 0.8f),
-            fontSize = 14.sp
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         when {
             progress < 0.3f -> Text(
                 text = "Подготовка данных...",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
             progress < 0.7f -> Text(
                 text = "Отправка на сервер...",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
             else -> Text(
                 text = "Завершение...",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -264,28 +275,29 @@ private fun MobileIdField(
     ) {
         Text(
             text = "ID мобильного пользователя",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         OutlinedTextField(
             value = mobileId,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = Color(0xFF4FC3F7),
-                unfocusedBorderColor = Color(0xFF2A2A2A),
-                focusedLabelColor = Color(0xFF4FC3F7),
-                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                containerColor = Color(0xFF1A1A1A),
-                cursorColor = Color(0xFF4FC3F7)
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             placeholder = {
                 Text(
                     text = "Введите ID мобильного пользователя",
-                    color = Color.White.copy(alpha = 0.4f)
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -294,8 +306,8 @@ private fun MobileIdField(
 
         Text(
             text = "Идентификатор пользователя в мобильном приложении",
-            color = Color.White.copy(alpha = 0.6f),
-            fontSize = 12.sp
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -311,28 +323,29 @@ private fun ExpeditionIdField(
     ) {
         Text(
             text = "ID экспедиции",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         OutlinedTextField(
             value = expeditionId,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = Color(0xFF4FC3F7),
-                unfocusedBorderColor = Color(0xFF2A2A2A),
-                focusedLabelColor = Color(0xFF4FC3F7),
-                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                containerColor = Color(0xFF1A1A1A),
-                cursorColor = Color(0xFF4FC3F7)
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             placeholder = {
                 Text(
                     text = "Введите ID экспедиции",
-                    color = Color.White.copy(alpha = 0.4f)
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -341,8 +354,8 @@ private fun ExpeditionIdField(
 
         Text(
             text = "Идентификатор экспедиции/исследования",
-            color = Color.White.copy(alpha = 0.6f),
-            fontSize = 12.sp
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -358,11 +371,12 @@ private fun UploadButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF4FC3F7),
-            disabledContainerColor = Color(0xFF2A2A2A),
-            disabledContentColor = Color.White.copy(alpha = 0.4f)
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
         enabled = isEnabled && !isLoading
     ) {
@@ -373,7 +387,7 @@ private fun UploadButton(
             Icon(
                 imageVector = Icons.Default.Upload,
                 contentDescription = "Выгрузить",
-                tint = if (isEnabled) Color.White else Color.White.copy(alpha = 0.4f),
+                tint = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
 
@@ -381,10 +395,76 @@ private fun UploadButton(
 
             Text(
                 text = if (isLoading) "Выгрузка..." else "Выгрузить на сервер",
-                color = if (isEnabled) Color.White else Color.White.copy(alpha = 0.4f),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.labelLarge,
+                color = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
+
+@Composable
+fun ThemeModeSelector(
+    selectedMode: ThemeMode,
+    onModeSelected: (ThemeMode) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Тема оформления",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ThemeRadioButton(
+                label = "Светлая",
+                selected = selectedMode == ThemeMode.LIGHT,
+                onClick = { onModeSelected(ThemeMode.LIGHT) }
+            )
+            ThemeRadioButton(
+                label = "Тёмная",
+                selected = selectedMode == ThemeMode.DARK,
+                onClick = { onModeSelected(ThemeMode.DARK) }
+            )
+            ThemeRadioButton(
+                label = "Как в системе",
+                selected = selectedMode == ThemeMode.SYSTEM,
+                onClick = { onModeSelected(ThemeMode.SYSTEM) }
+            )
+        }
+    }
+}
+
+@Composable
+fun ThemeRadioButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+    }
+}
+

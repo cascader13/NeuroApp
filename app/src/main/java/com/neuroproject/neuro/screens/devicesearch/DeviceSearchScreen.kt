@@ -1,6 +1,5 @@
 package com.neuroproject.neuro.screens.devicesearch
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,19 +8,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,13 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.models.DeviceInfo
 import com.neuroproject.neuro.services.DeviceConnectionState
 
@@ -52,217 +47,216 @@ fun DeviceSearchScreen(
     onBackPressed: () -> Unit = {}
 ) {
     var connectingDeviceId by remember { mutableStateOf<String?>(null) }
-    val foundedSensors = vm.foundDevices.collectAsState()
-    val connectionState = vm.deviceState.collectAsState()
+    val foundedSensors by vm.foundDevices.collectAsState()
+    val connectionState by vm.deviceState.collectAsState()
     val isSearchTimeout by vm.isSearchTimeout.collectAsState()
     val isSearching by vm.isSearching.collectAsState()
 
     // Сбрасываем connectingDeviceId при изменении состояния подключения
-    LaunchedEffect(connectionState.value) {
-        when (connectionState.value) {
+    LaunchedEffect(connectionState) {
+        when (connectionState) {
             DeviceConnectionState.connected -> {
                 connectingDeviceId = null
                 onDeviceConnected()
             }
+
             DeviceConnectionState.disconnected -> {
                 connectingDeviceId = null
             }
-            else -> { /* Ignore */ }
+
+            else -> { /* Ignore */
+            }
         }
     }
 
     Surface(
-        color = Color.Black,
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Column {
-            Spacer(Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Column(Modifier.padding(horizontal = 12.dp)) {
-                Text(
-                    "Поиск устройств",
-                    textAlign = TextAlign.Center,
-                    color = Color.White,
-                    fontSize = 36.sp,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Text(
+                text = "Поиск устройств",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                Spacer(Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-                Box(
-                    Modifier
-                        .height(2.dp)
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .shadow(
-                            20.dp,
-                            RoundedCornerShape(30.dp),
-                            ambientColor = Color.White,
-                            spotColor = Color.White
-                        )
-                )
+            // Разделитель
+            Box(
+                modifier = Modifier
+                    .height(1.dp)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.outline)
+            )
 
-                Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Статус поиска
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    when {
-                        isSearchTimeout -> {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "Время поиска истекло",
-                                    color = Color.White,
-                                    fontSize = 16.sp
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = { vm.retrySearch() },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.White,
-                                        contentColor = Color.Black
-                                    )
-                                ) {
-                                    Text("Повторить поиск")
-                                }
-                            }
-                        }
-                        connectionState.value == DeviceConnectionState.connection -> {
+            // Статус поиска
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when {
+                    isSearchTimeout -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "Подключение...",
-                                color = Color.Yellow,
-                                fontSize = 16.sp
+                                text = "Время поиска истекло",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error
                             )
-                        }
-                        connectionState.value == DeviceConnectionState.connected -> {
-                            Text(
-                                "Устройство подключено",
-                                color = Color.Green,
-                                fontSize = 16.sp
-                            )
-                        }
-                        isSearching -> {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .width(20.dp)
-                                        .aspectRatio(1f),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Text(
-                                    "Идет поиск устройств...",
-                                    color = Color.White,
-                                    fontSize = 16.sp
-                                )
-                            }
-                        }
-                        !isSearching && foundedSensors.value.isEmpty() -> {
+                            Spacer(modifier = Modifier.height(8.dp))
                             Button(
-                                onClick = { vm.startSearch() },
+                                onClick = { vm.retrySearch() },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White,
-                                    contentColor = Color.Black
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             ) {
-                                Text("Начать поиск")
+                                Text("Повторить поиск")
                             }
+                        }
+                    }
+
+                    connectionState == DeviceConnectionState.connection -> {
+                        Text(
+                            text = "Подключение...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    connectionState == DeviceConnectionState.connected -> {
+                        Text(
+                            text = "Устройство подключено",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    isSearching -> {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .aspectRatio(1f),
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                text = "Идет поиск устройств...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    !isSearching && foundedSensors.isEmpty() -> {
+                        Button(
+                            onClick = { vm.startSearch() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text("Начать поиск")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Список найденных устройств
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 8.dp)
+            ) {
+                if (foundedSensors.isEmpty() && !isSearching && !isSearchTimeout) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Нажмите 'Начать поиск' для сканирования устройств",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else if (foundedSensors.isEmpty() && isSearching) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Поиск устройств...\nУбедитесь, что Bluetooth включен",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                            )
+                        }
+                    }
+                } else if (foundedSensors.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Устройства не найдены за 30 секунд\n" +
+                                        "Проверьте:\n" +
+                                        "• Bluetooth включен\n" +
+                                        "• Устройство рядом\n" +
+                                        "• Устройство в режиме сопряжения",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
-
-                // Список найденных устройств
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .fillMaxHeight()
-                ) {
-                    if (foundedSensors.value.isEmpty() && !isSearching && !isSearchTimeout) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 40.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Нажмите 'Начать поиск' для сканирования устройств",
-                                    color = Color.Gray,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center,
-                                    lineHeight = 24.sp
-                                )
-                            }
-                        }
-                    } else if (foundedSensors.value.isEmpty() && isSearching) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 40.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Поиск устройств...\nУбедитесь, что Bluetooth включен",
-                                    color = Color.Gray,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center,
-                                    lineHeight = 24.sp
-                                )
-                            }
-                        }
-                    } else if (foundedSensors.value.isEmpty() && isSearchTimeout) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 40.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Устройства не найдены за 30 секунд\n" +
-                                            "Проверьте:\n" +
-                                            "• Bluetooth включен\n" +
-                                            "• Устройство рядом\n" +
-                                            "• Устройство в режиме сопряжения",
-                                    color = Color.Gray,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center,
-                                    lineHeight = 24.sp
-                                )
-                            }
-                        }
-                    }
-
-                    items(foundedSensors.value, key = { it.id }) { device ->
-                        val isThisDeviceConnecting = connectingDeviceId == device.id &&
-                                connectionState.value == DeviceConnectionState.connection
-                        val isThisDeviceConnected = connectionState.value == DeviceConnectionState.connected &&
+                items(foundedSensors, key = { it.id }) { device ->
+                    val isThisDeviceConnecting = connectingDeviceId == device.id &&
+                            connectionState == DeviceConnectionState.connection
+                    val isThisDeviceConnected =
+                        connectionState == DeviceConnectionState.connected &&
                                 device.id == connectingDeviceId
 
-                        DeviceItem(
-                            device = device,
-                            isConnecting = isThisDeviceConnecting,
-                            isConnected = isThisDeviceConnected,
-                            isEnabled = connectionState.value == DeviceConnectionState.disconnected &&
-                                    !isThisDeviceConnecting &&
-                                    connectingDeviceId == null,
-                            onClick = {
-                                connectingDeviceId = device.id
-                                vm.connect(device.id)
-                            }
-                        )
-                    }
+                    DeviceItem(
+                        device = device,
+                        isConnecting = isThisDeviceConnecting,
+                        isConnected = isThisDeviceConnected,
+                        isEnabled = connectionState == DeviceConnectionState.disconnected && connectingDeviceId == null,
+                        onClick = {
+                            connectingDeviceId = device.id
+                            vm.connect(device.id)
+                        }
+                    )
                 }
             }
         }
@@ -296,28 +290,28 @@ fun DeviceItem(
                     Icons.Filled.Devices,
                     contentDescription = "Устройство",
                     tint = when {
-                        isConnected -> Color.Green
-                        isConnecting -> Color.Yellow
-                        else -> Color.White
+                        isConnected -> MaterialTheme.colorScheme.primary
+                        isConnecting -> MaterialTheme.colorScheme.secondary
+                        else -> MaterialTheme.colorScheme.onSurface
                     }
                 )
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
                     Text(
                         text = device.description.ifEmpty { "Неизвестное устройство" },
+                        style = MaterialTheme.typography.bodyLarge,
                         color = when {
-                            isConnected -> Color.Green
-                            isConnecting -> Color.Yellow
-                            else -> Color.White
-                        },
-                        fontSize = 18.sp
+                            isConnected -> MaterialTheme.colorScheme.primary
+                            isConnecting -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
                     )
                     Text(
                         text = device.id,
-                        color = Color.Gray,
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -329,24 +323,19 @@ fun DeviceItem(
                         modifier = Modifier
                             .width(20.dp)
                             .aspectRatio(1f),
-                        color = Color.Yellow,
+                        color = MaterialTheme.colorScheme.secondary,
                         strokeWidth = 2.dp
                     )
                 }
+
                 isConnected -> {
                     Text(
-                        "✓ Подключено",
-                        color = Color.Green,
-                        fontSize = 14.sp
+                        text = "✓ Подключено",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
     }
-}
-
-@Preview
-@Composable
-fun Preview() {
-    DeviceSearchScreen(modifier = Modifier, hiltViewModel())
 }

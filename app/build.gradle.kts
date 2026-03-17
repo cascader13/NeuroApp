@@ -12,12 +12,12 @@ plugins {
 
 android {
     namespace = "com.neuroproject.neuro"
-    compileSdk = 34
+\    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.neuroproject.neuro"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 4
         versionName = "1.0"
 
@@ -73,6 +73,10 @@ android {
 
 dependencies {
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.foundation)
+
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
 
     val roomVersion = "2.6.1"
