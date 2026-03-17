@@ -33,7 +33,7 @@ data class CalibrationState(
 class CalibrationViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val MetricsDao: MetricsDao,
-    dm: CapsuleDeviceManager
+    val dm: CapsuleDeviceManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalibrationState())
@@ -41,8 +41,7 @@ class CalibrationViewModel @Inject constructor(
     val state = dm.calibrationState
     private var calibrationJob: Job? = null
     private var metronomePlayer: MediaPlayer? = null
-    private val totalCalibrationTime = 90000L // 90 секунд
-
+    private val totalCalibrationTime = 60000L // 90 секунд
     // Флаг для отслеживания, показывался ли уже диалог в текущей сессии
     private var dialogShown = false
     private var checkInitialized = false
@@ -191,6 +190,7 @@ class CalibrationViewModel @Inject constructor(
                 completeCalibration()
             }
         }
+        dm.startSignalAndHR()
     }
 
     fun forceStopMetronome() {

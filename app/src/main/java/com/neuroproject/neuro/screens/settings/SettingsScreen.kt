@@ -64,10 +64,10 @@ fun SettingsScreen(
         onBackClick = onBackClick,
         onMobileIdChanged = vm::onMobileIdChanged,
         onExpeditionIdChanged = vm::onExpeditionIdChanged,
+        onServerAddressChanged = vm::onServerAddressChanged,
         onUploadClicked = vm::onUploadClicked
     )
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +79,7 @@ private fun SettingsScreenContent(
     onBackClick: () -> Unit,
     onMobileIdChanged: (String) -> Unit,
     onExpeditionIdChanged: (String) -> Unit,
+    onServerAddressChanged: (String) -> Unit,
     onUploadClicked: () -> Unit
 ) {
     Scaffold(
@@ -120,6 +121,7 @@ private fun SettingsScreenContent(
                 isVisible = state.isUploading,
                 progress = state.uploadProgress
             )
+
             ThemeModeSelector(
                 selectedMode = themeMode,
                 onModeSelected = onThemeModeChange
@@ -135,6 +137,12 @@ private fun SettingsScreenContent(
             ExpeditionIdField(
                 expeditionId = state.expeditionId,
                 onValueChange = onExpeditionIdChanged
+            )
+
+            // НОВОЕ: Поле для адреса сервера
+            ServerAddressField(
+                serverAddress = state.serverAddress,
+                onValueChange = onServerAddressChanged
             )
 
             // Кнопка выгрузки
@@ -195,6 +203,55 @@ private fun SettingsScreenContent(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
+    }
+}
+
+// НОВЫЙ КОМПОНЕНТ: Поле для ввода адреса сервера
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ServerAddressField(
+    serverAddress: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Адрес сервера",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        OutlinedTextField(
+            value = serverAddress,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            placeholder = {
+                Text(
+                    text = "http://example.com:5000",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            singleLine = true
+        )
+
+        Text(
+            text = "Адрес сервера для отправки данных (например, http://192.168.1.100:5000)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -467,4 +524,3 @@ fun ThemeRadioButton(
         )
     }
 }
-

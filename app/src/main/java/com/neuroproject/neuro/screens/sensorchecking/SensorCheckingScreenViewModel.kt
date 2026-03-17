@@ -55,7 +55,7 @@ class SensorCheckingScreenViewModel @Inject constructor(dm: CapsuleDeviceManager
     fun start() {
         Log.d("TAG", "TRY START RESIST")
         capsuleDM.startResistance()
-        capsuleDM.startSignalAndHR()
+
     }
 
     fun finish() {

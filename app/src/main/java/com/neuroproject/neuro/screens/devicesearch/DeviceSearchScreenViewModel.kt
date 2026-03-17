@@ -41,7 +41,6 @@ class DeviceSearchScreenViewModel @Inject constructor(
             isInitialized = true
             viewModelScope.launch {
                 capsuleDM.initCapsule()
-                delay(2000)
                 startSearch()
             }
         }
@@ -85,10 +84,9 @@ class DeviceSearchScreenViewModel @Inject constructor(
 
             _isSearching.update { true }
             _isSearchTimeout.update { false }
-
             // Очищаем список устройств перед новым поиском
             _foundDevices.update { emptyArray() }
-
+            delay(2000)
             // Запускаем поиск через CapsuleDeviceManager
             capsuleDM.startSearch()
 

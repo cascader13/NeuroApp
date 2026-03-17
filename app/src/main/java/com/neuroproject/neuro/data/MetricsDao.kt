@@ -118,6 +118,11 @@ interface MetricsDao {
     suspend fun getCalibration(user_id: String): List<CalibrationHistoryEntity>
 
 
+    @Query("SELECT relaxation FROM productivity_indexes WHERE sessionId = :sessionId ORDER BY timestamp")
+    suspend fun getRelaxationValuesBySession(sessionId: Long): List<String>
+
+    @Query("SELECT stress FROM productivity_indexes WHERE sessionId = :sessionId ORDER BY timestamp")
+    suspend fun getStressValuesBySession(sessionId: Long): List<String>
 
     @Query("DELETE FROM EEG_Raw_metrics")
     suspend fun clearEEGRAW()

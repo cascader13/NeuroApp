@@ -3,6 +3,7 @@ package com.neuroproject.neuro.screens.subtest
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.neuroproject.neuro.data.MetricsDao
 import com.neuroproject.neuro.data.SessionDao
 import com.neuroproject.neuro.data.SessionEntity
 import com.neuroproject.neuro.data.subtest.BlockType
@@ -28,6 +29,7 @@ import kotlin.math.roundToInt
 class SubTestViewModel @Inject constructor(
     private val questionRepository: SubjectiveQuestionRepository,
     private val answerDao: SubjectiveAnswerDao,
+    private val metricsDao: MetricsDao,
     private val sessionDao: SessionDao,
     private val recordManager: RecordManager
 ) : ViewModel() {
@@ -64,7 +66,9 @@ class SubTestViewModel @Inject constructor(
         val subjectivePhysical: Int?,
         val objectiveCognitive: Int,
         val objectiveEmotional: Int,
-        val objectivePhysical: Int
+        val objectivePhysical: Int,
+        val fatiqueStatus: String, //пока временно, здесь хранится просто строка с состоянием человека
+        val stressStatus: String
     )
 
     private val _result = MutableStateFlow<SubTestResult?>(null)
@@ -226,7 +230,9 @@ class SubTestViewModel @Inject constructor(
                 subjectivePhysical = subjPhys,
                 objectiveCognitive = 0,   // Заглушка
                 objectiveEmotional = 0,   // Заглушка
-                objectivePhysical = 0      // Заглушка
+                objectivePhysical = 0,      // Заглушка
+                fatiqueStatus = metricsDao.getRelaxationValuesBySession(sessionId!!)[0],
+                stressStatus = metricsDao.getStressValuesBySession(sessionId!!)[0] // просто получаем через DAO
             )
             _result.value = resultData
 

@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.neuroproject.neuro"
-\    compileSdk = 35
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.neuroproject.neuro"

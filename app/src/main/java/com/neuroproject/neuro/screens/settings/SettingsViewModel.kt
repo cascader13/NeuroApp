@@ -11,7 +11,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -25,8 +24,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val uploadRepository: MetricsUploadRepository,
     @ApplicationContext private val context: Context
-) : ViewModel()
-{
+) : ViewModel() {
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
@@ -37,9 +35,9 @@ class SettingsViewModel @Inject constructor(
     init {
         loadSavedMobileId()
         loadSavedExpeditionId()
+        loadServerAddress()
         loadStats()
     }
-
 
     private fun loadSavedMobileId() {
         // Сначала пробуем загрузить mobile_id
@@ -66,6 +64,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    private fun loadServerAddress() {
+        val serverAddress = sharedPreferences.getString("server_address", "http://10.240.68.80:5000")
+        if (!serverAddress.isNullOrEmpty()) {
+            _state.update {
+                it.copy(serverAddress = serverAddress)
+            }
+        }
+    }
+
     private fun loadStats() {
         viewModelScope.launch {
             try {
@@ -82,7 +89,6 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-
 
     fun onMobileIdChanged(newId: String) {
         saveMobileIdToPreferences(newId)
@@ -106,6 +112,16 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun onServerAddressChanged(newAddress: String) {
+        saveServerAddressToPreferences(newAddress)
+        _state.update {
+            it.copy(
+                serverAddress = newAddress,
+                errorMessage = null,
+                successMessage = null
+            )
+        }
+    }
 
     private fun saveMobileIdToPreferences(id: String) {
         sharedPreferences.edit()
@@ -116,6 +132,12 @@ class SettingsViewModel @Inject constructor(
     private fun saveExpeditionIdToPreferences(id: String) {
         sharedPreferences.edit()
             .putString("saved_expedition_id", id)
+            .apply()
+    }
+
+    private fun saveServerAddressToPreferences(address: String) {
+        sharedPreferences.edit()
+            .putString("server_address", address)
             .apply()
     }
 
@@ -149,7 +171,10 @@ class SettingsViewModel @Inject constructor(
                             )
                         }
                     }
-                    .collect()
+                    .collect { progress ->
+                        // Здесь можно ничего не делать, так как onEach уже обрабатывает прогресс
+                        // Или можно добавить дополнительную логику при необходимости
+                    }
 
             } catch (e: Exception) {
                 _state.update {
@@ -311,6 +336,7 @@ class SettingsViewModel @Inject constructor(
 data class SettingsState(
     val mobileId: String = "",
     val expeditionId: String = "",
+    val serverAddress: String = "http://10.240.68.80:5000",
     val isUploading: Boolean = false,
     val uploadProgress: Float = 0f,
     val errorMessage: String? = null,

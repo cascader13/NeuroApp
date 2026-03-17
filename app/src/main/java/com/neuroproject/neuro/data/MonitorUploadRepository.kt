@@ -3,6 +3,7 @@ package com.neuroproject.neuro.data
 import android.util.Log
 import com.neuroproject.neuro.data.remote.MonitorApiService
 import com.neuroproject.neuro.data.remote.StringRequest
+import com.neuroproject.neuro.services.DynamicServerManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import retrofit2.HttpException
@@ -12,18 +13,16 @@ import javax.inject.Singleton
 
 @Singleton
 class MonitorUploadRepository @Inject constructor(
-    private val apiService: MonitorApiService
+    private val dynamicServerManager: DynamicServerManager
 ) {
 
     /**
      * Отправить строку на второй сервер.
-     * Метод доступен для инъекции в любой компонент (ViewModel, Activity и т.д.).
      * ID генерируется автоматически.
-     * Возвращает Flow для наблюдения за прогрессом/результатом (аналогично вашему uploadWithProgress).
      */
-    // В MonitorUploadRepository.kt добавьте:
     suspend fun sendStringSimple(id: String?, text: String): Boolean {
         return try {
+            val apiService = dynamicServerManager.getApiService()
             val request = StringRequest(id = id, text = text)
             val response = apiService.sendString(request)
             response.isSuccessful
@@ -32,9 +31,25 @@ class MonitorUploadRepository @Inject constructor(
             false
         }
     }
+
+    /**
+     * Отправить строку с возможностью обновления адреса сервера
+     */
+    suspend fun sendStringWithCustomServer(serverAddress: String, id: String?, text: String): Boolean {
+        return try {
+            // Обновляем адрес сервера и получаем новый API service
+            val apiService = dynamicServerManager.updateServerAddress(serverAddress)
+            val request = StringRequest(id = id, text = text)
+            val response = apiService.sendString(request)
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.e("MonitorUploadRepo", "Error sending string to custom server", e)
+            false
+        }
+    }
 }
 
-// Классы для прогресса (аналогично вашему UploadProgress)
+// Классы для прогресса
 sealed class SendStringProgress {
     data class Preparing(val message: String) : SendStringProgress()
     data class Success(val message: String, val id: String?) : SendStringProgress()

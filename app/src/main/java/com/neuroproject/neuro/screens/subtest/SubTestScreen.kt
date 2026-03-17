@@ -574,7 +574,9 @@ private fun PreviewResultScreen() {
                 subjectivePhysical = 68,
                 objectiveCognitive = 60,
                 objectiveEmotional = 55,
-                objectivePhysical = 70
+                objectivePhysical = 70,
+                fatiqueStatus = "lowFatique",
+                stressStatus = "NoStress"
             ),
             onFinish = {}
         )
