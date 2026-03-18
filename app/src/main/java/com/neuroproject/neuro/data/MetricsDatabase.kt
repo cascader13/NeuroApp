@@ -5,10 +5,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.neuroproject.neuro.data.session.SessionDao
+import com.neuroproject.neuro.data.session.SessionEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveAnswerDao
 import com.neuroproject.neuro.data.subtest.SubjectiveAnswerEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionDao
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
+import com.neuroproject.neuro.data.subtest.SubjectiveQuestionsProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Database(
     entities = [
@@ -38,7 +45,7 @@ import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
         SubjectiveAnswerEntity::class,
         SessionEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 
@@ -61,10 +68,20 @@ abstract class MetricsDatabase : RoomDatabase() {
                     "metrics_database_v4"
                 )
                 .fallbackToDestructiveMigration()
-                .addCallback(DatabaseCallback(context))
-                .build()
-                DatabaseCallback.INSTANCE = instance
-
+                    .addCallback(object : Callback() {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            super.onCreate(db)
+                            // При создании БД заполняем вопросами
+                            INSTANCE?.let { database ->
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    database.subjectiveQuestionDao().insertAll(
+                                        SubjectiveQuestionsProvider.getQuestions()
+                                    )
+                                }
+                            }
+                        }
+                    })
+                    .build()
                 INSTANCE = instance
                 instance
             }

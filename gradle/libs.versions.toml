@@ -11,6 +11,10 @@ composeBom = "2025.02.00"
 navigationRuntimeKtx = "2.7.7"
 navigationCompose = "2.7.7"
 room = "2.6.1"
+uiGraphics = "1.10.5"
+material3 = "1.4.0"
+animation = "1.10.5"
+generativeai = "0.9.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -36,6 +40,10 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 androidx-compose-runtime = { module = "androidx.compose.runtime:runtime" }
 androidx-compose-foundation-layout = { module = "androidx.compose.foundation:foundation-layout" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-compose-animation = { group = "androidx.compose.animation", name = "animation", version.ref = "animation" }
+generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

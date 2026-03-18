@@ -1,4 +1,4 @@
-package com.neuroproject.neuro.data
+package com.neuroproject.neuro.data.session
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -21,9 +21,8 @@ interface SessionDao {
     @Query(
         """
         UPDATE sessions SET 
-        objectiveCognitive = :objCog,
-        objectiveEmotional = :objEmo,
-        objectivePhysical = :objPhys,
+        objectiveFatigue = :objFatigue,
+        objectiveStress = :objStress,
         subjectiveCognitive = :subCog,
         subjectiveEmotional = :subEmo,
         subjectivePhysical = :subPhys,
@@ -33,9 +32,8 @@ interface SessionDao {
     )
     suspend fun updateIndexes(
         sessionId: Long,
-        objCog: Int?,
-        objEmo: Int?,
-        objPhys: Int?,
+        objFatigue: String?,
+        objStress: String?,
         subCog: Int?,
         subEmo: Int?,
         subPhys: Int?,

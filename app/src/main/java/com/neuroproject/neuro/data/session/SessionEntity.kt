@@ -1,4 +1,4 @@
-package com.neuroproject.neuro.data
+package com.neuroproject.neuro.data.session
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -10,9 +10,8 @@ data class SessionEntity(
     val sessionId: Long,  // timestamp старта
 
     // Объективные индексы
-    val objectiveCognitive: Int? = null,
-    val objectiveEmotional: Int? = null,
-    val objectivePhysical: Int? = null,
+    val objectiveFatigue: String? = null,
+    val objectiveStress: String? = null,
 
     // Субъективные индексы
     val subjectiveCognitive: Int? = null,

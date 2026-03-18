@@ -4,7 +4,7 @@ import android.content.Context
 import com.neuroproject.neuro.data.MetricsDatabase
 import com.neuroproject.neuro.data.MetricsDao
 import com.neuroproject.neuro.data.MetricsRepository
-import com.neuroproject.neuro.data.SessionDao
+import com.neuroproject.neuro.data.session.SessionDao
 import com.neuroproject.neuro.data.subtest.SubjectiveAnswerDao
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionDao
 import dagger.Module

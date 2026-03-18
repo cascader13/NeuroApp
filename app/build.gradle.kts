@@ -77,6 +77,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.animation)
+    implementation(libs.generativeai)
 
 
     val roomVersion = "2.6.1"

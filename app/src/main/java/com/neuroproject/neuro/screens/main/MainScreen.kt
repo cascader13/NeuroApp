@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.screens.main
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -24,10 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.neuroproject.neuro.R
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 
 @Composable
@@ -39,7 +44,7 @@ fun MainScreen(
     vm: MainScreenViewModel = hiltViewModel()
 ) {
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().systemBarsPadding(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
@@ -47,17 +52,10 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Верхняя панель с кнопкой настроек
             TopBar(onSettingsClick = onSettingsClick)
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Заголовок приложения
+            Spacer(modifier = Modifier.height(20.dp))
             AppTitle()
-
-            Spacer(modifier = Modifier.height(60.dp))
-
-            // Основное меню с кнопками
+            Spacer(modifier = Modifier.height(100.dp))
             MenuButtons(
                 onStartSessionClick = onStartSessionClick,
                 onViewResultsClick = onViewResultsClick
@@ -67,12 +65,9 @@ fun MainScreen(
 }
 
 @Composable
-private fun TopBar(
-    onSettingsClick: () -> Unit
-) {
+private fun TopBar(onSettingsClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End
     ) {
         IconButton(
@@ -94,33 +89,20 @@ private fun AppTitle() {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Логотип или иконка
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "NFB",
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Название приложения
+        // Логотип
+        Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "Логотип приложения",
+            modifier = Modifier.size(300.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "НейроСтат",
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
@@ -135,7 +117,6 @@ private fun MenuButtons(
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Кнопка "Начать сессию"
         MenuButton(
             title = "Начать сессию",
             subtitle = "",
@@ -143,15 +124,8 @@ private fun MenuButtons(
             contentColor = MaterialTheme.colorScheme.onPrimary,
             onClick = onStartSessionClick
         )
-
-        // Кнопка "Предыдущие результаты"
-        MenuButton(
-            title = "Предыдущие результаты",
-            subtitle = "Просмотр истории",
-            backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            onClick = onViewResultsClick
-        )
+        // Если нужна кнопка "Предыдущие результаты", раскомментируйте
+        // MenuButton(...)
     }
 }
 
@@ -178,7 +152,6 @@ private fun MenuButton(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
-
             if (subtitle.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.neuroproject.neuro.data.SessionEntity
+import com.neuroproject.neuro.data.session.SessionEntity
 
 @Entity(
     tableName = "subjective_answers",

@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.ui.theme
 import android.app.Activity
 import android.os.Build
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
@@ -275,10 +276,13 @@ fun NeuroApplicationTheme(
         else -> lightScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
-    )
+    // Crossfade анимирует смену цветовой схемы
+    Crossfade(targetState = colorScheme, label = "theme_crossfade") { currentColorScheme ->
+        MaterialTheme(
+            colorScheme = currentColorScheme,
+            typography = AppTypography,
+            shapes = AppShapes,
+            content = content
+        )
+    }
 }
-

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -81,7 +82,7 @@ fun SensorCheckingScreen(
     val t4Color = getResistColor(resistState.t4)
 
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().systemBarsPadding(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
@@ -90,7 +91,6 @@ fun SensorCheckingScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            BackButton(onBackPressed)
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
