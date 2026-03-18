@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Upload
@@ -82,6 +84,8 @@ private fun SettingsScreenContent(
     onServerAddressChanged: (String) -> Unit,
     onUploadClicked: () -> Unit
 ) {
+    val scrollState = rememberScrollState()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -113,10 +117,10 @@ private fun SettingsScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Невидимый прогресс-бар (отображается только при загрузке)
             InvisibleProgressBar(
                 isVisible = state.isUploading,
                 progress = state.uploadProgress
@@ -127,37 +131,31 @@ private fun SettingsScreenContent(
                 onModeSelected = onThemeModeChange
             )
 
-            // Поле ID мобильного пользователя
             MobileIdField(
                 mobileId = state.mobileId,
                 onValueChange = onMobileIdChanged
             )
 
-            // Поле ID экспедиции
             ExpeditionIdField(
                 expeditionId = state.expeditionId,
                 onValueChange = onExpeditionIdChanged
             )
 
-            // НОВОЕ: Поле для адреса сервера
             ServerAddressField(
                 serverAddress = state.serverAddress,
                 onValueChange = onServerAddressChanged
             )
 
-            // Кнопка выгрузки
             UploadButton(
                 isLoading = state.isUploading,
                 isEnabled = !state.isUploading,
                 onClick = onUploadClicked
             )
 
-            // Статус выгрузки
             if (state.isUploading) {
                 UploadProgressStatus(progress = state.uploadProgress)
             }
 
-            // Сообщение об ошибке
             state.errorMessage?.let { errorMessage ->
                 Box(
                     modifier = Modifier
@@ -175,7 +173,6 @@ private fun SettingsScreenContent(
                 }
             }
 
-            // Сообщение об успехе
             state.successMessage?.let { successMessage ->
                 Box(
                     modifier = Modifier
@@ -193,7 +190,7 @@ private fun SettingsScreenContent(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Информация о приложении
             Text(
@@ -202,12 +199,11 @@ private fun SettingsScreenContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
-
-// НОВЫЙ КОМПОНЕНТ: Поле для ввода адреса сервера
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ServerAddressField(
     serverAddress: String,
