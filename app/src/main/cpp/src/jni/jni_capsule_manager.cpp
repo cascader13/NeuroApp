@@ -709,13 +709,8 @@ void removeAll() {
     }
 }
 
-// MAIN LOOP
 bool stopRequested = false;
-void Loop() {
-    while (!stopRequested) {
-        std::this_thread::sleep_for(50ms);
-    }
-}
+
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM * vm, void* aReserved) {
     auto resolver = JniResolver::Instance();
@@ -751,8 +746,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
 
     jmethodID fun = env->GetMethodID(capsuleClass, "onCapsuleStateChanged", "(I)V");
     env->CallVoidMethod(javaCapsule, fun, 1); //Initialized
-
-    Loop();
 }
 
 extern "C"

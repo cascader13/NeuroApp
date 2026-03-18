@@ -84,6 +84,7 @@ private fun SettingsScreenContent(
     onServerAddressChanged: (String) -> Unit,
     onUploadClicked: () -> Unit
 ) {
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {

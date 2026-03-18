@@ -9,6 +9,8 @@ data class SessionEntity(
     @PrimaryKey
     val sessionId: Long,  // timestamp старта
 
+
+
     // Объективные индексы
     val objectiveFatigue: String? = null,
     val objectiveStress: String? = null,
