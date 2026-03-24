@@ -404,7 +404,7 @@ private fun WaitingScreen(
     timeLeftMillis: Long,
     modifier: Modifier = Modifier
 ) {
-    val totalDuration = 3 * 60 * 1000L // 10 минут в миллисекундах
+    val totalDuration = 5 * 60 * 1000L // 10 минут в миллисекундах
     val progress = 1f - (timeLeftMillis.toFloat() / totalDuration)
 
     val minutes = (timeLeftMillis / 1000) / 60

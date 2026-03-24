@@ -1,6 +1,5 @@
 package com.neuroproject.neuro
 
-
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -17,6 +16,30 @@ import com.neuroproject.neuro.screens.login.LoginScreen
 import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
 import com.neuroproject.neuro.screens.subtest.SubTestScreen
 
+/**
+ * Граф навигации приложения
+ *
+ * Определяет структуру навигации между экранами, включая вложенную навигацию.
+ * Использует Jetpack Navigation Compose для декларативного описания маршрутов.
+ *
+ * ## Структура навигации:
+ * ```
+ * LOGIN (экран входа)
+ *   └── MAIN (главный экран)
+ *        ├── SETTINGS (настройки)
+ *        └── PROBE_STACK (вложенный стек)
+ *             ├── SEARCH (поиск устройства)
+ *             ├── SENSOR_CHECK (проверка датчиков)
+ *             ├── CALIBRATION (калибровка)
+ *             └── SUB_TEST (субъективный тест)
+ * ```
+ *
+ * @param modifier Модификатор для применения ко всем экранам
+ * @param navController Контроллер навигации (по умолчанию создается через rememberNavController)
+ * @param startDestination Начальный экран (по умолчанию LOGIN)
+ * @param navActions Действия навигации (создаются автоматически)
+ * @see NeuroNavigationActions
+ */
 @Composable
 fun NeuroNavGraph(
     modifier: Modifier = Modifier,
@@ -32,7 +55,12 @@ fun NeuroNavGraph(
         startDestination = startDestination
     ) {
 
-        // Экран логина
+        // ==================== ОСНОВНЫЕ ЭКРАНЫ ====================
+
+        /**
+         * Экран входа/авторизации
+         * При успешном входе переходит на главный экран
+         */
         composable(NavDestinations.LOGIN) {
             LoginScreen(
                 modifier = Modifier.safeDrawingPadding(),
@@ -46,22 +74,28 @@ fun NeuroNavGraph(
             )
         }
 
-        // Главный экран
+        /**
+         * Главный экран приложения
+         * Содержит кнопки для начала сессии и перехода в настройки
+         */
         composable(NavDestinations.MAIN) {
             com.neuroproject.neuro.screens.main.MainScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 vm = hiltViewModel(),
                 onStartSessionClick = {
                     navActions.navigateToDeviceSearch()
-                } ,
+                },
                 onSettingsClick = {
                     navActions.navigateToSettings()
                 }
             )
         }
 
-        // Экран настроек
-        composable(NavDestinations.SETTINGS){
+        /**
+         * Экран настроек
+         * Управление ID пользователя, экспедиции и адресом сервера
+         */
+        composable(NavDestinations.SETTINGS) {
             com.neuroproject.neuro.screens.settings.SettingsScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 onBackClick = {
@@ -71,10 +105,21 @@ fun NeuroNavGraph(
             )
         }
 
+        // ==================== ВЛОЖЕННАЯ НАВИГАЦИЯ (СТЕК ПОДКЛЮЧЕНИЯ) ====================
+
+        /**
+         * Вложенный граф навигации для процесса подключения устройства.
+         * Все экраны внутри этого блока имеют общий обратный стек.
+         */
         navigation(
             startDestination = NavDestinations.SEARCH,
             route = NavDestinations.PROBE_STACK
         ) {
+
+            /**
+             * Экран поиска устройств
+             * Сканирует Bluetooth и отображает найденные нейро-гарнитуры
+             */
             composable(NavDestinations.SEARCH) {
                 DeviceSearchScreen(
                     modifier = Modifier.safeDrawingPadding(),
@@ -88,6 +133,10 @@ fun NeuroNavGraph(
                 )
             }
 
+            /**
+             * Экран проверки датчиков
+             * Отображает сопротивление электродов для проверки качества контакта
+             */
             composable(NavDestinations.SENSOR_CHECK) {
                 SensorCheckingScreen(
                     modifier = Modifier.safeDrawingPadding(),
@@ -104,8 +153,12 @@ fun NeuroNavGraph(
                 )
             }
 
+            /**
+             * Экран калибровки
+             * Проводит 60-секундную калибровку с метрономом
+             */
             composable(NavDestinations.CALIBRATION) {
-                CalibrationScreen (
+                CalibrationScreen(
                     modifier = Modifier.safeDrawingPadding(),
                     onBackPressed = {
                         navActions.navigateBack()
@@ -120,6 +173,10 @@ fun NeuroNavGraph(
                 )
             }
 
+            /**
+             * Экран субъективного тестирования
+             * Опрос пользователя после завершения сессии
+             */
             composable(NavDestinations.SUB_TEST) {
                 SubTestScreen(
                     onFinish = {

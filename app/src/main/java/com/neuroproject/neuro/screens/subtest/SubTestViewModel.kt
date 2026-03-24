@@ -53,7 +53,7 @@ class SubTestViewModel @Inject constructor(
     private val _comment = MutableStateFlow("")
     val comment: StateFlow<String> = _comment.asStateFlow()
 
-    private val _timeLeftMillis = MutableStateFlow(3 * 60 * 1000L)
+    private val _timeLeftMillis = MutableStateFlow(5 * 60 * 1000L)
     val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
 
     private var sessionId: Long? = null
@@ -98,7 +98,7 @@ class SubTestViewModel @Inject constructor(
             recordManager.startRecording()
 
             // 4. Запускаем таймер на 10 минут
-            startTimer(3 * 60 * 1000L)
+            startTimer(5 * 60 * 1000L)
 
             // 5. Переходим к вопросам
             _uiState.value = SubTestScreenState.Question

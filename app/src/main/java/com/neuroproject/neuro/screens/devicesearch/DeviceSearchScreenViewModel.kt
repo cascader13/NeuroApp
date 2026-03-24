@@ -15,28 +15,61 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Модель представления для экрана поиска устройств
+ *
+ * Управляет процессом поиска и подключения к нейро-гарнитуре через Bluetooth.
+ *
+ * ## Процесс подключения:
+ * 1. Инициализация CapsuleDeviceManager
+ * 2. Автоматический старт поиска после инициализации
+ * 3. Поиск длится 30 секунд, после чего автоматически останавливается
+ * 4. Отображение найденных устройств в списке
+ * 5. Подключение к выбранному устройству
+ *
+ * ## Состояния:
+ * - **NonInitialized** - капсула не инициализирована
+ * - **Initialized** - капсула готова к поиску
+ * - **Searching** - активный поиск устройств
+ * - **SearchTimeout** - таймаут поиска (30 секунд без результатов)
+ * - **Connected** - устройство подключено
+ *
+ * @property dm Менеджер устройства
+ * @see CapsuleDeviceManager
+ * @see DeviceInfo
+ */
 @HiltViewModel
 class DeviceSearchScreenViewModel @Inject constructor(
     private val dm: CapsuleDeviceManager
 ) : ViewModel() {
 
+    /** Список найденных устройств */
     private val _foundDevices = MutableStateFlow<Array<DeviceInfo>>(emptyArray())
-    private val _initState = MutableStateFlow<CapsuleInitializedState>(CapsuleInitializedState.NonInitialized)
-    private val _isSearchTimeout = MutableStateFlow(false)
-    private val _isSearching = MutableStateFlow(false)
-    private var isInitialized = false // Флаг для отслеживания инициализации
-
     val foundDevices = _foundDevices.asStateFlow()
-    val deviceState = dm.connectionState
+
+    /** Состояние инициализации капсулы */
+    private val _initState = MutableStateFlow<CapsuleInitializedState>(CapsuleInitializedState.NonInitialized)
+
+    /** Флаг таймаута поиска */
+    private val _isSearchTimeout = MutableStateFlow(false)
     val isSearchTimeout = _isSearchTimeout.asStateFlow()
+
+    /** Флаг активного поиска */
+    private val _isSearching = MutableStateFlow(false)
     val isSearching = _isSearching.asStateFlow()
 
+    /** Состояние подключения устройства */
+    val deviceState = dm.connectionState
+
+    /** Ссылка на менеджер устройства для доступа в UI */
     val capsuleDM: CapsuleDeviceManager = dm
+
+    private var isInitialized = false // Флаг отслеживания инициализации
 
     init {
         setupCallbacks()
 
-        // Инициализируем капсулу только один раз при создании ViewModel
+        // Инициализация капсулы только один раз
         if (!isInitialized && deviceState.value != DeviceConnectionState.connected) {
             isInitialized = true
             viewModelScope.launch {
@@ -46,13 +79,15 @@ class DeviceSearchScreenViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Настройка callback-ов от менеджера устройства
+     */
     private fun setupCallbacks() {
         capsuleDM.initializeStateChanged = { state ->
             viewModelScope.launch {
                 _initState.emit(state)
                 when (state) {
                     CapsuleInitializedState.Initialized -> {
-                        // Капсула инициализирована, начинаем поиск
                         startSearch()
                     }
                     CapsuleInitializedState.NonInitialized -> {
@@ -66,7 +101,6 @@ class DeviceSearchScreenViewModel @Inject constructor(
         capsuleDM.devicesFound = { devices ->
             viewModelScope.launch {
                 _foundDevices.emit(devices)
-                // Если нашли устройства, сбрасываем таймаут
                 if (devices.isNotEmpty()) {
                     _isSearchTimeout.update { false }
                 }
@@ -74,9 +108,13 @@ class DeviceSearchScreenViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Начать поиск устройств
+     *
+     * Поиск длится 30 секунд, после чего автоматически останавливается.
+     */
     fun startSearch() {
         viewModelScope.launch {
-            // Если уже ищем или капсула не инициализирована, не начинаем новый поиск
             if (_isSearching.value) {
                 Log.d("Search", "Поиск уже выполняется")
                 return@launch
@@ -84,16 +122,14 @@ class DeviceSearchScreenViewModel @Inject constructor(
 
             _isSearching.update { true }
             _isSearchTimeout.update { false }
-            // Очищаем список устройств перед новым поиском
             _foundDevices.update { emptyArray() }
+
             delay(2000)
-            // Запускаем поиск через CapsuleDeviceManager
             capsuleDM.startSearch()
 
-            // Запускаем таймер на 30 секунд
+            // Таймер на 30 секунд
             delay(30000)
 
-            // Если после 30 секунд все еще ищем и нет подключенных устройств
             if (_isSearching.value && deviceState.value != DeviceConnectionState.connected) {
                 _isSearchTimeout.update { true }
                 _isSearching.update { false }
@@ -102,20 +138,33 @@ class DeviceSearchScreenViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Повторить поиск
+     *
+     * Останавливает текущий поиск и начинает новый.
+     */
     fun retrySearch() {
         viewModelScope.launch {
             stopSearch()
-            delay(500) // Небольшая задержка перед повторным поиском
+            delay(500)
             startSearch()
         }
     }
 
+    /**
+     * Подключиться к устройству
+     *
+     * @param id Идентификатор устройства (MAC-адрес)
+     */
     fun connect(id: String) {
         viewModelScope.launch {
             capsuleDM.connect(id)
         }
     }
 
+    /**
+     * Остановить поиск
+     */
     fun stopSearch() {
         viewModelScope.launch {
             _isSearching.update { false }

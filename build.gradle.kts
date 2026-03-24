@@ -4,5 +4,5 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     id("com.google.dagger.hilt.android") version "2.49" apply false
     alias(libs.plugins.compose.compiler) apply false
-
+    id("org.jetbrains.dokka") version "2.1.0" apply false
 }

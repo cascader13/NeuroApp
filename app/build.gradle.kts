@@ -8,6 +8,39 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
     id("org.jetbrains.kotlin.plugin.compose") version libs.versions.kotlin
+    id("org.jetbrains.dokka") version "2.1.0"
+}
+
+tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>().configureEach {
+    // Настройка документации для Android модуля
+    dokkaSourceSets {
+        named("main") {
+            // Android специфичные настройки
+            sourceRoots.from("src/main/java")
+            sourceRoots.from("src/main/kotlin")
+
+            // Исключаем сгенерированный код
+            sourceRoots.from("build/generated")
+
+            // Настройка ссылок на Android документацию
+            externalDocumentationLink {
+                url.set(uri("https://developer.android.com/reference/").toURL())
+            }
+
+            // Настройка для Compose
+            perPackageOption {
+                matchingRegex.set(".*\\.compose\\..*")
+                suppress.set(true)  // Можно скрыть внутренние Compose компоненты
+            }
+        }
+    }
+}
+
+
+tasks.register("dokkaModule") {
+    dependsOn(tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>())
+    group = "documentation"
+    description = "Generate Dokka documentation for this module"
 }
 
 android {
