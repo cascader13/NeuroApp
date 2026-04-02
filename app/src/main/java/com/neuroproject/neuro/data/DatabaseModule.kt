@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.di
 
 import android.content.Context
+import com.neuroproject.neuro.data.FatigueDao
 import com.neuroproject.neuro.data.MetricsDatabase
 import com.neuroproject.neuro.data.MetricsDao
 import com.neuroproject.neuro.data.MetricsRepository
@@ -60,6 +61,18 @@ object DatabaseModule {
     @Singleton
     fun provideMetricsDao(database: MetricsDatabase): MetricsDao {
         return database.metricsDao()
+    }
+
+    /**
+     * Предоставление DAO для анализа результата
+     *
+     * @param database Экземпляр базы данных
+     * @return DAO для работы с конечным результатом
+     */
+    @Provides
+    @Singleton
+    fun provideFatigueDao(database: MetricsDatabase): FatigueDao {
+        return database.fatigueDao()
     }
 
     /**

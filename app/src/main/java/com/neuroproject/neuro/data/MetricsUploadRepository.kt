@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.neuroproject.neuro.data.remote.*
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import retrofit2.HttpException
@@ -12,6 +13,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.pow
 
 @Singleton
 class MetricsUploadRepository @Inject constructor(
@@ -21,8 +23,510 @@ class MetricsUploadRepository @Inject constructor(
     private val apiService: MetricsApiService
 ) {
 
+    companion object {
+        private const val DEFAULT_BATCH_SIZE = 100 // Записей на пакет
+        private const val MAX_BATCH_SIZE_BYTES = 1024 * 1024 // 1 MB
+        private const val RETRY_DELAY_MS = 2000L // 2 секунды
+        private const val MAX_RETRIES = 3
+        private const val BATCH_DELAY_MS = 500L // Задержка между пакетами
+    }
+
+    // ==================== НОВАЯ РЕАЛИЗАЦИЯ С ПАКЕТНОЙ ОТПРАВКОЙ ====================
+
     /**
-     * Подготовить данные для отправки
+     * Пакетная отправка данных с контролем прогресса
+     *
+     * @param batchSize Максимальное количество записей в одном пакете
+     * @param enableRetry Включить повторные попытки для неудачных пакетов
+     * @param stopOnError Останавливать отправку при ошибке или продолжать
+     * @param batchDelayMs Задержка между пакетами в миллисекундах
+     */
+    suspend fun uploadInBatches(
+        batchSize: Int = DEFAULT_BATCH_SIZE,
+        enableRetry: Boolean = true,
+        stopOnError: Boolean = true,
+        batchDelayMs: Long = BATCH_DELAY_MS
+    ): Flow<BatchUploadProgress> = flow {
+        try {
+            // Шаг 1: Подготовка данных
+            emit(BatchUploadProgress.Preparing("Подготовка данных...", 0.05f))
+
+            val preparationResult = prepareDataForUpload()
+
+            when (preparationResult) {
+                is UploadPreparationResult.NoData -> {
+                    emit(BatchUploadProgress.NoData)
+                    return@flow
+                }
+                is UploadPreparationResult.Error -> {
+                    emit(BatchUploadProgress.Error(preparationResult.message))
+                    return@flow
+                }
+                is UploadPreparationResult.Ready -> {
+                    // Шаг 2: Разбиение на пакеты
+                    emit(BatchUploadProgress.Preparing("Разбиение на пакеты...", 0.1f))
+
+                    val batches = splitIntoBatches(
+                        request = preparationResult.request,
+                        maxRecordsPerBatch = batchSize,
+                        maxBatchSizeBytes = MAX_BATCH_SIZE_BYTES
+                    )
+
+                    if (batches.isEmpty()) {
+                        emit(BatchUploadProgress.NoData)
+                        return@flow
+                    }
+
+                    emit(BatchUploadProgress.BatchesCreated(
+                        totalBatches = batches.size,
+                        totalRecords = preparationResult.totalRecords
+                    ))
+
+                    // Шаг 3: Отправка пакетов
+                    var successfullySent = 0
+                    val failedBatches = mutableListOf<MetricBatch>()
+
+                    for ((index, batch) in batches.withIndex()) {
+                        emit(BatchUploadProgress.SendingBatch(
+                            current = index + 1,
+                            total = batches.size,
+                            recordsInBatch = batch.recordCount,
+                            batchId = batch.batchId
+                        ))
+
+                        val result = sendBatchWithRetry(
+                            batch = batch,
+                            maxRetries = if (enableRetry) MAX_RETRIES else 1
+                        )
+
+                        when (result) {
+                            is BatchSendResult.Success -> {
+                                // Помечаем данные как отправленные
+                                markBatchAsUploaded(batch)
+                                successfullySent += batch.recordCount
+
+                                emit(BatchUploadProgress.BatchCompleted(
+                                    batchIndex = index + 1,
+                                    totalBatches = batches.size,
+                                    recordsInBatch = batch.recordCount,
+                                    totalSentSoFar = successfullySent,
+                                    batchId = batch.batchId
+                                ))
+                            }
+                            is BatchSendResult.Failure -> {
+                                emit(BatchUploadProgress.BatchFailed(
+                                    batchIndex = index + 1,
+                                    totalBatches = batches.size,
+                                    error = result.message,
+                                    batchId = batch.batchId,
+                                    willRetry = false
+                                ))
+
+                                if (stopOnError) {
+                                    // Останавливаем отправку при первой ошибке
+                                    emit(BatchUploadProgress.Stopped(
+                                        sentCount = successfullySent,
+                                        failedCount = batch.recordCount,
+                                        reason = result.message
+                                    ))
+                                    return@flow
+                                } else {
+                                    failedBatches.add(batch)
+                                }
+                            }
+                        }
+
+                        // Задержка между пакетами для снижения нагрузки
+                        if (index < batches.size - 1) {
+                            delay(batchDelayMs)
+                        }
+                    }
+
+                    // Шаг 4: Обработка неудачных пакетов
+                    if (failedBatches.isNotEmpty()) {
+                        emit(BatchUploadProgress.PartialSuccess(
+                            sentCount = successfullySent,
+                            totalCount = preparationResult.totalRecords,
+                            failedBatches = failedBatches.size,
+                            failedRecords = failedBatches.sumOf { it.recordCount }
+                        ))
+                    } else {
+                        emit(BatchUploadProgress.Completed(
+                            sentCount = successfullySent,
+                            totalBatches = batches.size
+                        ))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            emit(BatchUploadProgress.Error("Критическая ошибка: ${e.message}"))
+        }
+    }
+
+    /**
+     * Отправка одного пакета с повторными попытками
+     */
+    private suspend fun sendBatchWithRetry(
+        batch: MetricBatch,
+        maxRetries: Int
+    ): BatchSendResult {
+        var lastException: Exception? = null
+
+        for (attempt in 1..maxRetries) {
+            try {
+                val response = apiService.uploadMetrics(batch.request)
+
+                if (response.isSuccessful) {
+                    return BatchSendResult.Success(batch.batchId)
+                } else {
+                    lastException = HttpException(response)
+                    val errorMessage = when (response.code()) {
+                        400 -> "Некорректный запрос"
+                        401 -> "Требуется авторизация"
+                        403 -> "Доступ запрещен"
+                        404 -> "Сервер не найден"
+                        413 -> "Пакет слишком большой"
+                        429 -> "Слишком много запросов"
+                        500, 502, 503, 504 -> "Ошибка сервера (${response.code()})"
+                        else -> "HTTP ${response.code()}: ${response.message()}"
+                    }
+
+                    if (attempt < maxRetries && response.code() in 500..599) {
+                        // Экспоненциальная задержка для серверных ошибок
+                        val delayMs = RETRY_DELAY_MS * 2.0.pow(attempt - 1).toLong()
+                        delay(delayMs)
+                        continue
+                    }
+                    return BatchSendResult.Failure(batch.batchId, errorMessage)
+                }
+            } catch (e: HttpException) {
+                lastException = e
+                if (attempt < maxRetries && e.code() in 500..599) {
+                    val delayMs = RETRY_DELAY_MS * 2.0.pow(attempt - 1).toLong()
+                    delay(delayMs)
+                    continue
+                }
+                return BatchSendResult.Failure(batch.batchId, "HTTP ошибка: ${e.message}")
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < maxRetries) {
+                    delay(RETRY_DELAY_MS)
+                    continue
+                }
+                return BatchSendResult.Failure(batch.batchId, "Ошибка: ${e.message}")
+            }
+        }
+
+        return BatchSendResult.Failure(
+            batch.batchId,
+            "Превышено количество попыток: ${lastException?.message ?: "Неизвестная ошибка"}"
+        )
+    }
+
+    /**
+     * Разбиение запроса на пакеты
+     */
+    private fun splitIntoBatches(
+        request: UploadRequest,
+        maxRecordsPerBatch: Int,
+        maxBatchSizeBytes: Int
+    ): List<MetricBatch> {
+        val batches = mutableListOf<MetricBatch>()
+        val allMetrics = mutableListOf<TypedMetric>()
+
+        // Собираем все метрики в единый список с указанием типа
+        request.nfbMetrics?.forEach {
+            allMetrics.add(TypedMetric.NFB(it))
+        }
+        request.physiologicalMetrics?.forEach {
+            allMetrics.add(TypedMetric.Physiological(it))
+        }
+        request.EEGRawMetrics?.forEach {
+            allMetrics.add(TypedMetric.EEGRaw(it))
+        }
+        request.EEGProceedMetrics?.forEach {
+            allMetrics.add(TypedMetric.EEGProceed(it))
+        }
+        request.EEGArtifactsMetrics?.forEach {
+            allMetrics.add(TypedMetric.EEGArtifact(it))
+        }
+        request.memsMetrics?.forEach {
+            allMetrics.add(TypedMetric.MEMS(it))
+        }
+        request.productivityMetrics?.forEach {
+            allMetrics.add(TypedMetric.Productivity(it))
+        }
+        request.emotionalMetrics?.forEach {
+            allMetrics.add(TypedMetric.Emotional(it))
+        }
+        request.cardioMetrics?.forEach {
+            allMetrics.add(TypedMetric.Cardio(it))
+        }
+
+        // Сжатые данные
+        request.nfbMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.NFBCompressed(it))
+        }
+        request.physiologicalMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.PhysiologicalCompressed(it))
+        }
+        request.EEGRawMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.EEGRawCompressed(it))
+        }
+        request.EEGProceedMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.EEGProceedCompressed(it))
+        }
+        request.EEGArtifactsMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.EEGArtifactCompressed(it))
+        }
+        request.memsMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.MEMSCompressed(it))
+        }
+        request.productivityMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.ProductivityCompressed(it))
+        }
+        request.emotionalMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.EmotionalCompressed(it))
+        }
+        request.cardioMetricsCompressed?.forEach {
+            allMetrics.add(TypedMetric.CardioCompressed(it))
+        }
+
+        // Базовые значения
+        request.physiologicalBaseline?.forEach {
+            allMetrics.add(TypedMetric.PhysiologicalBaseline(it))
+        }
+        request.productivityBaseline?.forEach {
+            allMetrics.add(TypedMetric.ProductivityBaseline(it))
+        }
+        request.productivityIndex?.forEach {
+            allMetrics.add(TypedMetric.ProductivityIndex(it))
+        }
+
+        // Разбиваем на чанки
+        val chunks = mutableListOf<MutableList<TypedMetric>>()
+        var currentChunk = mutableListOf<TypedMetric>()
+        var currentChunkSizeBytes = 0L
+
+        for (metric in allMetrics) {
+            // Оцениваем размер метрики в JSON
+            val metricJson = gson.toJson(metric)
+            val metricSize = metricJson.toByteArray().size.toLong()
+
+            // Проверяем, не превысит ли добавление лимиты
+            if (currentChunk.size >= maxRecordsPerBatch ||
+                (currentChunkSizeBytes + metricSize) > maxBatchSizeBytes
+            ) {
+                if (currentChunk.isNotEmpty()) {
+                    chunks.add(currentChunk)
+                    currentChunk = mutableListOf()
+                    currentChunkSizeBytes = 0L
+                }
+            }
+
+            currentChunk.add(metric)
+            currentChunkSizeBytes += metricSize
+        }
+
+        if (currentChunk.isNotEmpty()) {
+            chunks.add(currentChunk)
+        }
+
+        // Конвертируем чанки обратно в UploadRequest
+        for (chunk in chunks) {
+            val batchRequest = UploadRequest(
+                nfbMetrics = chunk.filterIsInstance<TypedMetric.NFB>().map { it.data },
+                physiologicalMetrics = chunk.filterIsInstance<TypedMetric.Physiological>().map { it.data },
+                EEGRawMetrics = chunk.filterIsInstance<TypedMetric.EEGRaw>().map { it.data },
+                EEGProceedMetrics = chunk.filterIsInstance<TypedMetric.EEGProceed>().map { it.data },
+                EEGArtifactsMetrics = chunk.filterIsInstance<TypedMetric.EEGArtifact>().map { it.data },
+                memsMetrics = chunk.filterIsInstance<TypedMetric.MEMS>().map { it.data },
+                productivityMetrics = chunk.filterIsInstance<TypedMetric.Productivity>().map { it.data },
+                emotionalMetrics = chunk.filterIsInstance<TypedMetric.Emotional>().map { it.data },
+                cardioMetrics = chunk.filterIsInstance<TypedMetric.Cardio>().map { it.data },
+                nfbMetricsCompressed = chunk.filterIsInstance<TypedMetric.NFBCompressed>().map { it.data },
+                physiologicalMetricsCompressed = chunk.filterIsInstance<TypedMetric.PhysiologicalCompressed>().map { it.data },
+                EEGRawMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGRawCompressed>().map { it.data },
+                EEGProceedMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGProceedCompressed>().map { it.data },
+                EEGArtifactsMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGArtifactCompressed>().map { it.data },
+                memsMetricsCompressed = chunk.filterIsInstance<TypedMetric.MEMSCompressed>().map { it.data },
+                productivityMetricsCompressed = chunk.filterIsInstance<TypedMetric.ProductivityCompressed>().map { it.data },
+                emotionalMetricsCompressed = chunk.filterIsInstance<TypedMetric.EmotionalCompressed>().map { it.data },
+                cardioMetricsCompressed = chunk.filterIsInstance<TypedMetric.CardioCompressed>().map { it.data },
+                physiologicalBaseline = chunk.filterIsInstance<TypedMetric.PhysiologicalBaseline>().map { it.data },
+                productivityBaseline = chunk.filterIsInstance<TypedMetric.ProductivityBaseline>().map { it.data },
+                productivityIndex = chunk.filterIsInstance<TypedMetric.ProductivityIndex>().map { it.data }
+            )
+
+            if (batchRequest.hasData()) {
+                batches.add(
+                    MetricBatch(
+                        request = batchRequest,
+                        recordCount = chunk.size,
+                        batchId = UUID.randomUUID().toString(),
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        return batches
+    }
+
+    /**
+     * Пометить пакет как отправленный
+     */
+    private suspend fun markBatchAsUploaded(batch: MetricBatch) {
+        // Uncompressed NFB
+        batch.request.nfbMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkNFBMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed Physiological
+        batch.request.physiologicalMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkPhysiologicalMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed EEG Raw
+        batch.request.EEGRawMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEEGRAWMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed EEG Proceed
+        batch.request.EEGProceedMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEEGProceedMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed EEG Artifacts
+        batch.request.EEGArtifactsMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEEGArtifactsMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed MEMS
+        batch.request.memsMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkMEMSMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed Productivity
+        batch.request.productivityMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkProductivityMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed Emotional
+        batch.request.emotionalMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEmotionalMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Uncompressed Cardio
+        batch.request.cardioMetrics?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkCardioMetricsAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed NFB
+        batch.request.nfbMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkNFBMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed Physiological
+        batch.request.physiologicalMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed EEG Raw
+        batch.request.EEGRawMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed EEG Proceed
+        batch.request.EEGProceedMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed EEG Artifacts
+        batch.request.EEGArtifactsMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed MEMS
+        batch.request.memsMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkMEMSMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed Productivity
+        batch.request.productivityMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkProductivityMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed Emotional
+        batch.request.emotionalMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkEmotionalMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Compressed Cardio
+        batch.request.cardioMetricsCompressed?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkCardioMetricsCompressedAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        // Baselines
+        batch.request.physiologicalBaseline?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkPhysiologicalBaselineAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        batch.request.productivityBaseline?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkProductivityBaselineAsSynced(metrics.map { it.timestamp })
+            }
+        }
+
+        batch.request.productivityIndex?.let { metrics ->
+            if (metrics.isNotEmpty()) {
+                metricsDao.safeMarkProductivityIndexesAsSynced(metrics.map { it.timestamp })
+            }
+        }
+    }
+
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
+    /**
+     * Подготовить данные для отправки (оставляем без изменений)
      */
     suspend fun prepareDataForUpload(): UploadPreparationResult {
         return try {
@@ -66,9 +570,7 @@ class MetricsUploadRepository @Inject constructor(
                 return UploadPreparationResult.NoData
             }
 
-            // Создаем DTO для отправки
             val uploadRequest = UploadRequest(
-                // Uncompressed данные
                 nfbMetrics = nfbMetrics.map { it.toServerDto() },
                 physiologicalMetrics = physiologicalMetrics.map { it.toServerDto() },
                 EEGRawMetrics = eegRawMetrics.map { it.toServerDto() },
@@ -78,8 +580,6 @@ class MetricsUploadRepository @Inject constructor(
                 productivityMetrics = productivityMetrics.map { it.toServerDto() },
                 emotionalMetrics = emotionalMetrics.map { it.toServerDto() },
                 cardioMetrics = cardioMetrics.map { it.toServerDto() },
-
-                // Compressed данные
                 nfbMetricsCompressed = nfbMetricsCompressed.map { it.toServerDto() },
                 physiologicalMetricsCompressed = physiologicalMetricsCompressed.map { it.toServerDto() },
                 EEGRawMetricsCompressed = eegRawMetricsCompressed.map { it.toServerDto() },
@@ -89,8 +589,6 @@ class MetricsUploadRepository @Inject constructor(
                 productivityMetricsCompressed = productivityMetricsCompressed.map { it.toServerDto() },
                 emotionalMetricsCompressed = emotionalMetricsCompressed.map { it.toServerDto() },
                 cardioMetricsCompressed = cardioMetricsCompressed.map { it.toServerDto() },
-
-                // Baseline и Indexes данные
                 physiologicalBaseline = physiologicalBaselines.map { it.toServerDto() },
                 productivityBaseline = productivityBaselines.map { it.toServerDto() },
                 productivityIndex = productivityIndexes.map { it.toServerDto() }
@@ -99,7 +597,6 @@ class MetricsUploadRepository @Inject constructor(
             UploadPreparationResult.Ready(
                 request = uploadRequest,
                 totalRecords = totalRecords,
-                // Uncompressed counts
                 nfbCount = nfbMetrics.size,
                 physiologicalCount = physiologicalMetrics.size,
                 eegRawCount = eegRawMetrics.size,
@@ -109,7 +606,6 @@ class MetricsUploadRepository @Inject constructor(
                 productivityCount = productivityMetrics.size,
                 emotionalCount = emotionalMetrics.size,
                 cardioCount = cardioMetrics.size,
-                // Compressed counts
                 nfbCompressedCount = nfbMetricsCompressed.size,
                 physiologicalCompressedCount = physiologicalMetricsCompressed.size,
                 eegRawCompressedCount = eegRawMetricsCompressed.size,
@@ -119,7 +615,6 @@ class MetricsUploadRepository @Inject constructor(
                 productivityCompressedCount = productivityMetricsCompressed.size,
                 emotionalCompressedCount = emotionalMetricsCompressed.size,
                 cardioCompressedCount = cardioMetricsCompressed.size,
-                // Baseline counts
                 physiologicalBaselinesCount = physiologicalBaselines.size,
                 productivityBaselinesCount = productivityBaselines.size,
                 productivityIndexesCount = productivityIndexes.size
@@ -135,192 +630,57 @@ class MetricsUploadRepository @Inject constructor(
     }
 
     /**
-     * Отправить данные на сервер
+     * Сохранить данные в JSON файл (для отладки) - обновленная версия с поддержкой пакетов
      */
-    suspend fun uploadToServer(): UploadResult {
+    suspend fun saveToJsonFile(saveAsBatches: Boolean = false): FileSaveResult {
         return try {
             val preparationResult = prepareDataForUpload()
 
             when (preparationResult) {
-                is UploadPreparationResult.NoData -> {
-                    return UploadResult.NoData
-                }
-                is UploadPreparationResult.Error -> {
-                    return UploadResult.Error(preparationResult.message)
-                }
-                is UploadPreparationResult.Ready -> {
-                    val response = apiService.uploadMetrics(preparationResult.request)
-
-                    if (response.isSuccessful) {
-                        markDataAsUploaded(preparationResult)
-                        UploadResult.Success(
-                            sentCount = preparationResult.totalRecords
-                        )
-                    } else {
-                        val errorMessage = when (response.code()) {
-                            400 -> "Некорректный запрос"
-                            401 -> "Требуется авторизация"
-                            403 -> "Доступ запрещен"
-                            404 -> "Сервер не найден"
-                            500 -> "Внутренняя ошибка сервера"
-                            else -> "HTTP ${response.code()}: ${response.message()}"
-                        }
-                        UploadResult.Error(errorMessage)
-                    }
-                }
-            }
-        } catch (e: HttpException) {
-            UploadResult.Error("HTTP ошибка: ${e.message}")
-        } catch (e: Exception) {
-            UploadResult.Error("Ошибка сети: ${e.message}")
-        }
-    }
-
-    /**
-     * Потоковая отправка с прогрессом
-     */
-    fun uploadWithProgress(): Flow<UploadProgress> = flow {
-        try {
-            emit(UploadProgress.Preparing("Подготовка данных...", 0.1f))
-
-            val preparationResult = prepareDataForUpload()
-
-            when (preparationResult) {
-                is UploadPreparationResult.NoData -> {
-                    emit(UploadProgress.NoData)
-                }
-                is UploadPreparationResult.Error -> {
-                    emit(UploadProgress.Error(preparationResult.message))
-                }
-                is UploadPreparationResult.Ready -> {
-                    emit(UploadProgress.Preparing("Отправка на сервер...", 0.5f))
-
-                    val result = uploadToServer()
-
-                    when (result) {
-                        is UploadResult.Success -> {
-                            emit(UploadProgress.Completed(result.sentCount, result.message))
-                        }
-                        is UploadResult.Error -> {
-                            emit(UploadProgress.Error(result.message))
-                        }
-                        UploadResult.NoData -> {
-                            emit(UploadProgress.NoData)
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            emit(UploadProgress.Error("Неизвестная ошибка: ${e.message}"))
-        }
-    }
-
-    /**
-     * Пометить данные как отправленные
-     */
-    private suspend fun markDataAsUploaded(preparationResult: UploadPreparationResult.Ready) {
-        // Uncompressed timestamps
-        if (preparationResult.request.nfbMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkNFBMetricsAsSynced(preparationResult.request.nfbMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.physiologicalMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkPhysiologicalMetricsAsSynced(preparationResult.request.physiologicalMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.EEGRawMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGRAWMetricsAsSynced(preparationResult.request.EEGRawMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.EEGProceedMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGProceedMetricsAsSynced(preparationResult.request.EEGProceedMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.EEGArtifactsMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGArtifactsMetricsAsSynced(preparationResult.request.EEGArtifactsMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.memsMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkMEMSMetricsAsSynced(preparationResult.request.memsMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.productivityMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkProductivityMetricsAsSynced(preparationResult.request.productivityMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.emotionalMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkEmotionalMetricsAsSynced(preparationResult.request.emotionalMetrics.map { it.timestamp })
-        }
-        if (preparationResult.request.cardioMetrics?.isNotEmpty() == true) {
-            metricsDao.safeMarkCardioMetricsAsSynced(preparationResult.request.cardioMetrics.map { it.timestamp })
-        }
-
-        // Compressed timestamps
-        if (preparationResult.request.nfbMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkNFBMetricsCompressedAsSynced(preparationResult.request.nfbMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.physiologicalMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(preparationResult.request.physiologicalMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.EEGRawMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(preparationResult.request.EEGRawMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.EEGProceedMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(preparationResult.request.EEGProceedMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.EEGArtifactsMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(preparationResult.request.EEGArtifactsMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.memsMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkMEMSMetricsCompressedAsSynced(preparationResult.request.memsMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.productivityMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkProductivityMetricsCompressedAsSynced(preparationResult.request.productivityMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.emotionalMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkEmotionalMetricsCompressedAsSynced(preparationResult.request.emotionalMetricsCompressed.map { it.timestamp })
-        }
-        if (preparationResult.request.cardioMetricsCompressed?.isNotEmpty() == true) {
-            metricsDao.safeMarkCardioMetricsCompressedAsSynced(preparationResult.request.cardioMetricsCompressed.map { it.timestamp })
-        }
-
-        // Baseline timestamps
-        if (preparationResult.request.physiologicalBaseline?.isNotEmpty() == true) {
-            metricsDao.safeMarkPhysiologicalBaselineAsSynced(preparationResult.request.physiologicalBaseline.map { it.timestamp })
-        }
-        if (preparationResult.request.productivityBaseline?.isNotEmpty() == true) {
-            metricsDao.safeMarkProductivityBaselineAsSynced(preparationResult.request.productivityBaseline.map { it.timestamp })
-        }
-        if (preparationResult.request.productivityIndex?.isNotEmpty() == true) {
-            metricsDao.safeMarkProductivityIndexesAsSynced(preparationResult.request.productivityIndex.map { it.timestamp })
-        }
-    }
-
-    /**
-     * Сохранить данные в JSON файл (для отладки)
-     */
-    suspend fun saveToJsonFile(): FileSaveResult {
-        return try {
-            val preparationResult = prepareDataForUpload()
-
-            when (preparationResult) {
-                is UploadPreparationResult.NoData -> {
-                    FileSaveResult.NoData
-                }
-                is UploadPreparationResult.Error -> {
-                    FileSaveResult.Error(preparationResult.message)
-                }
+                is UploadPreparationResult.NoData -> FileSaveResult.NoData
+                is UploadPreparationResult.Error -> FileSaveResult.Error(preparationResult.message)
                 is UploadPreparationResult.Ready -> {
                     val exportDir = File(context.filesDir, "metrics_exports")
-                    if (!exportDir.exists()) {
-                        exportDir.mkdirs()
-                    }
+                    if (!exportDir.exists()) exportDir.mkdirs()
 
                     val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                    val fileName = "neuro_upload_${timestamp}.json"
-                    val jsonFile = File(exportDir, fileName)
 
-                    val jsonString = gson.toJson(preparationResult.request)
-                    jsonFile.writeText(jsonString)
+                    if (saveAsBatches) {
+                        // Сохраняем каждый пакет в отдельный файл
+                        val batches = splitIntoBatches(
+                            request = preparationResult.request,
+                            maxRecordsPerBatch = DEFAULT_BATCH_SIZE,
+                            maxBatchSizeBytes = MAX_BATCH_SIZE_BYTES
+                        )
 
-                    FileSaveResult.Success(
-                        filePath = jsonFile.absolutePath,
-                        fileName = fileName,
-                        recordsCount = preparationResult.totalRecords
-                    )
+                        val batchDir = File(exportDir, "batch_export_$timestamp")
+                        batchDir.mkdirs()
+
+                        batches.forEachIndexed { index, batch ->
+                            val fileName = "batch_${index + 1}_${batch.batchId}.json"
+                            val jsonFile = File(batchDir, fileName)
+                            val jsonString = gson.toJson(batch.request)
+                            jsonFile.writeText(jsonString)
+                        }
+
+                        FileSaveResult.Success(
+                            filePath = batchDir.absolutePath,
+                            fileName = "batch_export_$timestamp",
+                            recordsCount = preparationResult.totalRecords
+                        )
+                    } else {
+                        // Сохраняем одним файлом
+                        val fileName = "neuro_upload_${timestamp}.json"
+                        val jsonFile = File(exportDir, fileName)
+                        val jsonString = gson.toJson(preparationResult.request)
+                        jsonFile.writeText(jsonString)
+
+                        FileSaveResult.Success(
+                            filePath = jsonFile.absolutePath,
+                            fileName = fileName,
+                            recordsCount = preparationResult.totalRecords
+                        )
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -329,7 +689,7 @@ class MetricsUploadRepository @Inject constructor(
     }
 
     /**
-     * Получить статистику
+     * Получить статистику (оставляем без изменений)
      */
     suspend fun getStats(): UploadStats {
         // Uncompressed counts
@@ -403,7 +763,6 @@ class MetricsUploadRepository @Inject constructor(
         return UploadStats(
             totalRecords = totalRecords,
             unsyncedRecords = unsyncedRecords,
-            // Uncompressed counts
             nfbCount = nfbCount,
             physiologicalCount = physiologicalCount,
             eegRawCount = eegRawCount,
@@ -413,7 +772,6 @@ class MetricsUploadRepository @Inject constructor(
             productivityCount = productivityCount,
             emotionalCount = emotionalCount,
             cardioCount = cardioCount,
-            // Compressed counts
             nfbCompressedCount = nfbCompressedCount,
             physiologicalCompressedCount = physiologicalCompressedCount,
             eegRawCompressedCount = eegRawCompressedCount,
@@ -423,11 +781,9 @@ class MetricsUploadRepository @Inject constructor(
             productivityCompressedCount = productivityCompressedCount,
             emotionalCompressedCount = emotionalCompressedCount,
             cardioCompressedCount = cardioCompressedCount,
-            // Baseline counts
             physiologicalBaselinesCount = physiologicalBaselinesCount,
             productivityBaselinesCount = productivityBaselinesCount,
             productivityIndexesCount = productivityIndexesCount,
-            // Unsynced counts
             nfbUnsynced = nfbUnsynced,
             physiologicalUnsynced = physiologicalUnsynced,
             eegRawUnsynced = eegRawUnsynced,
@@ -453,13 +809,140 @@ class MetricsUploadRepository @Inject constructor(
     }
 }
 
-// Классы данных для подготовки
+// ==================== НОВЫЕ КЛАССЫ ДЛЯ ПАКЕТНОЙ ОТПРАВКИ ====================
+
+/**
+ * Типизированная метрика для удобной группировки
+ */
+sealed class TypedMetric {
+    data class NFB(val data: NfbMetricDto) : TypedMetric()
+    data class Physiological(val data: PhysiologicalMetricDto) : TypedMetric()
+    data class EEGRaw(val data: EEGRawMetricDto) : TypedMetric()
+    data class EEGProceed(val data: EEGProceedMetricDto) : TypedMetric()
+    data class EEGArtifact(val data: EEGArtifactMetricDto) : TypedMetric()
+    data class MEMS(val data: MemsMetricDto) : TypedMetric()
+    data class Productivity(val data: ProductivityMetricDto) : TypedMetric()
+    data class Emotional(val data: EmotionalMetricDto) : TypedMetric()
+    data class Cardio(val data: CardioMetricDto) : TypedMetric()
+
+    data class NFBCompressed(val data: NfbMetricCompressedDto) : TypedMetric()
+    data class PhysiologicalCompressed(val data: PhysiologicalMetricCompressedDto) : TypedMetric()
+    data class EEGRawCompressed(val data: EEGRawMetricCompressedDto) : TypedMetric()
+    data class EEGProceedCompressed(val data: EEGProceedMetricCompressedDto) : TypedMetric()
+    data class EEGArtifactCompressed(val data: EEGArtifactMetricCompressedDto) : TypedMetric()
+    data class MEMSCompressed(val data: MemsMetricCompressedDto) : TypedMetric()
+    data class ProductivityCompressed(val data: ProductivityMetricCompressedDto) : TypedMetric()
+    data class EmotionalCompressed(val data: EmotionalMetricCompressedDto) : TypedMetric()
+    data class CardioCompressed(val data: CardioMetricCompressedDto) : TypedMetric()
+
+    data class PhysiologicalBaseline(val data: PhysiologicalBaselineDto) : TypedMetric()
+    data class ProductivityBaseline(val data: ProductivityBaselineDto) : TypedMetric()
+    data class ProductivityIndex(val data: ProductivityIndexDto) : TypedMetric()
+}
+
+/**
+ * Пакет метрик для отправки
+ */
+data class MetricBatch(
+    val request: UploadRequest,
+    val recordCount: Int,
+    val batchId: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+/**
+ * Результат отправки пакета
+ */
+sealed class BatchSendResult {
+    data class Success(val batchId: String) : BatchSendResult()
+    data class Failure(val batchId: String, val message: String) : BatchSendResult()
+}
+
+/**
+ * Прогресс пакетной отправки
+ */
+sealed class BatchUploadProgress {
+    data class Preparing(val step: String, val progress: Float) : BatchUploadProgress()
+    data class BatchesCreated(val totalBatches: Int, val totalRecords: Int) : BatchUploadProgress()
+    data class SendingBatch(
+        val current: Int,
+        val total: Int,
+        val recordsInBatch: Int,
+        val batchId: String
+    ) : BatchUploadProgress()
+
+    data class BatchCompleted(
+        val batchIndex: Int,
+        val totalBatches: Int,
+        val recordsInBatch: Int,
+        val totalSentSoFar: Int,
+        val batchId: String
+    ) : BatchUploadProgress()
+
+    data class BatchFailed(
+        val batchIndex: Int,
+        val totalBatches: Int,
+        val error: String,
+        val batchId: String,
+        val willRetry: Boolean = false
+    ) : BatchUploadProgress()
+
+    data class Stopped(
+        val sentCount: Int,
+        val failedCount: Int,
+        val reason: String
+    ) : BatchUploadProgress()
+
+    data class PartialSuccess(
+        val sentCount: Int,
+        val totalCount: Int,
+        val failedBatches: Int,
+        val failedRecords: Int
+    ) : BatchUploadProgress()
+
+    data class Completed(
+        val sentCount: Int,
+        val totalBatches: Int
+    ) : BatchUploadProgress()
+
+    object NoData : BatchUploadProgress()
+    data class Error(val message: String) : BatchUploadProgress()
+}
+
+/**
+ * Расширение для проверки наличия данных в запросе
+ */
+fun UploadRequest.hasData(): Boolean {
+    return (nfbMetrics?.isNotEmpty() == true) ||
+            (physiologicalMetrics?.isNotEmpty() == true) ||
+            (EEGRawMetrics?.isNotEmpty() == true) ||
+            (EEGProceedMetrics?.isNotEmpty() == true) ||
+            (EEGArtifactsMetrics?.isNotEmpty() == true) ||
+            (memsMetrics?.isNotEmpty() == true) ||
+            (productivityMetrics?.isNotEmpty() == true) ||
+            (emotionalMetrics?.isNotEmpty() == true) ||
+            (cardioMetrics?.isNotEmpty() == true) ||
+            (nfbMetricsCompressed?.isNotEmpty() == true) ||
+            (physiologicalMetricsCompressed?.isNotEmpty() == true) ||
+            (EEGRawMetricsCompressed?.isNotEmpty() == true) ||
+            (EEGProceedMetricsCompressed?.isNotEmpty() == true) ||
+            (EEGArtifactsMetricsCompressed?.isNotEmpty() == true) ||
+            (memsMetricsCompressed?.isNotEmpty() == true) ||
+            (productivityMetricsCompressed?.isNotEmpty() == true) ||
+            (emotionalMetricsCompressed?.isNotEmpty() == true) ||
+            (cardioMetricsCompressed?.isNotEmpty() == true) ||
+            (physiologicalBaseline?.isNotEmpty() == true) ||
+            (productivityBaseline?.isNotEmpty() == true) ||
+            (productivityIndex?.isNotEmpty() == true)
+}
+
+// ==================== СУЩЕСТВУЮЩИЕ КЛАССЫ (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ) ====================
+
 sealed class UploadPreparationResult {
     object NoData : UploadPreparationResult()
     data class Ready(
         val request: UploadRequest,
         val totalRecords: Int,
-        // Uncompressed counts
         val nfbCount: Int,
         val physiologicalCount: Int,
         val eegRawCount: Int,
@@ -469,7 +952,6 @@ sealed class UploadPreparationResult {
         val productivityCount: Int,
         val emotionalCount: Int,
         val cardioCount: Int,
-        // Compressed counts
         val nfbCompressedCount: Int,
         val physiologicalCompressedCount: Int,
         val eegRawCompressedCount: Int,
@@ -479,7 +961,6 @@ sealed class UploadPreparationResult {
         val productivityCompressedCount: Int,
         val emotionalCompressedCount: Int,
         val cardioCompressedCount: Int,
-        // Baseline counts
         val physiologicalBaselinesCount: Int,
         val productivityBaselinesCount: Int,
         val productivityIndexesCount: Int
@@ -487,14 +968,12 @@ sealed class UploadPreparationResult {
     data class Error(val message: String) : UploadPreparationResult()
 }
 
-// Результаты отправки
 sealed class UploadResult {
     object NoData : UploadResult()
     data class Success(val sentCount: Int, val message: String = "Данные загружены") : UploadResult()
     data class Error(val message: String) : UploadResult()
 }
 
-// Прогресс отправки
 sealed class UploadProgress {
     data class Preparing(val step: String, val progress: Float) : UploadProgress()
     data class Completed(val sentCount: Int, val message: String) : UploadProgress()
@@ -502,18 +981,15 @@ sealed class UploadProgress {
     data class Error(val message: String) : UploadProgress()
 }
 
-// Результаты сохранения файла
 sealed class FileSaveResult {
     object NoData : FileSaveResult()
     data class Success(val filePath: String, val fileName: String, val recordsCount: Int) : FileSaveResult()
     data class Error(val message: String) : FileSaveResult()
 }
 
-// Статистика
 data class UploadStats(
     val totalRecords: Int,
     val unsyncedRecords: Int,
-    // Uncompressed counts
     val nfbCount: Int,
     val physiologicalCount: Int,
     val eegRawCount: Int,
@@ -523,7 +999,6 @@ data class UploadStats(
     val productivityCount: Int,
     val emotionalCount: Int,
     val cardioCount: Int,
-    // Compressed counts
     val nfbCompressedCount: Int,
     val physiologicalCompressedCount: Int,
     val eegRawCompressedCount: Int,
@@ -533,11 +1008,9 @@ data class UploadStats(
     val productivityCompressedCount: Int,
     val emotionalCompressedCount: Int,
     val cardioCompressedCount: Int,
-    // Baseline counts
     val physiologicalBaselinesCount: Int,
     val productivityBaselinesCount: Int,
     val productivityIndexesCount: Int,
-    // Unsynced counts
     val nfbUnsynced: Int,
     val physiologicalUnsynced: Int,
     val eegRawUnsynced: Int,

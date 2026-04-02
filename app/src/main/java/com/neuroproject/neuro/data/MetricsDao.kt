@@ -731,5 +731,56 @@ interface MetricsDao {
         }
     }
 
+   @Query("SELECT * FROM productivity_metrics WHERE sessionId = :sessionId AND timestamp >= :minuteStart AND timestamp <= :minuteEnd ORDER BY timestamp ASC")
+   suspend fun getProductivityMetricsForMinute(sessionId: Long, minuteStart: Long, minuteEnd: Long) : List<ProductivityMetricEntity>
+
+    @Query("SELECT * FROM productivity_baselines WHERE sessionId = :sessionId LIMIT 1")
+    suspend fun getProductivityBaselines(sessionId: Long) : ProductivityBaselinesEntity
+
+    @Query("""
+        SELECT * FROM emotional_metrics 
+        WHERE sessionId = :sessionId 
+        AND timestamp >= :minuteStart 
+        AND timestamp <= :minuteEnd
+        ORDER BY timestamp ASC
+    """)
+    suspend fun getEmotionalMetricsForMinute(
+        sessionId: Long,
+        minuteStart: Long,
+        minuteEnd: Long
+    ): List<EmotionalMetricEntity>
+
+    @Query("""
+        SELECT * FROM physiological_metrics 
+        WHERE sessionId = :sessionId 
+        AND timestamp >= :minuteStart 
+        AND timestamp <= :minuteEnd
+        ORDER BY timestamp ASC
+    """)
+    suspend fun getPhysiologicalMetricsForMinute(
+        sessionId: Long,
+        minuteStart: Long,
+        minuteEnd: Long
+    ): List<PhysiologicalMetricEntity>
+
+
+    @Query("SELECT timestamp FROM productivity_metrics  WHERE sessionId = :sessionId  ORDER BY timestamp ASC LIMIT 1")
+    suspend fun getProductivityStartTimestamp(sessionId: Long) : Long
+
+    @Query("SELECT timestamp FROM emotional_metrics  WHERE sessionId = :sessionId  ORDER BY timestamp ASC LIMIT 1")
+    suspend fun getEmotionalStartTimestamp(sessionId: Long) : Long
+
+    @Query("SELECT timestamp FROM physiological_metrics  WHERE sessionId = :sessionId  ORDER BY timestamp ASC LIMIT 1")
+    suspend fun getPhysiologicalStartTimestamp(sessionId: Long) : Long
+
+    @Query("SELECT * FROM productivity_metrics_compressed WHERE sessionId = :sessionId ORDER BY timestamp ASC")
+    suspend fun getProductivityCompressedMetrics(sessionId: Long) : List<ProductivityMetricCompressedEntity>
+
+    @Query("SELECT * FROM physiological_metrics_compressed WHERE sessionId = :sessionId ORDER BY timestamp ASC")
+    suspend fun getPhysiologicalCompressedMetrics(sessionId: Long) : List<PhysiologicalMetricCompressedEntity>
+
+    @Query("SELECT * FROM emotional_metrics_compressed WHERE sessionId = :sessionId ORDER BY timestamp ASC")
+    suspend fun getEmotionalCompressedMetrics(sessionId: Long) : List<EmotionalMetricCompressedEntity>
+
 
 }

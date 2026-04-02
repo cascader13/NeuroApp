@@ -87,6 +87,8 @@ class RecordManager @Inject constructor(
     /** Поток состояния NFB данных (для внутреннего использования) */
     private val _nfbState = MutableStateFlow(NFBData())
 
+    public val productivityScore = deviceManager.productivityScore // stateFlow для получения данных о состоянии калибровки productivity
+
     /** ID текущей сессии записи */
     private var currentSessionId: Long? = null
 
@@ -268,9 +270,11 @@ class RecordManager @Inject constructor(
                 )
             }
         }
-
+        Log.d("RecordManger", "start connecting Productivity")
         /** Слушатель для данных продуктивности */
         capsuleDM.productivityData.collectInScope(_scope) { productivity ->
+            Log.d("RecordManager", "Productivity data received in collector! isRecording=$isRecording")
+            Log.d("RecordManager", "Productivity: time=${productivity.timeStampMilli}, value=${productivity.productivity}")
             if (isRecording) {
                 saveProductivityData(
                     productivity.timeStampMilli,
@@ -377,8 +381,9 @@ class RecordManager @Inject constructor(
         }
     }
 
+
     /**
-     * Сохранение NFB данных
+    * Сохранение NFB данных
      *
      * @param time Временная метка
      * @param alpha Альфа-ритм (8-13 Гц)
@@ -796,4 +801,6 @@ class RecordManager @Inject constructor(
             Log.e("RecordManager", "Cannot save Emotional data: userId or expeditionId is empty")
         }
     }
+
+
 }

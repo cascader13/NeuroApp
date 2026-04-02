@@ -74,7 +74,13 @@ import kotlinx.coroutines.launch
         SubjectiveQuestionEntity::class,
         CalibrationHistoryEntity::class,
         SubjectiveAnswerEntity::class,
-        SessionEntity::class
+        SessionEntity::class,
+
+        FatigueResultEntity::class,
+        SessionFatigueSummaryEntity::class
+
+
+
     ],
     version = 2,
     exportSchema = false
@@ -84,6 +90,9 @@ abstract class MetricsDatabase : RoomDatabase() {
 
     /** DAO для работы с метриками */
     abstract fun metricsDao(): MetricsDao
+
+    /** DAO для работы с результатами */
+    abstract fun fatigueDao(): FatigueDao
 
     /** DAO для работы с ответами на субъективные вопросы */
     abstract fun subjectiveAnswerDao(): SubjectiveAnswerDao

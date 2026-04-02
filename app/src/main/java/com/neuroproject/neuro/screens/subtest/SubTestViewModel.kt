@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.screens.subtest
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,8 @@ import com.neuroproject.neuro.data.subtest.SubjectiveAnswerDao
 import com.neuroproject.neuro.data.subtest.SubjectiveAnswerEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionRepository
+import com.neuroproject.neuro.services.FatigueAnalyzer
+import com.neuroproject.neuro.services.ProductivityScore
 import com.neuroproject.neuro.services.RecordManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -31,10 +34,13 @@ class SubTestViewModel @Inject constructor(
     private val answerDao: SubjectiveAnswerDao,
     private val metricsDao: MetricsDao,
     private val sessionDao: SessionDao,
-    private val recordManager: RecordManager
+    private val recordManager: RecordManager,
+    private val fatigueAnalyzer: FatigueAnalyzer
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<SubTestScreenState>(SubTestScreenState.Instruction)
     val uiState: StateFlow<SubTestScreenState> = _uiState.asStateFlow()
+
+    var productivityScore = recordManager.productivityScore
 
     private val _questions = MutableStateFlow<List<SubjectiveQuestionEntity>>(emptyList())
     val questions: StateFlow<List<SubjectiveQuestionEntity>> = _questions.asStateFlow()
@@ -53,7 +59,9 @@ class SubTestViewModel @Inject constructor(
     private val _comment = MutableStateFlow("")
     val comment: StateFlow<String> = _comment.asStateFlow()
 
-    private val _timeLeftMillis = MutableStateFlow(5 * 60 * 1000L)
+
+    private val minutesCount = 10
+    private val _timeLeftMillis = MutableStateFlow(minutesCount * 60 * 1000L)
     val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
 
     private var sessionId: Long? = null
@@ -98,7 +106,7 @@ class SubTestViewModel @Inject constructor(
             recordManager.startRecording()
 
             // 4. Запускаем таймер на 10 минут
-            startTimer(5 * 60 * 1000L)
+            startTimer(timeLeftMillis.value)
 
             // 5. Переходим к вопросам
             _uiState.value = SubTestScreenState.Question
@@ -232,7 +240,16 @@ class SubTestViewModel @Inject constructor(
             _uiState.value = SubTestScreenState.Result
         }
     }
-    private fun calculateTotal (
+
+    private suspend fun calculateObjective(){
+        var result = fatigueAnalyzer.calculateAll(minutesCount, sessionId)
+        if(result != null){
+            Log.d("OBJ_RES", "cognitive ${result.averageCognitive}, physiological ${result.averagePhysiological}, psychological ${result.averagePsychological}, total ${(result.averagePsychological + result.averageCognitive + result.averagePhysiological) / 3}")
+        }else{
+            Log.e("OBJ_RES", "something went wrong")
+        }
+    }
+    private suspend fun calculateTotal (
         subjCog: Int?,
         subjEmo: Int?,
         subjPhys: Int?,
@@ -255,8 +272,10 @@ class SubTestViewModel @Inject constructor(
             "ChronicFatigue" -> 95
             else -> 50 // NoRecommendation или неизвестное – нейтральное
         }
-
+        calculateObjective()
         return ( (subjCog ?: 0) + (subjEmo ?: 0) + (subjPhys ?: 0) + stressNum + fatigueNum ) / 5
     }
+
+
 
 }

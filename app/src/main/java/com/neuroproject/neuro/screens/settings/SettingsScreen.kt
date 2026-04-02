@@ -18,9 +18,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,7 +47,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -67,7 +75,8 @@ fun SettingsScreen(
         onMobileIdChanged = vm::onMobileIdChanged,
         onExpeditionIdChanged = vm::onExpeditionIdChanged,
         onServerAddressChanged = vm::onServerAddressChanged,
-        onUploadClicked = vm::onUploadClicked
+        onUploadClicked = vm::onUploadClicked,
+        onSaveToFileClicked = vm::saveToFile
     )
 }
 
@@ -82,7 +91,8 @@ private fun SettingsScreenContent(
     onMobileIdChanged: (String) -> Unit,
     onExpeditionIdChanged: (String) -> Unit,
     onServerAddressChanged: (String) -> Unit,
-    onUploadClicked: () -> Unit
+    onUploadClicked: () -> Unit,
+    onSaveToFileClicked: () -> Unit
 ) {
 
     Scaffold(
@@ -120,81 +130,49 @@ private fun SettingsScreenContent(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Невидимый прогресс-бар (отображается только при загрузке)
-            InvisibleProgressBar(
-                isVisible = state.isUploading,
-                progress = state.uploadProgress
-            )
+            // Статистика данных
+            DataStatsCard(state = state)
+
+            // Прогресс отправки (если идет)
+            if (state.isUploading || state.uploadStatus == UploadStatus.Success || state.uploadStatus == UploadStatus.PartialSuccess) {
+                UploadProgressCard(state = state)
+            }
 
             ThemeModeSelector(
                 selectedMode = themeMode,
                 onModeSelected = onThemeModeChange
             )
 
-            // Поле ID мобильного пользователя
             MobileIdField(
                 mobileId = state.mobileId,
                 onValueChange = onMobileIdChanged
             )
 
-            // Поле ID экспедиции
             ExpeditionIdField(
                 expeditionId = state.expeditionId,
                 onValueChange = onExpeditionIdChanged
             )
 
-            // НОВОЕ: Поле для адреса сервера
             ServerAddressField(
                 serverAddress = state.serverAddress,
                 onValueChange = onServerAddressChanged
             )
 
-            // Кнопка выгрузки
-            UploadButton(
-                isLoading = state.isUploading,
-                isEnabled = !state.isUploading,
-                onClick = onUploadClicked
+            // Кнопки действий
+            ActionButtons(
+                isUploading = state.isUploading,
+                onUploadClicked = onUploadClicked,
+                onSaveToFileClicked = onSaveToFileClicked
             )
-
-            // Статус выгрузки
-            if (state.isUploading) {
-                UploadProgressStatus(progress = state.uploadProgress)
-            }
 
             // Сообщение об ошибке
             state.errorMessage?.let { errorMessage ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.errorContainer)
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
+                ErrorMessageCard(message = errorMessage)
             }
 
             // Сообщение об успехе
             state.successMessage?.let { successMessage ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = successMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+                SuccessMessageCard(message = successMessage)
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -210,7 +188,316 @@ private fun SettingsScreenContent(
     }
 }
 
-// НОВЫЙ КОМПОНЕНТ: Поле для ввода адреса сервера
+// ==================== НОВЫЕ КОМПОНЕНТЫ ====================
+
+@Composable
+private fun DataStatsCard(state: SettingsState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "📊 Статистика данных",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Всего записей",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${state.totalRecords}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = "Не отправлено",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${state.unsyncedRecords}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (state.unsyncedRecords > 0)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UploadProgressCard(state: SettingsState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Заголовок с иконкой статуса
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                when (state.uploadStatus) {
+                    UploadStatus.Sending -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    UploadStatus.Success -> {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Успех",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    UploadStatus.PartialSuccess -> {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Частичный успех",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    else -> {}
+                }
+
+                Text(
+                    text = when (state.uploadStatus) {
+                        UploadStatus.Preparing -> "Подготовка данных..."
+                        UploadStatus.Sending -> "Отправка данных..."
+                        UploadStatus.Success -> "Отправка завершена!"
+                        UploadStatus.PartialSuccess -> "Отправка завершена с ошибками"
+                        UploadStatus.Error -> "Ошибка отправки"
+                        UploadStatus.NoData -> "Нет данных"
+                        UploadStatus.Saving -> "Сохранение..."
+                        else -> "Процесс отправки"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            // Прогресс-бар
+            LinearProgressIndicator(
+                progress = { state.uploadProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round
+            )
+
+            // Текст прогресса
+            Text(
+                text = state.uploadProgressText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            // Детальная информация о пакетах (если есть)
+            if (state.totalBatches > 0 && state.uploadStatus == UploadStatus.Sending) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "📦 Пакеты: ${state.currentBatch}/${state.totalBatches}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    )
+
+                    Text(
+                        text = "📊 Записей отправлено: ${state.totalSentRecords}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    )
+
+                    if (state.currentBatchRecords > 0) {
+                        Text(
+                            text = "📄 В текущем пакете: ${state.currentBatchRecords} записей",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+
+            // Информация о неудачных пакетах
+            if (state.failedBatches > 0 && state.uploadStatus == UploadStatus.PartialSuccess) {
+                Text(
+                    text = "❌ Неудачных пакетов: ${state.failedBatches}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Текущий шаг
+            state.currentStep?.let { step ->
+                Text(
+                    text = step,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionButtons(
+    isUploading: Boolean,
+    onUploadClicked: () -> Unit,
+    onSaveToFileClicked: () -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            onClick = onUploadClicked,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            enabled = !isUploading
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Upload,
+                    contentDescription = "Выгрузить",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isUploading) "Выгрузка..." else "Выгрузить на сервер",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+
+        Button(
+            onClick = onSaveToFileClicked,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            enabled = !isUploading
+        ) {
+            Text(
+                text = "Сохранить в файл (для отладки)",
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorMessageCard(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = "Ошибка",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SuccessMessageCard(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Успех",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+// ==================== СУЩЕСТВУЮЩИЕ КОМПОНЕНТЫ (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ) ====================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ServerAddressField(
@@ -256,72 +543,6 @@ private fun ServerAddressField(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-private fun InvisibleProgressBar(
-    isVisible: Boolean,
-    progress: Float
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .alpha(if (isVisible) 1f else 0f)
-    ) {
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            strokeCap = StrokeCap.Square
-        )
-    }
-}
-
-@Composable
-private fun UploadProgressStatus(
-    progress: Float
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "Выгрузка данных...",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Text(
-            text = "${(progress * 100).toInt()}%",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        when {
-            progress < 0.3f -> Text(
-                text = "Подготовка данных...",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            progress < 0.7f -> Text(
-                text = "Отправка на сервер...",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            else -> Text(
-                text = "Завершение...",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 
@@ -418,48 +639,6 @@ private fun ExpeditionIdField(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-private fun UploadButton(
-    isLoading: Boolean,
-    isEnabled: Boolean,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        enabled = isEnabled && !isLoading
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Upload,
-                contentDescription = "Выгрузить",
-                tint = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = if (isLoading) "Выгрузка..." else "Выгрузить на сервер",
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 

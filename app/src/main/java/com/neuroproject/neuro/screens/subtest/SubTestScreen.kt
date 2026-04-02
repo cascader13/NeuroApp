@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.screens.subtest
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -83,6 +84,14 @@ fun SubTestScreen(
     onFinish: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+
+
+    val productivityScoreState by viewModel.productivityScore.collectAsState() // Для забора изменений
+    LaunchedEffect(productivityScoreState) { // Сделал через Launched effect получение измененённых данных
+        Log.d("SUB_TEST", "productivity score ${productivityScoreState.score}")
+    }
+
 
     Scaffold (
         modifier = Modifier.fillMaxSize(),

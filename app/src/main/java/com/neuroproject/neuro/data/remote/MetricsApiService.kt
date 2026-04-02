@@ -55,5 +55,8 @@ interface MetricsApiService {
  * @property result Флаг успешности операции (true - данные приняты, false - ошибка)
  */
 data class UploadResponse(
-    val result: Boolean
+    val result: Boolean,
+    val message: String? = null,
+    val acceptedCount: Int? = null,
+    val batchId: String? = null
 )

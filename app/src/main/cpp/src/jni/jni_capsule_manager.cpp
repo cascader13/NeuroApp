@@ -482,6 +482,20 @@ void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes*
 
 void onProductivityCalibrationProgress(clCProductivity, float progress) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baseline calibration progress: %f", progress);
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread(&env, nullptr);
+
+    if(javaCapsule == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null - skipping onPhysiologicalBaselineReceived call");
+        return;
+    }
+
+    jmethodID prodScoreFun = env->GetMethodID(capsuleClass, "onProductivityScore", "(F)V");
+    env->CallVoidMethod(javaCapsule, prodScoreFun, static_cast<jfloat>(progress));
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
 }
 
 void onProductivityIndividualNFBUpdate(clCProductivity) noexcept {
@@ -885,6 +899,7 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
     clCError error;
     env->CallVoidMethod(javaCapsule, calibFun, static_cast<jint>(0));
     clCNFBCalibrator_CalibrateIndividualNFBQuick(calibrator, &error);
+
     // Поменять если используется долгая калибровка
 
     if (env->ExceptionCheck()) {

@@ -14,7 +14,7 @@ class MetricsRepository @Inject constructor(
     private val metricsDao: MetricsDao
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
-
+    private val COMPRESSED_TIME = 60000
     private data class NfbBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<NFBMetricEntity> = mutableListOf()
@@ -109,7 +109,7 @@ class MetricsRepository @Inject constructor(
                     }
                     nfbBuffer.values.add(metric)
 
-                    if (time - nfbBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - nfbBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushNfbBuffer()
                     }
                 }
@@ -144,7 +144,7 @@ class MetricsRepository @Inject constructor(
                         EEGRAWBuffer.firstTimestamp = time
                     }
                     EEGRAWBuffer.values.add(metric)
-                    if (time - EEGRAWBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - EEGRAWBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGRAWBuffer()
                     }
                 }
@@ -180,7 +180,7 @@ class MetricsRepository @Inject constructor(
                     }
                     EEGPROCEEDBuffer.values.add(metric)
 
-                    if (time - EEGPROCEEDBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - EEGPROCEEDBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGPROCEEDBuffer()
                     }
                 }
@@ -219,7 +219,7 @@ class MetricsRepository @Inject constructor(
                         EEGArtifactBuffer.firstTimestamp = time
                     }
                     EEGArtifactBuffer.values.add(metric)
-                    if (time - EEGArtifactBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - EEGArtifactBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGArtifactBuffer()
                     }
                 }
@@ -266,7 +266,7 @@ class MetricsRepository @Inject constructor(
                         PhysiologicalBuffer.firstTimestamp = time
                     }
                     PhysiologicalBuffer.values.add(metric)
-                    if (time - PhysiologicalBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - PhysiologicalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushPhysiologicalBuffer()
                     }
                 }
@@ -309,7 +309,7 @@ class MetricsRepository @Inject constructor(
                         MEMSBuffer.firstTimestamp = time
                     }
                     MEMSBuffer.values.add(metric)
-                    if (time - MEMSBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - MEMSBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushMEMSBuffer()
                     }
                 }
@@ -347,6 +347,7 @@ class MetricsRepository @Inject constructor(
                     isMarked = false
                 )
                 metricsDao.insertProductivityMetric(metric)
+                Log.d("MetricsRepository", "Productivity metric saved: time=$time, productivity=$productivity")
                 mutex.withLock {
                     if (ProductivityBuffer.firstTimestamp == null) {
                         ProductivityBuffer.firstTimestamp = time
@@ -354,7 +355,7 @@ class MetricsRepository @Inject constructor(
 
                     ProductivityBuffer.values.add(metric)
 
-                    if (time - ProductivityBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - ProductivityBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushProductivityBuffer()
                     }
                 }
@@ -509,7 +510,7 @@ class MetricsRepository @Inject constructor(
 
                     EmotionalBuffer.values.add(metric)
 
-                    if (time - EmotionalBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - EmotionalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEmotionalBuffer()
                     }
                 }
@@ -556,7 +557,7 @@ class MetricsRepository @Inject constructor(
 
                     CardioBuffer.values.add(metric)
 
-                    if (time - CardioBuffer.firstTimestamp!! >= 10_000) {
+                    if (time - CardioBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushCardioBuffer()
                     }
                 }

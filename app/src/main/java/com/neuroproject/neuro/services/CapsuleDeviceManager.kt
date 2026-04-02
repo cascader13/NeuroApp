@@ -325,6 +325,14 @@ data class PhysiologicalBaseline(
     val betaGravity: Float = 1f,
     val concentration: Float = 1f
 )
+/**
+ * Состояние калиброаки Productivity
+ * @property score состояние в процентах
+ */
+data class ProductivityScore(
+    val score: Float = 0f
+)
+
 
 /**
  * Главный менеджер для управления устройством Capsule (нейро-гарнитурой)
@@ -390,6 +398,7 @@ class CapsuleDeviceManager @Inject constructor(
     private var _eegRawData = MutableStateFlow(EEGRawSample())
     private var _eegProcessedData = MutableStateFlow(EEGProcessedSample())
     private var _eegArtifacts = MutableStateFlow(EEGArtifactsSample())
+    private var _productivityScore = MutableStateFlow(ProductivityScore())
 
     // Публичные Flow для подписки на данные
     /** Поток данных об этапах калибровки */
@@ -424,6 +433,8 @@ class CapsuleDeviceManager @Inject constructor(
     var connectionState = _connectionState.asStateFlow()
     /** Поток состояния калибровки */
     var calibrationState = _calibrationState.asStateFlow()
+    /** Поток состояния калибровки Productivity(в %) */
+    var productivityScore = _productivityScore.asStateFlow()
 
     /**
      * Callback для получения уровня заряда батареи
@@ -643,7 +654,7 @@ class CapsuleDeviceManager @Inject constructor(
         relaxationBaseline: Float, concentrationBaseline: Float,
         hasArtifacts: Boolean
     ) {
-        Log.d("JCAPSULE", "OnProductivityIndexesReceived: smth")
+        Log.d("JCAPSULE", "OnProductivityIndexesReceived: stress $stress")
         var relaxation_string = "NoRecommendation"
         when (relaxation) {
             -1f -> relaxation_string = "NoRecommendation"
@@ -664,7 +675,7 @@ class CapsuleDeviceManager @Inject constructor(
             val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
             val userId = sharedPreferences.getString("saved_user_id", "")
 
-            uploadMonitor.sendStringSimple(userId, "concentrationBaseline $concentrationBaseline")
+            //uploadMonitor.sendStringSimple(userId, "concentrationBaseline $concentrationBaseline")
 
             _productivityIndexData.emit(
                 ProductivityIndexes(
@@ -698,7 +709,7 @@ class CapsuleDeviceManager @Inject constructor(
             val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
             val userId = sharedPreferences.getString("saved_user_id", "")
 
-            uploadMonitor.sendStringSimple(userId, "concentrationBaseline $concentration")
+            //uploadMonitor.sendStringSimple(userId, "concentrationBaseline $concentration")
 
             _productivityBaselineData.emit(
                 ProductivityBaseline(time, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration)
@@ -768,7 +779,7 @@ class CapsuleDeviceManager @Inject constructor(
             val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
             val userId = sharedPreferences.getString("saved_user_id", "")
 
-            uploadMonitor.sendStringSimple(userId, "relax $relaxation")
+            //uploadMonitor.sendStringSimple(userId, "relax $relaxation")
 
             _emotionalData.emit(
                 Emotionaldata(time, attention, relaxation, cognitive_load, cognitive_control, self_control)
@@ -793,12 +804,12 @@ class CapsuleDeviceManager @Inject constructor(
         productivity: Float, fatigue: Float, reverse_fatique: Float,
         relaxation: Float, concentration: Float
     ) {
-        Log.d("JCAPSULE", "onProductivityReceived: smth")
+        Log.d("JCAPSULE", "onProductivityReceived: fatigue $fatigue")
         scope.launch {
             val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
             val userId = sharedPreferences.getString("saved_user_id", "")
 
-            uploadMonitor.sendStringSimple(userId, "concentration $concentration")
+            //uploadMonitor.sendStringSimple(userId, "concentration $concentration")
 
             _productivityData.emit(
                 Productivitydata(time, timestamp_prod, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration)
@@ -861,6 +872,20 @@ class CapsuleDeviceManager @Inject constructor(
             }
         }
     }
+
+    /**
+     * Обработчик получения данных о состоянии калибровки Productivity
+     *
+     * @param score состояние в процентах
+     */
+    fun onProductivityScore(score: Float) {
+        Log.d("JCAPSULE", "Productivity score $score")
+        scope.launch {
+            _productivityScore.emit(ProductivityScore(score))
+        }
+    }
+
+
 
     /**
      * Обработчик прогресса калибровки ЭЭГ

@@ -40,36 +40,26 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun loadSavedMobileId() {
-        // Сначала пробуем загрузить mobile_id
         var mobileId = sharedPreferences.getString("saved_mobile_id", "")
-
-        // Если mobile_id пуст, пробуем загрузить user_id
         if (mobileId.isNullOrEmpty()) {
             mobileId = sharedPreferences.getString("saved_user_id", "")
         }
-
         if (!mobileId.isNullOrEmpty()) {
-            _state.update {
-                it.copy(mobileId = mobileId)
-            }
+            _state.update { it.copy(mobileId = mobileId) }
         }
     }
 
     private fun loadSavedExpeditionId() {
         val expeditionId = sharedPreferences.getString("saved_expedition_id", "")
         if (!expeditionId.isNullOrEmpty()) {
-            _state.update {
-                it.copy(expeditionId = expeditionId)
-            }
+            _state.update { it.copy(expeditionId = expeditionId) }
         }
     }
 
     private fun loadServerAddress() {
         val serverAddress = sharedPreferences.getString("server_address", "http://10.240.68.80:5000")
         if (!serverAddress.isNullOrEmpty()) {
-            _state.update {
-                it.copy(serverAddress = serverAddress)
-            }
+            _state.update { it.copy(serverAddress = serverAddress) }
         }
     }
 
@@ -124,22 +114,18 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun saveMobileIdToPreferences(id: String) {
-        sharedPreferences.edit()
-            .putString("saved_mobile_id", id)
-            .apply()
+        sharedPreferences.edit().putString("saved_mobile_id", id).apply()
     }
 
     private fun saveExpeditionIdToPreferences(id: String) {
-        sharedPreferences.edit()
-            .putString("saved_expedition_id", id)
-            .apply()
+        sharedPreferences.edit().putString("saved_expedition_id", id).apply()
     }
 
     private fun saveServerAddressToPreferences(address: String) {
-        sharedPreferences.edit()
-            .putString("server_address", address)
-            .apply()
+        sharedPreferences.edit().putString("server_address", address).apply()
     }
+
+    // ==================== ОБНОВЛЕННЫЙ МЕТОД ОТПРАВКИ ====================
 
     fun onUploadClicked() {
         if (_state.value.isUploading) return
@@ -147,48 +133,247 @@ class SettingsViewModel @Inject constructor(
         uploadJob?.cancel()
 
         uploadJob = viewModelScope.launch {
+            // Сбрасываем состояние
             _state.update {
                 it.copy(
                     isUploading = true,
                     uploadProgress = 0f,
+                    uploadProgressText = "Начинаем отправку...",
                     errorMessage = null,
                     successMessage = null,
-                    currentStep = "Начинаем отправку данных..."
+                    currentStep = "Подготовка данных...",
+                    // Сбрасываем детальную информацию о пакетах
+                    totalBatches = 0,
+                    currentBatch = 0,
+                    currentBatchRecords = 0,
+                    totalSentRecords = 0,
+                    failedBatches = 0,
+                    uploadStatus = UploadStatus.Preparing
                 )
             }
 
             try {
-                uploadRepository.uploadWithProgress()
+                // Используем новую пакетную отправку
+                uploadRepository.uploadInBatches(
+                    batchSize = 100,      // 100 записей на пакет
+                    enableRetry = true,   // Включить повторные попытки
+                    stopOnError = false,  // Не останавливаться при ошибке
+                    batchDelayMs = 500    // 500 мс между пакетами
+                )
                     .onEach { progress ->
-                        handleUploadProgress(progress)
+                        handleBatchUploadProgress(progress)
                     }
                     .catch { e ->
                         _state.update {
                             it.copy(
                                 isUploading = false,
                                 errorMessage = "Ошибка: ${e.message}",
-                                currentStep = null
+                                currentStep = null,
+                                uploadStatus = UploadStatus.Error
                             )
                         }
                     }
-                    .collect { progress ->
-                        // Здесь можно ничего не делать, так как onEach уже обрабатывает прогресс
-                        // Или можно добавить дополнительную логику при необходимости
-                    }
-
+                    .collect { /* Прогресс уже обработан в onEach */ }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
                         isUploading = false,
                         errorMessage = "Неизвестная ошибка: ${e.message ?: "Неизвестная ошибка"}",
-                        currentStep = null
+                        currentStep = null,
+                        uploadStatus = UploadStatus.Error
+                    )
+                }
+                delay(5000)
+                _state.update { it.copy(errorMessage = null) }
+            }
+        }
+    }
+
+    /**
+     * Обработка прогресса пакетной отправки
+     */
+    private suspend fun handleBatchUploadProgress(progress: BatchUploadProgress) {
+        when (progress) {
+            is BatchUploadProgress.Preparing -> {
+                _state.update {
+                    it.copy(
+                        uploadProgress = progress.progress,
+                        currentStep = progress.step,
+                        uploadProgressText = progress.step,
+                        uploadStatus = UploadStatus.Preparing
+                    )
+                }
+            }
+
+            is BatchUploadProgress.BatchesCreated -> {
+                _state.update {
+                    it.copy(
+                        totalBatches = progress.totalBatches,
+                        totalRecords = progress.totalRecords,
+                        uploadProgress = 0.1f,
+                        currentStep = "Создано ${progress.totalBatches} пакетов",
+                        uploadProgressText = "Создано ${progress.totalBatches} пакетов",
+                        uploadStatus = UploadStatus.Preparing
+                    )
+                }
+            }
+
+            is BatchUploadProgress.SendingBatch -> {
+                val overallProgress = 0.1f + (0.8f * (progress.current - 1) / progress.total)
+
+                _state.update {
+                    it.copy(
+                        currentBatch = progress.current,
+                        totalBatches = progress.total,
+                        currentBatchRecords = progress.recordsInBatch,
+                        uploadProgress = overallProgress,
+                        currentStep = "Отправка пакета ${progress.current}/${progress.total} (${progress.recordsInBatch} записей)",
+                        uploadProgressText = "Отправка пакета ${progress.current}/${progress.total}",
+                        uploadStatus = UploadStatus.Sending
+                    )
+                }
+            }
+
+            is BatchUploadProgress.BatchCompleted -> {
+                val overallProgress = 0.1f + (0.8f * progress.batchIndex / progress.totalBatches)
+
+                _state.update {
+                    it.copy(
+                        totalSentRecords = progress.totalSentSoFar,
+                        uploadProgress = overallProgress,
+                        currentStep = "Пакет ${progress.batchIndex}/${progress.totalBatches} отправлен (${progress.totalSentSoFar} записей всего)",
+                        uploadProgressText = "Отправлено ${progress.totalSentSoFar} записей",
+                        uploadStatus = UploadStatus.Sending
+                    )
+                }
+            }
+
+            is BatchUploadProgress.BatchFailed -> {
+                _state.update {
+                    it.copy(
+                        failedBatches = it.failedBatches + 1,
+                        currentStep = "Ошибка пакета ${progress.batchIndex}: ${progress.error}",
+                        uploadStatus = UploadStatus.Error
+                    )
+                }
+
+                // Показываем ошибку, но не останавливаем отправку
+                _state.update {
+                    it.copy(
+                        errorMessage = "Ошибка пакета ${progress.batchIndex}: ${progress.error}"
+                    )
+                }
+
+                delay(3000)
+                _state.update { it.copy(errorMessage = null) }
+            }
+
+            is BatchUploadProgress.PartialSuccess -> {
+                loadStats() // Обновляем статистику
+
+                _state.update {
+                    it.copy(
+                        isUploading = false,
+                        uploadProgress = 0.9f,
+                        totalSentRecords = progress.sentCount,
+                        successMessage = createPartialSuccessMessage(progress),
+                        currentStep = null,
+                        uploadProgressText = "Отправка завершена частично",
+                        uploadStatus = UploadStatus.PartialSuccess
+                    )
+                }
+
+                delay(5000)
+                _state.update { it.copy(successMessage = null) }
+            }
+
+            is BatchUploadProgress.Completed -> {
+                loadStats() // Обновляем статистику
+
+                _state.update {
+                    it.copy(
+                        isUploading = false,
+                        uploadProgress = 1f,
+                        totalSentRecords = progress.sentCount,
+                        successMessage = createSuccessMessage(progress),
+                        currentStep = null,
+                        uploadProgressText = "Отправка завершена",
+                        uploadStatus = UploadStatus.Success
+                    )
+                }
+
+                delay(5000)
+                _state.update { it.copy(successMessage = null) }
+            }
+
+            is BatchUploadProgress.Stopped -> {
+                loadStats()
+
+                _state.update {
+                    it.copy(
+                        isUploading = false,
+                        uploadProgress = 0f,
+                        totalSentRecords = progress.sentCount,
+                        errorMessage = "Отправка остановлена: ${progress.reason}",
+                        currentStep = null,
+                        uploadStatus = UploadStatus.Error
                     )
                 }
 
                 delay(5000)
                 _state.update { it.copy(errorMessage = null) }
             }
+
+            BatchUploadProgress.NoData -> {
+                _state.update {
+                    it.copy(
+                        isUploading = false,
+                        errorMessage = "Нет данных для отправки",
+                        currentStep = null,
+                        uploadStatus = UploadStatus.NoData
+                    )
+                }
+            }
+
+            is BatchUploadProgress.Error -> {
+                _state.update {
+                    it.copy(
+                        isUploading = false,
+                        errorMessage = progress.message,
+                        currentStep = null,
+                        uploadStatus = UploadStatus.Error
+                    )
+                }
+            }
         }
+    }
+
+    private fun createSuccessMessage(progress: BatchUploadProgress.Completed): String {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+
+        return """
+            Отправка успешно завершена!
+            
+            Отправлено: ${progress.sentCount} записей
+            Пакетов: ${progress.totalBatches}
+            Время: $time
+            
+            Все данные успешно переданы на сервер
+        """.trimIndent()
+    }
+
+    private fun createPartialSuccessMessage(progress: BatchUploadProgress.PartialSuccess): String {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+
+        return """
+            Отправка завершена с ошибками
+            
+            Успешно: ${progress.sentCount} из ${progress.totalCount} записей
+            Не отправлено: ${progress.failedRecords} записей (${progress.failedBatches} пакетов)
+            Время: $time
+            
+            Неотправленные данные будут отправлены при следующей попытке
+        """.trimIndent()
     }
 
     fun saveToFile() {
@@ -197,11 +382,12 @@ class SettingsViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         isUploading = true,
-                        currentStep = "Сохранение в файл..."
+                        currentStep = "Сохранение в файл...",
+                        uploadStatus = UploadStatus.Saving
                     )
                 }
 
-                val result = uploadRepository.saveToJsonFile()
+                val result = uploadRepository.saveToJsonFile(saveAsBatches = true)
 
                 when (result) {
                     is FileSaveResult.NoData -> {
@@ -209,7 +395,8 @@ class SettingsViewModel @Inject constructor(
                             it.copy(
                                 isUploading = false,
                                 errorMessage = "Нет данных для сохранения",
-                                currentStep = null
+                                currentStep = null,
+                                uploadStatus = UploadStatus.Error
                             )
                         }
                     }
@@ -217,9 +404,10 @@ class SettingsViewModel @Inject constructor(
                         _state.update {
                             it.copy(
                                 isUploading = false,
-                                successMessage = "Файл сохранен: ${result.fileName}\nЗаписей: ${result.recordsCount}",
+                                successMessage = "Файлы сохранены: ${result.fileName}\nЗаписей: ${result.recordsCount}\nПапка: ${result.filePath}",
                                 savedFilePath = result.filePath,
-                                currentStep = null
+                                currentStep = null,
+                                uploadStatus = UploadStatus.Success
                             )
                         }
 
@@ -231,7 +419,8 @@ class SettingsViewModel @Inject constructor(
                             it.copy(
                                 isUploading = false,
                                 errorMessage = result.message,
-                                currentStep = null
+                                currentStep = null,
+                                uploadStatus = UploadStatus.Error
                             )
                         }
                     }
@@ -242,74 +431,12 @@ class SettingsViewModel @Inject constructor(
                     it.copy(
                         isUploading = false,
                         errorMessage = "Ошибка сохранения: ${e.message}",
-                        currentStep = null
+                        currentStep = null,
+                        uploadStatus = UploadStatus.Error
                     )
                 }
             }
         }
-    }
-
-    private suspend fun handleUploadProgress(progress: UploadProgress) {
-        when (progress) {
-            is UploadProgress.Preparing -> {
-                _state.update {
-                    it.copy(
-                        uploadProgress = progress.progress,
-                        currentStep = progress.step
-                    )
-                }
-            }
-
-            is UploadProgress.Completed -> {
-                loadStats()
-
-                _state.update {
-                    it.copy(
-                        isUploading = false,
-                        uploadProgress = 1f,
-                        successMessage = createSuccessMessage(progress),
-                        currentStep = null
-                    )
-                }
-
-                delay(5000)
-                _state.update { it.copy(successMessage = null) }
-            }
-
-            UploadProgress.NoData -> {
-                _state.update {
-                    it.copy(
-                        isUploading = false,
-                        errorMessage = "Нет данных для отправки",
-                        currentStep = null
-                    )
-                }
-            }
-
-            is UploadProgress.Error -> {
-                _state.update {
-                    it.copy(
-                        isUploading = false,
-                        errorMessage = progress.message,
-                        currentStep = null
-                    )
-                }
-            }
-        }
-    }
-
-    private fun createSuccessMessage(progress: UploadProgress.Completed): String {
-        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-
-        return """
-            Отправка завершена в $time
-            
-            Отправлено записей: ${progress.sentCount}
-            
-            Ответ сервера: ${progress.message}
-            
-            Данные помечены как отправленные
-        """.trimIndent()
     }
 
     fun shareSavedFile() {
@@ -333,12 +460,15 @@ class SettingsViewModel @Inject constructor(
     }
 }
 
+// ==================== ОБНОВЛЕННЫЙ STATE ====================
+
 data class SettingsState(
     val mobileId: String = "",
     val expeditionId: String = "",
     val serverAddress: String = "http://10.240.68.80:5000",
     val isUploading: Boolean = false,
     val uploadProgress: Float = 0f,
+    val uploadProgressText: String = "",
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val currentStep: String? = null,
@@ -346,8 +476,26 @@ data class SettingsState(
     val unsyncedRecords: Int = 0,
     val uploadStats: UploadStats? = null,
     val savedFilePath: String? = null,
-    val appInfo: String = "NeuroAssessment v0.6.3"
+    val appInfo: String = "NeuroAssessment v0.6.3",
+    // Новые поля для пакетной отправки
+    val totalBatches: Int = 0,
+    val currentBatch: Int = 0,
+    val currentBatchRecords: Int = 0,
+    val totalSentRecords: Int = 0,
+    val failedBatches: Int = 0,
+    val uploadStatus: UploadStatus = UploadStatus.Idle
 )
+
+enum class UploadStatus {
+    Idle,           // Ожидание
+    Preparing,      // Подготовка
+    Sending,        // Отправка
+    Success,        // Успешно
+    PartialSuccess, // Частичный успех
+    Error,          // Ошибка
+    NoData,         // Нет данных
+    Saving          // Сохранение в файл
+}
 
 sealed class SettingsEffect {
     object NavigateBack : SettingsEffect()
