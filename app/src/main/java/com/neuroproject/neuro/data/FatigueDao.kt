@@ -13,7 +13,6 @@ data class FatigueResultEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val sessionId: Long,
     val minuteIndex: Int,
-    val timestamp: Long,
     val cognitiveResult:  Float,
     val physioligicalResult: Float,
     val psychologicalResultval : Float

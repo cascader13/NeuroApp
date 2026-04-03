@@ -34,7 +34,7 @@ class FatigueAnalyzer @Inject constructor(
         private const val PSY_COGNITIVE_CONTROL_WEIGHT = 0.20f
     }
 
-    private var result_data: MutableList<FatigueResult> = mutableListOf()
+
 
 
     suspend fun calculateAll(
@@ -68,7 +68,7 @@ class FatigueAnalyzer @Inject constructor(
 
 
 
-    fun calculateMinuteFatigue(
+    suspend fun calculateMinuteFatigue(
         minuteData: FatigueMinuteData,
         sessionId: Long
     ): FatigueResult {
@@ -113,7 +113,7 @@ class FatigueAnalyzer @Inject constructor(
                 psychological = psychologicalFatigue * 100,
                 sessionId = sessionId)
 
-            result_data.add(fatigueResult)
+            metricsAggregationRepository.writeResultForMinute(fatigueResult)
             return fatigueResult
         }
     }
@@ -131,9 +131,5 @@ class FatigueAnalyzer @Inject constructor(
             averagePsychological = results.map { it.psychological }.average().toFloat(),
             durationMinutes = durationMinutes
         )
-    }
-
-    fun clearResultData(){
-        result_data.clear()
     }
 }

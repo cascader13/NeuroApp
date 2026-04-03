@@ -262,13 +262,15 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertPhysiologicalMetric(metric)
                 mutex.withLock {
-                    if (PhysiologicalBuffer.firstTimestamp == null) {
+                    /*if (PhysiologicalBuffer.firstTimestamp == null) {
                         PhysiologicalBuffer.firstTimestamp = time
                     }
                     PhysiologicalBuffer.values.add(metric)
                     if (time - PhysiologicalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushPhysiologicalBuffer()
-                    }
+                    }*/
+                    PhysiologicalBuffer.values.add(metric)
+                    flushPhysiologicalBuffer()
                 }
             } catch (e: Exception) {
                 Log.e("MetricsRepository", "Error saving physiological metric", e)
@@ -685,8 +687,8 @@ class MetricsRepository @Inject constructor(
     private suspend fun flushPhysiologicalBuffer() {
         if (PhysiologicalBuffer.values.isEmpty()) return
 
-        // Вычисляем медиану для каждого поля
-        val compressed = PhysiologicalMetricCompressedEntity(
+
+        /*val compressed = PhysiologicalMetricCompressedEntity(
             timestamp = PhysiologicalBuffer.firstTimestamp!!, // начало минутного интервала
             id = PhysiologicalBuffer.values.first().id,
             expedition_id = PhysiologicalBuffer.values.first().expedition_id,
@@ -701,6 +703,24 @@ class MetricsRepository @Inject constructor(
             cardioArtifacts = PhysiologicalBuffer.values.map { it.cardioArtifacts }.majority(),
             isMarked = false
         )
+        metricsDao.insertPhysiologicalCompressedMetric(compressed)*/
+
+        val compressed = PhysiologicalMetricCompressedEntity(
+            timestamp = PhysiologicalBuffer.values.first().timestamp!!,
+            id = PhysiologicalBuffer.values.first().id,
+            expedition_id = PhysiologicalBuffer.values.first().expedition_id,
+            sessionId = PhysiologicalBuffer.values.first().sessionId,
+            relax = PhysiologicalBuffer.values.first().relax,
+            fatigue = PhysiologicalBuffer.values.first().fatigue,
+            none = PhysiologicalBuffer.values.first().fatigue,
+            concentration = PhysiologicalBuffer.values.first().concentration,
+            involvement = PhysiologicalBuffer.values.first().involvement,
+            stress = PhysiologicalBuffer.values.first().stress,
+            nfbArtifacts = PhysiologicalBuffer.values.first().nfbArtifacts,
+            cardioArtifacts = PhysiologicalBuffer.values.first().cardioArtifacts,
+            isMarked = false
+        )
+
         metricsDao.insertPhysiologicalCompressedMetric(compressed)
 
         // Очищаем буфер

@@ -9,6 +9,9 @@ import com.neuroproject.neuro.utils.Normalization
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log
+import com.neuroproject.neuro.data.FatigueResultEntity
+import com.neuroproject.neuro.models.FatigueResult
+import com.neuroproject.neuro.models.SessionFatigueResult
 import kotlinx.serialization.builtins.NothingSerializer
 import kotlin.math.min
 
@@ -49,7 +52,14 @@ class MetricsAggregationRepository @Inject constructor(
         var physiologicalBatch = metricsDao.getPhysiologicalCompressedMetrics(sessionId)
         Log.d("Aggregation_repository", "size of batch physiological ${physiologicalBatch.size}")
             if((minute) > physiologicalBatch.size){
-            return null
+            if(physiologicalBatch.size == 0) {
+                return null
+            }
+                var fatigue = Normalization.normalizePhysFatique(physiologicalBatch.last().fatigue)
+                var stress = Normalization.normalizeStress(physiologicalBatch.last().stress)
+                var relax = Normalization.normalizeRelax(physiologicalBatch.last().relax)
+                var involment = Normalization.normalizeInvolvement(physiologicalBatch.last() .involvement)
+                return PhysiologicalFatigueMetrics(fatigue, stress, relax, involment)
         }
         var fatigue = Normalization.normalizePhysFatique(physiologicalBatch[minute-1].fatigue)
         var stress = Normalization.normalizeStress(physiologicalBatch[minute-1].stress)
@@ -74,5 +84,13 @@ class MetricsAggregationRepository @Inject constructor(
         var cognitiveControl = Normalization.normalizeCognitiveLoad(emotionalBatch[minute-1].cognitiveControl)
 
         return PsychologicalFatigueMetrics(cognitiveLoad, relaxation, selfControl, cognitiveControl)
+    }
+
+    suspend fun writeResultForMinute(fatigueResult: FatigueResult){
+        fatigueDao.insertFatiqueResult(FatigueResultEntity(sessionId = fatigueResult.sessionId, minuteIndex = fatigueResult.minuteIndex, cognitiveResult = fatigueResult.cognitive, physioligicalResult = fatigueResult.physiological, psychologicalResultval = fatigueResult.psychological))
+    }
+
+    suspend fun writeResultforSessia(sessionFatigueResul: SessionFatigueResult){
+        // TODO
     }
 }
