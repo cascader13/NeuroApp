@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.data.MetricsDao
+import com.neuroproject.neuro.data.session.SessionCategory
 import com.neuroproject.neuro.data.session.SessionDao
 import com.neuroproject.neuro.data.session.SessionEntity
 import com.neuroproject.neuro.data.subtest.BlockType
@@ -13,7 +14,6 @@ import com.neuroproject.neuro.data.subtest.SubjectiveAnswerEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionRepository
 import com.neuroproject.neuro.services.FatigueAnalyzer
-import com.neuroproject.neuro.services.ProductivityScore
 import com.neuroproject.neuro.services.RecordManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -23,8 +23,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
@@ -37,7 +39,7 @@ class SubTestViewModel @Inject constructor(
     private val recordManager: RecordManager,
     private val fatigueAnalyzer: FatigueAnalyzer
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<SubTestScreenState>(SubTestScreenState.Instruction)
+    private val _uiState = MutableStateFlow<SubTestScreenState>(SubTestScreenState.SessionSettings)
     val uiState: StateFlow<SubTestScreenState> = _uiState.asStateFlow()
 
     var productivityScore = recordManager.productivityScore
@@ -60,18 +62,60 @@ class SubTestViewModel @Inject constructor(
     val comment: StateFlow<String> = _comment.asStateFlow()
 
 
-    private val minutesCount = 10
-    private val _timeLeftMillis = MutableStateFlow(minutesCount * 60 * 1000L)
+    private val _selectedDurationMinutes = MutableStateFlow(10) // по умолчанию 10 минут
+    val selectedDurationMinutes: StateFlow<Int> = _selectedDurationMinutes.asStateFlow()
+
+    private val _selectedCategory = MutableStateFlow(getDefaultSessionCategory())
+    val selectedCategory: StateFlow<SessionCategory> = _selectedCategory.asStateFlow()
+
+    // Флаг готовности калибровки
+    val isCalibrationReady: StateFlow<Boolean> = productivityScore
+        .map { it.score >= 1.0f }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    // Процент выполнения
+    val calibrationProgressPercent: StateFlow<Int> = productivityScore
+        .map { (it.score * 100).roundToInt() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    private fun getDefaultSessionCategory(): SessionCategory {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        return when (hour) {
+            in 5..11 -> SessionCategory.MORNING
+            in 12..17 -> SessionCategory.DAY
+            in 18..23 -> SessionCategory.EVENING
+            else -> SessionCategory.TECHNICAL
+        }
+    }
+
+    fun updateDuration(durationMinutes: Int) {
+        _selectedDurationMinutes.value = durationMinutes
+        _timeLeftMillis.value = durationMinutes * 60 * 1000L
+    }
+
+    fun updateCategory(category: SessionCategory) {
+        _selectedCategory.value = category
+    }
+
+    private val _timeLeftMillis = MutableStateFlow(_selectedDurationMinutes.value * 60 * 1000L)
     val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
 
     private var sessionId: Long? = null
     private var timerJob: Job? = null
 
     data class SubTestResult(
-        val totalIndex: Int,
+        val totalIndex: Int?,
         val subjectiveCognitive: Int?,
-        val subjectiveEmotional: Int?,
-        val subjectivePhysical: Int?,
+        val subjectivePsychological: Int?,
+        val subjectivePhysiological: Int?,
+        val objectiveCognitive: Int?,
+        val objectivePsychological: Int?,
+        val objectivePhysiological: Int?,
+        val totalCognitive: Int?,
+        val totalPsychological: Int?,
+        val totalPhysiological: Int?,
+        val averageSubjective: Int?,
+        val averageObjective: Int?,
         val objectiveFatigue: String,
         val objectiveStress: String
     )
@@ -94,7 +138,11 @@ class SubTestViewModel @Inject constructor(
         viewModelScope.launch {
             // 1. Создаём запись сессии в БД
             val newSessionId = System.currentTimeMillis()
-            val session = SessionEntity(sessionId = newSessionId)
+            val session = SessionEntity(
+                sessionId = newSessionId,
+                durationMinutes = _selectedDurationMinutes.value,
+                sessionCategory = _selectedCategory.value
+                )
             sessionDao.insert(session)
 
             sessionId = newSessionId
@@ -105,7 +153,7 @@ class SubTestViewModel @Inject constructor(
             // 3. Запускаем запись с датчиков
             recordManager.startRecording()
 
-            // 4. Запускаем таймер на 10 минут
+            // 4. Запускаем таймер
             startTimer(timeLeftMillis.value)
 
             // 5. Переходим к вопросам
@@ -133,6 +181,10 @@ class SubTestViewModel @Inject constructor(
         }
     }
 
+    fun goToInstruction() {
+        _uiState.value = SubTestScreenState.Instruction
+    }
+
     fun onAnswerSelected(value: Int) {
         val question = currentQuestion.value ?: return
         _answers[question.id] = value
@@ -144,12 +196,16 @@ class SubTestViewModel @Inject constructor(
 
         viewModelScope.launch {
             sessionId?.let { sid ->
-                val answerEntity = SubjectiveAnswerEntity(
-                    sessionId = sid,
-                    questionId = question.id,
-                    value = answer
-                )
-                answerDao.insert(answerEntity)
+                try {
+                    val answerEntity = SubjectiveAnswerEntity(
+                        sessionId = sid,
+                        questionId = question.id,
+                        value = answer
+                    )
+                    answerDao.insert(answerEntity)
+                } catch (e: Exception) {
+                    Log.e("SubTestViewModel", "Failed to save answer for question ${question.id}", e)
+                }
             }
         }
 
@@ -204,78 +260,95 @@ class SubTestViewModel @Inject constructor(
     private fun finishTest() {
         viewModelScope.launch {
             recordManager.stopRecording()
+            val endTime = System.currentTimeMillis()
 
             val sid = sessionId ?: return@launch
             val session = sessionDao.getSession(sid) ?: return@launch
 
+            // Субъективные индексы
             val (subjCog, subjEmo, subjPhys) = calculateSubjectiveIndexes()
 
+            // Объективные показатели
+            val objectiveResult = fatigueAnalyzer.calculateAll(_selectedDurationMinutes.value, sessionId)
+            if (objectiveResult == null) {
+                Log.e("SubTestViewModel", "Failed to calculate objective metrics for session $sid")
+            }
+            val (objCog, objPsych, objPhys) = if (objectiveResult != null) {
+                Triple(
+                    objectiveResult.averageCognitive.toInt(),
+                    objectiveResult.averagePsychological.toInt(),
+                    objectiveResult.averagePhysiological.toInt()
+                )
+            } else {
+                Triple(null, null, null)
+            }
+
+            // Общие показатели (субъективные + объективные с весом 1:1)
+            val totalCog = if (subjCog != null && objCog != null) (subjCog + objCog) / 2 else null
+            val totalPsy = if (subjEmo != null && objPsych != null) (subjEmo + objPsych) / 2 else null
+            val totalPhys = if (subjPhys != null && objPhys != null) (subjPhys + objPhys) / 2 else null
+
+            // Средние
+            val avgSub = listOfNotNull(subjCog, subjEmo, subjPhys).let { list ->
+                if (list.isNotEmpty()) list.average().roundToInt() else null
+            }
+            val avgObj = listOfNotNull(objCog, objPsych, objPhys).let { list ->
+                if (list.isNotEmpty()) list.average().roundToInt() else null
+            }
+
+            // Общий индекс (среднее трёх общих показателей)
+            val total = listOfNotNull(totalCog, totalPsy, totalPhys).let { list ->
+                if (list.isNotEmpty()) list.average().roundToInt() else null
+            }
+
+            // Получаем старые строковые показатели на всякий случай
             val fatigueList = metricsDao.getRelaxationValuesBySession(sid)
             val stressList = metricsDao.getStressValuesBySession(sid)
-
             val objFatigue = if (fatigueList.isNotEmpty()) fatigueList[0] else "NoRecommendation"
             val objStress = if (stressList.isNotEmpty()) stressList[0] else "NoStress"
 
-            val total = calculateTotal(subjCog, subjEmo, subjPhys, objFatigue, objStress)
 
+
+            // Обновляем сессию
             val updatedSession = session.copy(
-                totalIndex = total,
                 subjectiveCognitive = subjCog,
-                subjectiveEmotional = subjEmo,
-                subjectivePhysical = subjPhys,
+                subjectivePsychological = subjEmo,
+                subjectivePhysiological = subjPhys,
+                objectiveCognitive = objCog,
+                objectivePsychological = objPsych,
+                objectivePhysiological = objPhys,
+                totalCognitive = totalCog,
+                totalPsychological = totalPsy,
+                totalPhysiological = totalPhys,
+                averageSubjective = avgSub,
+                averageObjective = avgObj,
+                totalIndex = total,
                 objectiveFatigue = objFatigue,
                 objectiveStress = objStress,
+                endTime = endTime,
                 comment = _comment.value.takeIf { it.isNotBlank() }
             )
             sessionDao.update(updatedSession)
 
+            // Формируем результат для UI
             _result.value = SubTestResult(
-                totalIndex = total,
                 subjectiveCognitive = subjCog,
-                subjectiveEmotional = subjEmo,
-                subjectivePhysical = subjPhys,
+                subjectivePsychological = subjEmo,
+                subjectivePhysiological = subjPhys,
+                objectiveCognitive = objCog,
+                objectivePsychological = objPsych,
+                objectivePhysiological = objPhys,
+                totalCognitive = totalCog,
+                totalPsychological = totalPsy,
+                totalPhysiological = totalPhys,
+                averageSubjective = avgSub,
+                averageObjective = avgObj,
+                totalIndex = total,
                 objectiveFatigue = objFatigue,
                 objectiveStress = objStress
             )
+
             _uiState.value = SubTestScreenState.Result
         }
     }
-
-    private suspend fun calculateObjective(){
-        var result = fatigueAnalyzer.calculateAll(minutesCount, sessionId)
-        if(result != null){
-            Log.d("OBJ_RES", "cognitive ${result.averageCognitive}, physiological ${result.averagePhysiological}, psychological ${result.averagePsychological}, total ${(result.averagePsychological + result.averageCognitive + result.averagePhysiological) / 3}")
-        }else{
-            Log.e("OBJ_RES", "something went wrong")
-        }
-    }
-    private suspend fun calculateTotal (
-        subjCog: Int?,
-        subjEmo: Int?,
-        subjPhys: Int?,
-        objFatigue: String,
-        objStress: String
-    ) : Int {
-        val stressNum = when (objStress) {
-            "NoStress" -> 0
-            "Anxiety" -> 50
-            "Stress" -> 100
-            else -> 0
-        }
-        // Я немного рандомно раскидал значения, чтобы было хотя бы немного похоже,
-        // что тут формула чуть сложнее среднего арифмитического...
-        val fatigueNum = when (objFatigue) {
-            "Involvement" -> 0
-            "Relaxation" -> 23
-            "SlightFatigue" -> 37
-            "SevereFatigue" -> 64
-            "ChronicFatigue" -> 95
-            else -> 50 // NoRecommendation или неизвестное – нейтральное
-        }
-        calculateObjective()
-        return ( (subjCog ?: 0) + (subjEmo ?: 0) + (subjPhys ?: 0) + stressNum + fatigueNum ) / 5
-    }
-
-
-
 }

@@ -27,7 +27,7 @@ class MetricsAggregationRepository @Inject constructor(
     ): CognitiveFatigueMetrics? {
 
 
-        var productivityBatch = metricsDao.getProductivityCompressedMetrics(sessionId)
+        val productivityBatch = metricsDao.getProductivityCompressedMetrics(sessionId)
         var emotionalBatch = metricsDao.getEmotionalCompressedMetrics(sessionId)
         var productivityBaseline = metricsDao.getProductivityBaselines(sessionId)
         Log.d("Aggregation_repository", "size of batch productivity ${productivityBatch.size}, emotional ${emotionalBatch.size}")

@@ -176,7 +176,7 @@ fun SensorCheckingScreen(
 @Composable
 private fun getResistColor(state: ResistState): Color {
     return when (state) {
-        ResistState.BAD -> MaterialTheme.colorScheme.error
-        ResistState.OK -> MaterialTheme.colorScheme.primary
+        ResistState.BAD -> Color.Red
+        ResistState.OK -> Color.Green
     }
 }

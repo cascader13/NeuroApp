@@ -950,6 +950,9 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
     };
     clCError error;
     clCNFBCalibrator_ImportIndividualNFBData(calibrator, &prob, &error);
+    clCPhysiologicalStates_StartBaselineCalibration(ps);
+    clCProductivity_StartBaselineCalibration(productivity);
+
 }
 
 extern "C"

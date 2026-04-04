@@ -3,6 +3,8 @@ package com.neuroproject.neuro.data.session
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+
+
 /**
  * Сущность сессии для хранения в базе данных Room
  *
@@ -35,114 +37,35 @@ import androidx.room.PrimaryKey
  */
 @Entity(tableName = "sessions")
 data class SessionEntity(
-    /**
-     * Уникальный идентификатор сессии
-     *
-     * Используется timestamp начала сессии в миллисекундах.
-     * Обеспечивает уникальность и хронологическую сортировку.
-     *
-     * Пример: 1700000000000L (1 января 2024 года)
-     */
     @PrimaryKey
-    val sessionId: Long,
+    val sessionId: Long,                     // timestamp начала в миллисекундах
 
-    // ==================== ОБЪЕКТИВНЫЕ ПОКАЗАТЕЛИ ====================
+    // Объективные числовые по категориям
+    val objectiveCognitive: Int? = null,
+    val objectivePsychological: Int? = null,
+    val objectivePhysiological: Int? = null,
 
-    /**
-     * Объективный уровень утомления
-     *
-     * Рассчитывается алгоритмически на основе:
-     * - Физиологических данных (fatigue)
-     * - Данных продуктивности (reverse_fatigue)
-     * - Эмоциональных показателей
-     *
-     * Возможные значения:
-     * - "NoRecommendation" - без рекомендаций
-     * - "Involvement" - вовлеченность
-     * - "Relaxation" - расслабление
-     * - "SlightFatigue" - легкое утомление
-     * - "SevereFatigue" - сильное утомление
-     * - "ChronicFatigue" - хроническое утомление
-     */
-    val objectiveFatigue: String? = null,
-
-    /**
-     * Объективный уровень стресса
-     *
-     * Рассчитывается на основе:
-     * - Физиологических данных (stress)
-     * - Кардио данных (stressIndex)
-     * - Эмоциональных показателей
-     *
-     * Возможные значения:
-     * - "NoStress" - стресс отсутствует
-     * - "Anxiety" - тревожность
-     * - "Stress" - стресс
-     */
-    val objectiveStress: String? = null,
-
-    // ==================== СУБЪЕКТИВНЫЕ ПОКАЗАТЕЛИ ====================
-
-    /**
-     * Субъективная оценка когнитивного состояния
-     *
-     * Вводится пользователем после сессии.
-     * Оценивает: концентрацию, ясность мышления, способность к принятию решений.
-     *
-     * Шкала: 1-10 (1 - очень плохо, 10 - отлично)
-     */
+    // Субъективные оценки
     val subjectiveCognitive: Int? = null,
+    val subjectivePsychological: Int? = null,
+    val subjectivePhysiological: Int? = null,
 
-    /**
-     * Субъективная оценка эмоционального состояния
-     *
-     * Вводится пользователем после сессии.
-     * Оценивает: настроение, спокойствие, эмоциональную стабильность.
-     *
-     * Шкала: 1-10 (1 - очень плохо, 10 - отлично)
-     */
-    val subjectiveEmotional: Int? = null,
+    // Итоговые и средние
+    val totalIndex: Int? = null,             // общий итог
+    val averageObjective: Int? = null,       // среднее по трём объективным
+    val averageSubjective: Int? = null,      // среднее по трём субъективным
+    val totalCognitive: Int? = null,         // комбинированный когнитивный
+    val totalPhysiological: Int? = null,
+    val totalPsychological: Int? = null,
 
-    /**
-     * Субъективная оценка физического состояния
-     *
-     * Вводится пользователем после сессии.
-     * Оценивает: энергичность, усталость, физическое самочувствие.
-     *
-     * Шкала: 1-10 (1 - очень плохо, 10 - отлично)
-     */
-    val subjectivePhysical: Int? = null,
+    // Метаданные сессии
+    val durationMinutes: Int? = null,
+    val endTime: Long? = null,               // timestamp окончания
+    val sessionCategory: SessionCategory? = null,
+    val comment: String? = null,
 
-    // ==================== ИТОГОВЫЕ ПОКАЗАТЕЛИ ====================
 
-    /**
-     * Итоговый интегральный показатель
-     *
-     * Рассчитывается на основе объективных и субъективных показателей.
-     * Используется для общей оценки состояния пользователя.
-     *
-     * Шкала: 1-10 (1 - критическое состояние, 10 - оптимальное)
-     *
-     * Формула расчета:
-     * ```
-     * totalIndex = (subjectiveCognitive + subjectiveEmotional + subjectivePhysical) / 3
-     * ```
-     * с коррекцией на объективные показатели утомления и стресса
-     */
-    val totalIndex: Int? = null,
-
-    // ==================== ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ====================
-
-    /**
-     * Комментарий пользователя
-     *
-     * Произвольный текст, введенный пользователем после сессии.
-     * Может содержать:
-     * - Особые заметки о самочувствии
-     * - Внешние факторы, повлиявшие на состояние
-     * - Примечания для исследователя
-     *
-     * Максимальная длина: не ограничена (рекомендуется до 500 символов)
-     */
-    val comment: String? = null
+    // Объективные метрики (строковые)
+    val objectiveFatigue: String? = null,
+    val objectiveStress: String? = null,
 )

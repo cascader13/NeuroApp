@@ -114,6 +114,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.animation)
     implementation(libs.generativeai)
+    implementation(libs.androidx.foundation)
 
 
     val roomVersion = "2.6.1"

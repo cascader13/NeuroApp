@@ -4,17 +4,16 @@ import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,31 +24,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.BatteryAlert
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,7 +55,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,12 +62,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.google.ai.client.generativeai.Chat
 import com.neuroproject.neuro.R
+import com.neuroproject.neuro.data.session.SessionCategory
 import com.neuroproject.neuro.data.subtest.BlockType
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
-import com.neuroproject.neuro.ui.theme.ThemeMode
 
 @Composable
 fun SubTestScreen(
@@ -84,7 +74,6 @@ fun SubTestScreen(
     onFinish: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
 
 
     val productivityScoreState by viewModel.productivityScore.collectAsState() // Для забора изменений
@@ -98,6 +87,13 @@ fun SubTestScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         when (uiState) {
+
+            SubTestScreenState.SessionSettings -> SessionSettingsScreen(
+                modifier = Modifier.padding(innerPadding),
+                viewModel = viewModel,
+                onNext = { viewModel.goToInstruction() }
+            )
+
             SubTestScreenState.Instruction -> InstructionScreen(
                 onStartClick = viewModel::startTest,
                 modifier = Modifier.padding(innerPadding)
@@ -121,6 +117,7 @@ fun SubTestScreen(
 
             SubTestScreenState.Waiting -> WaitingScreen(
                 timeLeftMillis = viewModel.timeLeftMillis.collectAsState().value,
+                totalDuration = viewModel.selectedDurationMinutes.collectAsState().value * 60 * 1000L,
                 modifier = Modifier.padding(innerPadding)
             )
 
@@ -133,6 +130,128 @@ fun SubTestScreen(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SessionSettingsScreen(
+    modifier: Modifier = Modifier,
+    viewModel: SubTestViewModel,
+    onNext: () -> Unit
+) {
+    val durationMinutes by viewModel.selectedDurationMinutes.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val isReady by viewModel.isCalibrationReady.collectAsState()
+    val progressPercent by viewModel.calibrationProgressPercent.collectAsState()
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        // Заголовок
+        Text(
+            text = "Настройки сессии",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Выбор длительности
+        Text(
+            text = "Длительность: $durationMinutes мин",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Slider(
+            value = durationMinutes.toFloat(),
+            onValueChange = { viewModel.updateDuration(it.toInt()) },
+            valueRange = 4f..25f,
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Выбор категории (вертикальный список)
+        Text(
+            text = "Категория",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SessionCategory.values().forEach { category ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.updateCategory(category) }
+                        .padding(vertical = 8.dp)
+                ) {
+                    RadioButton(
+                        selected = selectedCategory == category,
+                        onClick = { viewModel.updateCategory(category) },
+                        colors = RadioButtonDefaults.colors(
+                            selectedColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = when (category) {
+                            SessionCategory.MORNING -> "Утро"
+                            SessionCategory.DAY -> "День"
+                            SessionCategory.EVENING -> "Вечер"
+                            SessionCategory.TECHNICAL -> "Технический"
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Калибровка датчиков: $progressPercent%",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LinearProgressIndicator(
+                progress = { progressPercent / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onNext,
+                enabled = isReady,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text("Далее", style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -191,6 +310,13 @@ private fun QuestionsScreen(
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (totalCount == 0) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     var sliderValue by remember { mutableFloatStateOf(5f) }
 
     LaunchedEffect(question?.id) {
@@ -358,7 +484,7 @@ private fun CommentScreen(
                 placeholder = { Text("Поделитесь впечатлениями...") },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                     focusedLabelColor = MaterialTheme.colorScheme.primary,
                     cursorColor = MaterialTheme.colorScheme.primary,
                     focusedContainerColor = Color.Transparent,
@@ -411,9 +537,9 @@ private fun CommentScreen(
 @Composable
 private fun WaitingScreen(
     timeLeftMillis: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    totalDuration: Long
 ) {
-    val totalDuration = 5 * 60 * 1000L // 10 минут в миллисекундах
     val progress = 1f - (timeLeftMillis.toFloat() / totalDuration)
 
     val minutes = (timeLeftMillis / 1000) / 60
@@ -532,7 +658,6 @@ fun ResultScreen(
             .padding(horizontal = 16.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Заголовок
         Text(
             text = "Результаты",
             style = MaterialTheme.typography.headlineMedium,
@@ -540,7 +665,7 @@ fun ResultScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Общий индекс (карточка)
+        // Общий индекс
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -549,65 +674,42 @@ fun ResultScreen(
             )
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Общий индекс",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = result.totalIndex.toString(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Общий индекс", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text(result.totalIndex.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Субъективные показатели с круговыми диаграммами
-        Text(
-            text = "Субъективные показатели",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.align(Alignment.Start)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        SubjectiveResultChart("Когнитивный", result.subjectiveCognitive)
-        SubjectiveResultChart("Эмоциональный", result.subjectiveEmotional)
-        SubjectiveResultChart("Физический", result.subjectivePhysical)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Объективные показатели (строки)
-        Text(
-            text = "Объективные показатели",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.align(Alignment.Start)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        val stressDisplay = getStressDisplay(result.objectiveStress)
-        ObjectiveResultItem(
-            label = "Стресс",
-            value = stressDisplay.first,
-            valueColor = stressDisplay.second,
-            icon = Icons.Default.FavoriteBorder
+        ResultSection(
+            "Субъективные показатели",
+            listOf(
+                "Когнитивный" to result.subjectiveCognitive,
+                "Психологический" to result.subjectivePsychological,
+                "Физический" to result.subjectivePhysiological
+            )
         )
 
-        val fatigueDisplay = getFatigueDisplay(result.objectiveFatigue)
-        ObjectiveResultItem(
-            label = "Утомление",
-            value = fatigueDisplay.first,
-            valueColor = fatigueDisplay.second,
-            icon = Icons.Default.BatteryAlert
+        ResultSection(
+            "Объективные показатели",
+            listOf(
+                "Когнитивный" to result.objectiveCognitive,
+                "Психологический" to result.objectivePsychological,
+                "Физический" to result.objectivePhysiological
+            )
+        )
+
+        ResultSection(
+            "Интегральные показатели",
+            listOf(
+                "Когнитивный" to result.totalCognitive,
+                "Психологический" to result.totalPsychological,
+                "Физический" to result.totalPhysiological
+            )
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -626,122 +728,32 @@ fun ResultScreen(
 }
 
 @Composable
-fun SubjectiveResultChart(label: String, value: Int?) {
-    val progress = (value ?: 0) / 100f
+private fun ResultSection(title: String, items: List<Pair<String, Int?>>) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    items.forEach { (label, value) -> ResultCard(label, value) }
+}
+
+@Composable
+fun ResultCard(label: String, value: Int?) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Круговая диаграмма
-            Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    strokeWidth = 4.dp
-                )
-                Text(
-                    text = value?.toString() ?: "—",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "${value ?: 0}",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(value?.toString() ?: "—", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
-    }
-}
-
-@Composable
-fun ObjectiveResultItem(
-    label: String,
-    value: String,
-    valueColor: Color,
-    icon: ImageVector
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = valueColor,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = valueColor
-            )
-        }
-    }
-}
-
-
-// Вспомогательные функции для преобразования строк в русские названия и цвета
-@Composable
-fun getStressDisplay(stress: String): Pair<String, Color> {
-    return when (stress) {
-        "NoStress" -> "Нет стресса" to MaterialTheme.colorScheme.primary
-        "Anxiety"  -> "Тревожность" to MaterialTheme.colorScheme.tertiary
-        "Stress"   -> "Стресс" to MaterialTheme.colorScheme.error
-        else       -> "Неизвестно" to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-}
-
-@Composable
-fun getFatigueDisplay(fatigue: String): Pair<String, Color> {
-    return when (fatigue) {
-        "NoRecommendation" -> "Нет данных" to MaterialTheme.colorScheme.onSurfaceVariant
-        "Involvement"      -> "Вовлечённость" to MaterialTheme.colorScheme.primary
-        "Relaxation"       -> "Расслабление" to MaterialTheme.colorScheme.primary
-        "SlightFatigue"    -> "Лёгкая усталость" to MaterialTheme.colorScheme.tertiary
-        "SevereFatigue"    -> "Сильная усталость" to MaterialTheme.colorScheme.error
-        "ChronicFatigue"   -> "Хроническая усталость" to MaterialTheme.colorScheme.error
-        else               -> "Неизвестно" to MaterialTheme.colorScheme.onSurfaceVariant
     }
 }
 
@@ -785,28 +797,4 @@ private fun PreviewCommentScreen() {
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun PreviewWaitingScreen() {
-    NeuroApplicationTheme() {
-        WaitingScreen(timeLeftMillis = 2 * 60 * 1000L)
-    }
-}
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun PreviewResultScreen() {
-    NeuroApplicationTheme() {
-        ResultScreen(
-            result = SubTestViewModel.SubTestResult(
-                totalIndex = 78,
-                subjectiveCognitive = 85,
-                subjectiveEmotional = 72,
-                subjectivePhysical = 68,
-                objectiveFatigue = "lowFatique",
-                objectiveStress = "NoStress"
-            ),
-            onFinish = {}
-        )
-    }
-}
