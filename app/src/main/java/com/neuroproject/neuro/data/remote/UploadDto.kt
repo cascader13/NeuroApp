@@ -62,7 +62,7 @@ data class UploadRequest(
      * Необработанные сигналы с электродов (2 канала).
      * Используются для глубокого анализа и кастомной обработки.
      */
-    @SerializedName("eegRawMetrics")
+    @SerializedName("EEGRawMetrics")
     val EEGRawMetrics: List<EEGRawMetricDto>? = emptyList(),
 
     /**
@@ -71,7 +71,7 @@ data class UploadRequest(
      * Сигналы после фильтрации и удаления артефактов.
      * Оптимальны для большинства аналитических задач.
      */
-    @SerializedName("eegProceedMetrics")
+    @SerializedName("EEGProceedMetrics")
     val EEGProceedMetrics: List<EEGProceedMetricDto>? = emptyList(),
 
     /**
@@ -81,7 +81,7 @@ data class UploadRequest(
      * - Наличие артефактов на каждом канале
      * - Качество сигнала (0-1)
      */
-    @SerializedName("eegArtifactsMetrics")
+    @SerializedName("EEGArtifactsMetrics")
     val EEGArtifactsMetrics: List<EEGArtifactMetricDto>? = emptyList(),
 
     /**
@@ -148,19 +148,19 @@ data class UploadRequest(
     /**
      * Сжатые сырые данные ЭЭГ
      */
-    @SerializedName("eegRawMetricsCompressed")
+    @SerializedName("EEGRawMetricsCompressed")
     val EEGRawMetricsCompressed: List<EEGRawMetricCompressedDto>? = emptyList(),
 
     /**
      * Сжатые обработанные данные ЭЭГ
      */
-    @SerializedName("eegProceedMetricsCompressed")
+    @SerializedName("EEGProceedMetricsCompressed")
     val EEGProceedMetricsCompressed: List<EEGProceedMetricCompressedDto>? = emptyList(),
 
     /**
      * Сжатые артефакты ЭЭГ
      */
-    @SerializedName("eegArtifactsMetricsCompressed")
+    @SerializedName("EEGArtifactsMetricsCompressed")
     val EEGArtifactsMetricsCompressed: List<EEGArtifactMetricCompressedDto>? = emptyList(),
 
     /**
@@ -195,7 +195,7 @@ data class UploadRequest(
      * Индивидуальные нормы пользователя для физиологических показателей,
      * установленные в процессе калибровки.
      */
-    @SerializedName("physiologicalBaselines")
+    @SerializedName("physiologicalBaseline")
     val physiologicalBaseline: List<PhysiologicalBaselineDto>? = emptyList(),
 
     /**
@@ -203,7 +203,7 @@ data class UploadRequest(
      *
      * Индивидуальные нормы для показателей продуктивности.
      */
-    @SerializedName("productivityBaselines")
+    @SerializedName("productivityBaseline")
     val productivityBaseline: List<ProductivityBaselineDto>? = emptyList(),
 
     /**
@@ -211,7 +211,7 @@ data class UploadRequest(
      *
      * Нормированные показатели продуктивности с текстовыми рекомендациями.
      */
-    @SerializedName("productivityIndexes")
+    @SerializedName("productivityIndex")
     val productivityIndex: List<ProductivityIndexDto>? = emptyList(),
 
     @SerializedName("sessionResults")

@@ -153,10 +153,10 @@ private fun SettingsScreenContent(
                 onValueChange = onExpeditionIdChanged
             )
 
-            ServerAddressField(
+            /*ServerAddressField(
                 serverAddress = state.serverAddress,
                 onValueChange = onServerAddressChanged
-            )
+            )*/
 
             // Кнопки действий
             ActionButtons(
@@ -334,20 +334,20 @@ private fun UploadProgressCard(state: SettingsState) {
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "📦 Пакеты: ${state.currentBatch}/${state.totalBatches}",
+                        text = "Пакеты: ${state.currentBatch}/${state.totalBatches}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     )
 
                     Text(
-                        text = "📊 Записей отправлено: ${state.totalSentRecords}",
+                        text = "  Записей отправлено: ${state.totalSentRecords}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     )
 
                     if (state.currentBatchRecords > 0) {
                         Text(
-                            text = "📄 В текущем пакете: ${state.currentBatchRecords} записей",
+                            text = "В текущем пакете: ${state.currentBatchRecords} записей",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                         )
@@ -358,7 +358,7 @@ private fun UploadProgressCard(state: SettingsState) {
             // Информация о неудачных пакетах
             if (state.failedBatches > 0 && state.uploadStatus == UploadStatus.PartialSuccess) {
                 Text(
-                    text = "❌ Неудачных пакетов: ${state.failedBatches}",
+                    text = "Неудачных пакетов: ${state.failedBatches}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Medium

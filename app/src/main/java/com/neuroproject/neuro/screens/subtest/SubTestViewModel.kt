@@ -256,6 +256,14 @@ class SubTestViewModel @Inject constructor(
         )
     }
 
+    fun forceStopTest() {
+        viewModelScope.launch {
+            timerJob?.cancel()
+            timerJob = null
+            recordManager.stopRecording()
+            finishTest()
+        }
+    }
 
     private fun finishTest() {
         viewModelScope.launch {

@@ -34,7 +34,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /** Базовый URL основного сервера */
-    private const val BASE_URL = "http://192.168.3.54:8080"
+    private const val BASE_URL = "http://159.194.217.94:8080"
 
     /**
      * Предоставление Gson с настройками формата даты
@@ -84,31 +84,7 @@ object NetworkModule {
             .writeTimeout(20000, TimeUnit.SECONDS)
             .callTimeout(20000, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
-            .addInterceptor { chain ->
-                val request = chain.request()
-                var response: Response? = null
-                var lastException: IOException? = null
 
-                // 3 попытки с экспоненциальной задержкой
-                for (attempt in 1..3) {
-                    try {
-                        response = chain.proceed(request)
-                        if (response.isSuccessful) {
-                            return@addInterceptor response
-                        }
-                    } catch (e: SocketTimeoutException) {
-                        lastException = e
-                        if (attempt < 3) {
-                            Thread.sleep(1000L * attempt)
-                        }
-                    } catch (e: IOException) {
-                        lastException = e
-                        break
-                    }
-                }
-
-                throw lastException ?: IOException("Request failed")
-            }
             .build()
     }
 

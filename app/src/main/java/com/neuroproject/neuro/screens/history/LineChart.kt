@@ -59,7 +59,7 @@ fun LineChart(
             val color = colors[lineIndex % colors.size]
             var lastPoint: Offset? = null
             values.forEachIndexed { i, value ->
-                if (value != null) {
+                if (value != null && value != 0f) {
                     val step = if (xCount > 1) (xCount - 1) else 1
                     val x = leftMargin + (i.toFloat() / step) * graphWidth
                     val y = topMargin + graphHeight - ((value - minY) / yRangeSpan) * graphHeight

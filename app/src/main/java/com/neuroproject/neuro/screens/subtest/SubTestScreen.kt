@@ -67,6 +67,12 @@ import com.neuroproject.neuro.data.session.SessionCategory
 import com.neuroproject.neuro.data.subtest.BlockType
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 
 @Composable
 fun SubTestScreen(
@@ -118,7 +124,8 @@ fun SubTestScreen(
             SubTestScreenState.Waiting -> WaitingScreen(
                 timeLeftMillis = viewModel.timeLeftMillis.collectAsState().value,
                 totalDuration = viewModel.selectedDurationMinutes.collectAsState().value * 60 * 1000L,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding),
+                onForceStop = {viewModel.forceStopTest()}
             )
 
             SubTestScreenState.Result -> {
@@ -168,7 +175,7 @@ fun SessionSettingsScreen(
         Slider(
             value = durationMinutes.toFloat(),
             onValueChange = { viewModel.updateDuration(it.toInt()) },
-            valueRange = 4f..25f,
+            valueRange = 1f..25f,
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,
                 activeTrackColor = MaterialTheme.colorScheme.primary
@@ -538,8 +545,11 @@ private fun CommentScreen(
 private fun WaitingScreen(
     timeLeftMillis: Long,
     modifier: Modifier = Modifier,
-    totalDuration: Long
+    totalDuration: Long,
+    onForceStop: () -> Unit = {} // Добавляем callback для принудительной остановки
 ) {
+    var showStopDialog by remember { mutableStateOf(false) }
+
     val progress = 1f - (timeLeftMillis.toFloat() / totalDuration)
 
     val minutes = (timeLeftMillis / 1000) / 60
@@ -577,72 +587,130 @@ private fun WaitingScreen(
         ), label = "outerAlpha"
     )
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        Spacer(modifier = Modifier.weight(1f))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
 
-        // Круг с анимацией дыхания и прогрессом
-        Box(contentAlignment = Alignment.Center) {
-            // Дышащий круг
-            Box(
-                modifier = Modifier
-                    .size(200.dp)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-            ) {
-                // Внешний круг
+            // Круг с анимацией дыхания и прогрессом
+            Box(contentAlignment = Alignment.Center) {
+                // Дышащий круг
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = outerAlpha))
-                )
-                // Внутренний круг
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .size(200.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                ) {
+                    // Внешний круг
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = outerAlpha))
+                    )
+                    // Внутренний круг
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
+
+                // Круговой прогресс (таймер)
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(220.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    strokeWidth = 4.dp
                 )
             }
 
-            // Круговой прогресс (таймер)
-            CircularProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.size(220.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                strokeWidth = 4.dp
+            Spacer(modifier = Modifier.height(50.dp))
+
+            Text(
+                text = "Идёт запись данных",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground
             )
+            Text(
+                text = "Осталось: $timeText",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Дышите ровно и ожидайте окончания",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
         }
 
-        Spacer(modifier = Modifier.height(50.dp))
+        // Кнопка остановки в правом верхнем углу
+        Button(
+            onClick = { showStopDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError
+            )
+        ) {
+            Text("Остановить тест")
+        }
+    }
 
-        Text(
-            text = "Идёт запись данных",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground
+    // Диалог подтверждения
+    if (showStopDialog) {
+        AlertDialog(
+            onDismissRequest = { showStopDialog = false },
+            title = {
+                Text(
+                    text = "Остановить тест?",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "Вы уверены, что хотите прервать тест? Все собранные данные будут сохранены, но тест завершится досрочно.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showStopDialog = false
+                        onForceStop()
+                    }
+                ) {
+                    Text(
+                        text = "Остановить",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopDialog = false }) {
+                    Text("Продолжить")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(
-            text = "Осталось: $timeText",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Дышите ровно и ожидайте окончания",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 

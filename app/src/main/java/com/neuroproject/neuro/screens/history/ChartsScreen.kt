@@ -53,12 +53,10 @@ private fun ChartsScreenContent(
         metricsList.forEach { (name, _) -> put(name, name == "Общий индекс") }
     } }
 
-    val selectedLines = remember(selectedMetrics, sessions) {
-        metricsList.filter { (name, _) -> selectedMetrics[name] == true }
+    val selectedLines = metricsList.filter { (name, _) -> selectedMetrics[name] == true }
             .mapNotNull { (_, extractor) ->
                 sessions.map { extractor(it) }
                     .takeIf { it.any { value -> value != null } }
-            }
     }
 
     val xLabels = sessions.map { SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(it.sessionId)) }

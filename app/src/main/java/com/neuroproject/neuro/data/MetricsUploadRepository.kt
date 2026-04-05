@@ -176,39 +176,35 @@ class MetricsUploadRepository @Inject constructor(
 
         for (attempt in 1..maxRetries) {
             try {
+                // ЛОГИРУЕМ РАЗМЕР ПАКЕТА
+                val jsonString = gson.toJson(batch.request)
+                println("=== BATCH ${batch.batchId} ===")
+                println("JSON size: ${jsonString.length} bytes")
+                println("Records: ${batch.recordCount}")
+
                 val response = apiService.uploadMetrics(batch.request)
 
                 if (response.isSuccessful) {
+                    println("✅ Batch ${batch.batchId} sent successfully")
                     return BatchSendResult.Success(batch.batchId)
                 } else {
-                    lastException = HttpException(response)
+                    val errorBody = response.errorBody()?.string()
+                    println("❌ Batch ${batch.batchId} FAILED with ${response.code()}")
+                    println("Error response: $errorBody")
+
+                    // СОХРАНЯЕМ ПРОБЛЕМНЫЙ JSON В ФАЙЛ
+                    saveFailedJson(batch.request, batch.batchId, response.code(), errorBody)
+
+                    // АНАЛИЗИРУЕМ СОДЕРЖИМОЕ ПАКЕТА
+                    analyzeBatchContent(batch.request)
+
                     val errorMessage = when (response.code()) {
-                        400 -> "Некорректный запрос"
-                        401 -> "Требуется авторизация"
-                        403 -> "Доступ запрещен"
-                        404 -> "Сервер не найден"
-                        413 -> "Пакет слишком большой"
-                        429 -> "Слишком много запросов"
-                        500, 502, 503, 504 -> "Ошибка сервера (${response.code()})"
+                        400 -> "Некорректный запрос. Сохранён в failed_requests/"
                         else -> "HTTP ${response.code()}: ${response.message()}"
                     }
 
-                    if (attempt < maxRetries && response.code() in 500..599) {
-                        // Экспоненциальная задержка для серверных ошибок
-                        val delayMs = RETRY_DELAY_MS * 2.0.pow(attempt - 1).toLong()
-                        delay(delayMs)
-                        continue
-                    }
                     return BatchSendResult.Failure(batch.batchId, errorMessage)
                 }
-            } catch (e: HttpException) {
-                lastException = e
-                if (attempt < maxRetries && e.code() in 500..599) {
-                    val delayMs = RETRY_DELAY_MS * 2.0.pow(attempt - 1).toLong()
-                    delay(delayMs)
-                    continue
-                }
-                return BatchSendResult.Failure(batch.batchId, "HTTP ошибка: ${e.message}")
             } catch (e: Exception) {
                 lastException = e
                 if (attempt < maxRetries) {
@@ -224,6 +220,74 @@ class MetricsUploadRepository @Inject constructor(
             "Превышено количество попыток: ${lastException?.message ?: "Неизвестная ошибка"}"
         )
     }
+
+    private fun saveFailedJson(request: UploadRequest, batchId: String, code: Int, errorBody: String?) {
+        try {
+            val exportDir = File(context.filesDir, "failed_requests")
+            if (!exportDir.exists()) exportDir.mkdirs()
+
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "failed_${code}_${batchId}_$timestamp.json"
+            val jsonFile = File(exportDir, fileName)
+
+            val fullLog = mapOf(
+                "batchId" to batchId,
+                "httpCode" to code,
+                "serverError" to errorBody,
+                "timestamp" to timestamp,
+                "requestData" to request
+            )
+
+            val jsonString = gson.toJson(fullLog)
+            jsonFile.writeText(jsonString)
+
+            println("📁 Failed request saved to: ${jsonFile.absolutePath}")
+        } catch (e: Exception) {
+            println("Failed to save JSON: ${e.message}")
+        }
+    }
+
+    private fun analyzeBatchContent(request: UploadRequest) {
+        println("=== BATCH CONTENT ANALYSIS ===")
+
+        // Проверяем каждый тип данных
+        request.nfbMetrics?.let {
+            println("NFB metrics: ${it.size} records")
+            if (it.isNotEmpty()) {
+                val sample = it.first()
+                println("  Sample: timestamp=${sample.timestamp}, alpha=${sample.alpha}, beta=${sample.beta}")
+                // Проверяем валидность значений
+                if (sample.individualNumber.isBlank()) println("  ⚠️ WARNING: empty individualNumber!")
+                if (sample.expeditionId.isBlank()) println("  ⚠️ WARNING: empty expeditionId!")
+                if (sample.timestamp <= 0) println("  ⚠️ WARNING: invalid timestamp!")
+            }
+        } ?: println("NFB metrics: null")
+
+        request.physiologicalMetrics?.let {
+            println("Physiological metrics: ${it.size} records")
+            if (it.isNotEmpty()) {
+                val sample = it.first()
+                println("  Sample: relax=${sample.relax}, concentration=${sample.concentration}, stress=${sample.stress}")
+                // Проверяем диапазоны
+                if (sample.relax !in 0.0..1.0) println("  ⚠️ WARNING: relax out of range [0-1]: ${sample.relax}")
+                if (sample.concentration !in 0.0..1.0) println("  ⚠️ WARNING: concentration out of range: ${sample.concentration}")
+            }
+        } ?: println("Physiological metrics: null")
+
+        request.cardioMetrics?.let {
+            println("Cardio metrics: ${it.size} records")
+            if (it.isNotEmpty()) {
+                val sample = it.first()
+                println("  Sample: heartRate=${sample.heartRate}, skinContact=${sample.skinContact}")
+                if (sample.heartRate < 30 || sample.heartRate > 200) println("  ⚠️ WARNING: unusual heart rate: ${sample.heartRate}")
+            }
+        } ?: println("Cardio metrics: null")
+
+        // Добавьте другие типы метрик по необходимости
+
+        println("=== END ANALYSIS ===")
+    }
+
 
     /**
      * Разбиение запроса на пакеты
@@ -340,28 +404,28 @@ class MetricsUploadRepository @Inject constructor(
         // Конвертируем чанки обратно в UploadRequest
         for (chunk in chunks) {
             val batchRequest = UploadRequest(
-                nfbMetrics = chunk.filterIsInstance<TypedMetric.NFB>().map { it.data },
-                physiologicalMetrics = chunk.filterIsInstance<TypedMetric.Physiological>().map { it.data },
-                EEGRawMetrics = chunk.filterIsInstance<TypedMetric.EEGRaw>().map { it.data },
-                EEGProceedMetrics = chunk.filterIsInstance<TypedMetric.EEGProceed>().map { it.data },
-                EEGArtifactsMetrics = chunk.filterIsInstance<TypedMetric.EEGArtifact>().map { it.data },
-                memsMetrics = chunk.filterIsInstance<TypedMetric.MEMS>().map { it.data },
-                productivityMetrics = chunk.filterIsInstance<TypedMetric.Productivity>().map { it.data },
-                emotionalMetrics = chunk.filterIsInstance<TypedMetric.Emotional>().map { it.data },
-                cardioMetrics = chunk.filterIsInstance<TypedMetric.Cardio>().map { it.data },
-                nfbMetricsCompressed = chunk.filterIsInstance<TypedMetric.NFBCompressed>().map { it.data },
-                physiologicalMetricsCompressed = chunk.filterIsInstance<TypedMetric.PhysiologicalCompressed>().map { it.data },
-                EEGRawMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGRawCompressed>().map { it.data },
-                EEGProceedMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGProceedCompressed>().map { it.data },
-                EEGArtifactsMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGArtifactCompressed>().map { it.data },
-                memsMetricsCompressed = chunk.filterIsInstance<TypedMetric.MEMSCompressed>().map { it.data },
-                productivityMetricsCompressed = chunk.filterIsInstance<TypedMetric.ProductivityCompressed>().map { it.data },
-                emotionalMetricsCompressed = chunk.filterIsInstance<TypedMetric.EmotionalCompressed>().map { it.data },
-                cardioMetricsCompressed = chunk.filterIsInstance<TypedMetric.CardioCompressed>().map { it.data },
-                physiologicalBaseline = chunk.filterIsInstance<TypedMetric.PhysiologicalBaseline>().map { it.data },
-                productivityBaseline = chunk.filterIsInstance<TypedMetric.ProductivityBaseline>().map { it.data },
-                productivityIndex = chunk.filterIsInstance<TypedMetric.ProductivityIndex>().map { it.data },
-                sessionResult = chunk.filterIsInstance<TypedMetric.Session>().map {it.data}
+                nfbMetrics = chunk.filterIsInstance<TypedMetric.NFB>().map { it.data }.takeIf { it.isNotEmpty() },
+                physiologicalMetrics = chunk.filterIsInstance<TypedMetric.Physiological>().map { it.data }.takeIf { it.isNotEmpty() },
+                EEGRawMetrics = chunk.filterIsInstance<TypedMetric.EEGRaw>().map { it.data }.takeIf { it.isNotEmpty() },
+                EEGProceedMetrics = chunk.filterIsInstance<TypedMetric.EEGProceed>().map { it.data }.takeIf { it.isNotEmpty() },
+                EEGArtifactsMetrics = chunk.filterIsInstance<TypedMetric.EEGArtifact>().map { it.data }.takeIf { it.isNotEmpty() },
+                memsMetrics = chunk.filterIsInstance<TypedMetric.MEMS>().map { it.data }.takeIf { it.isNotEmpty() },
+                productivityMetrics = chunk.filterIsInstance<TypedMetric.Productivity>().map { it.data }.takeIf { it.isNotEmpty() },
+                emotionalMetrics = chunk.filterIsInstance<TypedMetric.Emotional>().map { it.data }.takeIf { it.isNotEmpty() },
+                cardioMetrics = chunk.filterIsInstance<TypedMetric.Cardio>().map { it.data }.takeIf { it.isNotEmpty() },
+                nfbMetricsCompressed = chunk.filterIsInstance<TypedMetric.NFBCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                physiologicalMetricsCompressed = chunk.filterIsInstance<TypedMetric.PhysiologicalCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                EEGRawMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGRawCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                EEGProceedMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGProceedCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                EEGArtifactsMetricsCompressed = chunk.filterIsInstance<TypedMetric.EEGArtifactCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                memsMetricsCompressed = chunk.filterIsInstance<TypedMetric.MEMSCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                productivityMetricsCompressed = chunk.filterIsInstance<TypedMetric.ProductivityCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                emotionalMetricsCompressed = chunk.filterIsInstance<TypedMetric.EmotionalCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                cardioMetricsCompressed = chunk.filterIsInstance<TypedMetric.CardioCompressed>().map { it.data }.takeIf { it.isNotEmpty() },
+                physiologicalBaseline = chunk.filterIsInstance<TypedMetric.PhysiologicalBaseline>().map { it.data }.takeIf { it.isNotEmpty() },
+                productivityBaseline = chunk.filterIsInstance<TypedMetric.ProductivityBaseline>().map { it.data }.takeIf { it.isNotEmpty() },
+                productivityIndex = chunk.filterIsInstance<TypedMetric.ProductivityIndex>().map { it.data }.takeIf { it.isNotEmpty() },
+                sessionResult = chunk.filterIsInstance<TypedMetric.Session>().map { it.data }.takeIf { it.isNotEmpty() }
             )
 
             if (batchRequest.hasData()) {

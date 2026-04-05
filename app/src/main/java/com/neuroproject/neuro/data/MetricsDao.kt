@@ -754,7 +754,7 @@ interface MetricsDao {
     @Query("SELECT * FROM productivity_baselines WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getProductivityBaselines(sessionId: Long) : ProductivityBaselinesEntity
 
-    @Query("SELECT * FROM productivity_indexes WHERE user_id = :userId ORDER BY timestamp DESC LIMIT 1")
+    @Query("SELECT * FROM productivity_indexes WHERE id = :userId ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLastProductivityIndexForUser(userId: String) : ProductivityIndexesEntity
 
     @Query("SELECT * FROM productivity_indexes WHERE sessionId = :sessionId LIMIT 1")

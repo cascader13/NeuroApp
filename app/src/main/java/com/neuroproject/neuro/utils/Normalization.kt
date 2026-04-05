@@ -15,13 +15,13 @@ object Normalization {
     fun normalizeWithBaseline(value: Float, baseline: Float, min: Float = 0f, max: Float? = null) : Float{
         var norm: Float
         if (value <= baseline){
-            norm = 0.5f * (value - min) / (baseline - min).coerceIn(0f,0.5f)
+            norm = (0.5f * (value - min) / (baseline - min)).coerceIn(0f,0.5f)
         }else{
             if(max == null){
                 var ratio: Float = (value - baseline) / baseline
-                norm = 0.5f + 0.5f * (1 - exp(-ratio))
+                norm = (0.5f + 0.5f * (1 - exp(-ratio))).coerceIn(0.5f, 1f)
             }else{
-                norm = 0.5f + 0.5f * (value - baseline) / (max - baseline).coerceIn(0.5f, 1f)
+                norm = (0.5f + 0.5f * (value - baseline) / (max - baseline)).coerceIn(0.5f, 1f)
             }
         }
         return norm
