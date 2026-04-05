@@ -18,22 +18,10 @@ data class FatigueResultEntity(
     val psychologicalResultval : Float
 )
 
-@Entity(tableName = "session_fatigue_summary")
-data class SessionFatigueSummaryEntity(
-    @PrimaryKey val sessionId: Long,
-    val averageCognitive: Float,
-    val averagePhysiological: Float,
-    val averagePsychological: Float,
-    val objective_result: Long
-)
-
 @Dao
 interface FatigueDao {
     @Insert
     suspend fun insertFatiqueResult(result: FatigueResultEntity)
-
-    @Insert
-    suspend fun insertSessionSummary(summary: SessionFatigueSummaryEntity)
 
     @Query("SELECT * FROM fatigue_results WHERE sessionId = :sessionId ORDER BY minuteIndex ASC")
     fun getFatigueResultsForSession(sessionId: Long): Flow<List<FatigueResultEntity>>
@@ -41,12 +29,8 @@ interface FatigueDao {
     @Query("SELECT * FROM fatigue_results WHERE sessionId = :sessionId ORDER BY minuteIndex ASC")
     suspend fun getFatigueResultsForSessionSync(sessionId: Long): List<FatigueResultEntity>
 
-    @Query("SELECT * FROM session_fatigue_summary WHERE sessionId = :sessionId")
-    suspend fun getSessionSummary(sessionId: Long): SessionFatigueSummaryEntity?
 
     @Query("DELETE FROM fatigue_results WHERE sessionId = :sessionId")
     suspend fun deleteFatigueResultsForSession(sessionId: Long)
 
-    @Query("DELETE FROM session_fatigue_summary WHERE sessionId = :sessionId")
-    suspend fun deleteSessionSummary(sessionId: Long)
 }

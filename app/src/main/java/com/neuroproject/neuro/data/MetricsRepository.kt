@@ -409,6 +409,25 @@ class MetricsRepository @Inject constructor(
 
     }
 
+    fun saveProductivityCalibration(
+        userId: String,
+        gravityBaseline: Float,
+        productivityBaseline: Float,
+        fatiqueBaseline: Float,
+        reverseFatiqueBaseline: Float,
+        relaxationBaselines: Float,
+        concentrationBaselines: Float,
+    ){
+        scope.launch{
+            try {
+                metricsDao.insertProductivityCalibration(userId, gravityBaseline, productivityBaseline, fatiqueBaseline, reverseFatiqueBaseline, relaxationBaselines, concentrationBaselines)
+            }catch (e: Exception){
+                Log.e("MetricsRepository", "Error saving productivity calibration")
+            }
+        }
+
+    }
+
     fun saveProductivityBaselines(
         time: Long,
         id: String,
@@ -476,6 +495,23 @@ class MetricsRepository @Inject constructor(
             }
         }
 
+
+    }
+    fun savePhysiologicalCalibration(
+        userId: String,
+        alpha: Float,
+        beta: Float,
+        alphaGravity: Float,
+        betaGravity: Float,
+        concentration: Float
+    ){
+        scope.launch{
+            try {
+                metricsDao.insertPhysiologicalCalibration(userId, alpha, beta, alphaGravity, betaGravity, concentration)
+            }catch (e: Exception){
+                Log.e("MetricsRepository", "Error saving physiological calibration")
+            }
+        }
 
     }
 

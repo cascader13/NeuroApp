@@ -64,7 +64,7 @@ class CalibrationViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            checkPreviousCalibrationData()
+            //checkPreviousCalibrationData()
         }
     }
 
@@ -128,7 +128,14 @@ class CalibrationViewModel @Inject constructor(
                     if (previousCalibrations.isNotEmpty()) {
                         val lastCalibration = previousCalibrations[0]
                         Log.d("Calibration", "Loaded calibration data: $lastCalibration")
-
+                        dm.importMainCalibration(lastCalibration.individualFrequency,
+                            lastCalibration.individualPeakFrequency,
+                            lastCalibration.individualPeakFrequencyPower,
+                            lastCalibration.individualPeakFrequencySuppression,
+                            lastCalibration.individualBandwidth,
+                            lastCalibration.individualNormalizedPower,
+                            lastCalibration.lowerFrequency,
+                            lastCalibration.upperFrequency)
                         val calibrationPrefs = context.getSharedPreferences("calibration_prefs", Context.MODE_PRIVATE)
                         calibrationPrefs.edit()
                             .putBoolean("use_previous_calibration", true)

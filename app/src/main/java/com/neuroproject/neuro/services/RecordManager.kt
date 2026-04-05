@@ -308,6 +308,7 @@ class RecordManager @Inject constructor(
 
         /** Слушатель для базовых значений продуктивности */
         capsuleDM.productivityBaselineData.collectInScope(_scope) { productivityBaseline ->
+
             if (isRecording) {
                 saveProductivityBaselineData(
                     productivityBaseline.time,
@@ -318,6 +319,7 @@ class RecordManager @Inject constructor(
                     productivityBaseline.relaxation,
                     productivityBaseline.concentration
                 )
+
             }
         }
 
@@ -679,6 +681,17 @@ class RecordManager @Inject constructor(
         concentrationBaseline: Float,
         hasArtifacts: Boolean = false
     ) {
+        if(userId.isEmpty()){
+            metricsRepository.saveProductivityCalibration(
+                userId,
+                gravityBaseline,
+                productivityBaseline,
+                fatigueBaseline,
+                reverseFatiqueBaseline,
+                relaxationBaseline,
+                concentrationBaseline
+            )
+        }
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
             metricsRepository.saveProductivityIndexes(
                 time,
@@ -752,6 +765,9 @@ class RecordManager @Inject constructor(
         betaGravity: Float,
         concentration: Float
     ) {
+        if (userId.isNotEmpty()){
+            metricsRepository.savePhysiologicalCalibration(userId, alpha, beta, alphaGravity, betaGravity, concentration)
+        }
         if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
             metricsRepository.savePhysiologicalBaselines(
                 time,

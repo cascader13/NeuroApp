@@ -77,9 +77,6 @@ import kotlinx.coroutines.launch
         SessionEntity::class,
 
         FatigueResultEntity::class,
-        SessionFatigueSummaryEntity::class
-
-
 
     ],
     version = 2,
@@ -120,7 +117,7 @@ abstract class MetricsDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MetricsDatabase::class.java,
-                    "metrics_database_v4"
+                    "metrics_database_v6"
                 )
                     .fallbackToDestructiveMigration()  // При миграции пересоздаем БД
                     .addCallback(object : Callback() {

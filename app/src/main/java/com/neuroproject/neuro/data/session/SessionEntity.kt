@@ -68,4 +68,6 @@ data class SessionEntity(
     // Объективные метрики (строковые)
     val objectiveFatigue: String? = null,
     val objectiveStress: String? = null,
+
+    val isMarked: Boolean = false
 )

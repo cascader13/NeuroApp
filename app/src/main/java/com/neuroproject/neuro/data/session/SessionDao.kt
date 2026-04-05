@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 
 /**
@@ -119,4 +120,32 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions ORDER BY sessionId DESC")
     suspend fun getAllSessions(): List<SessionEntity>
+
+    @Query("SELECT COUNT(*) FROM sessions")
+    suspend fun getSessionResultCount(): Int
+
+    @Query("DELETE FROM sessions")
+    suspend fun clearSessionResult()
+
+    @Query("SELECT * FROM sessions WHERE isMarked = 0")
+    suspend fun getUnmarkedSessionResult(): List<SessionEntity>
+
+    @Query("SELECT COUNT(*) FROM sessions WHERE isMarked = 0")
+    suspend fun getUnmarkedSessionResultCount(): Int
+
+    @Query("UPDATE sessions SET isMarked = 1 WHERE sessionId IN (:sessionIDs)")
+    suspend fun markSessionResultAsSynced(sessionIDs: List<Long>)
+
+    @Query("SELECT * FROM sessions WHERE isMarked = 0 LIMIT :limit")
+    suspend fun getUnmarkedSessionResultBatch(limit: Int) : List<SessionEntity>
+
+
+    @Transaction
+    suspend fun safeMarkSessionResultAsSynced(sessionIds: List<Long>) {
+        val BATCH_SIZE = 500
+        sessionIds.chunked(BATCH_SIZE).forEach { batch ->
+            markSessionResultAsSynced(batch)
+        }
+    }
+
 }

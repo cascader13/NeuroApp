@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.data.remote
 
 import com.google.gson.annotations.SerializedName
+import com.neuroproject.neuro.data.session.SessionCategory
 
 /**
  * Основной DTO (Data Transfer Object) для отправки метрик на сервер
@@ -211,7 +212,10 @@ data class UploadRequest(
      * Нормированные показатели продуктивности с текстовыми рекомендациями.
      */
     @SerializedName("productivityIndexes")
-    val productivityIndex: List<ProductivityIndexDto>? = emptyList()
+    val productivityIndex: List<ProductivityIndexDto>? = emptyList(),
+
+    @SerializedName("sessionResults")
+    val sessionResult: List<SessionDto>? = emptyList()
 )
 
 // ==================== NFB МЕТРИКИ ====================
@@ -815,4 +819,55 @@ data class ProductivityIndexDto(
     val concentrationBaseline: Double,
     @SerializedName("hasArtifacts")
     val hasArtifacts: Boolean
+)
+
+data class SessionDto(
+    @SerializedName("session")
+    val session : Long,
+
+    // Объективные оценки
+    @SerializedName("objectiveCognitive")
+    val objectiveCognitive: Int?,
+    @SerializedName("objectivePsychological")
+    val objectivePsychological: Int?,
+    @SerializedName("objectivePhysiological")
+    val objectivePhysiological: Int?,
+
+    // Субъективные оценки
+    @SerializedName("subjectiveCognitive")
+    val subjectiveCognitive: Int?,
+    @SerializedName("subjectivePsychological")
+    val subjectivePsychological: Int?,
+    @SerializedName("subjectivePhysiological")
+    val subjectivePhysiological: Int?,
+
+    // Итоговые и средние
+    @SerializedName("totalIndex")
+    val totalIndex: Int?,
+    @SerializedName("averageObjective")
+    val averageObjective: Int?,
+    @SerializedName("averageSubjective")
+    val averageSubjective: Int?,
+    @SerializedName("totalCognitive")
+    val totalCognitive: Int?,
+    @SerializedName("totalPhysiological")
+    val totalPhysiological: Int?,
+    @SerializedName("totalPsychological")
+    val totalPsychological: Int?,
+
+    @SerializedName("durationMinutes")
+    val durationMinutes: Int?,
+    @SerializedName("endTime")
+    val endTime: Int?,
+    @SerializedName("sessionCategory")
+    val sessionCategory: SessionCategory?,
+    @SerializedName("comment")
+    val comment: String?,
+
+
+    @SerializedName("objectiveFatigue")
+    val objectiveFatigue: String?,
+    @SerializedName("objectiveStress")
+    val objectiveStress: String?
+
 )

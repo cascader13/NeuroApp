@@ -29,18 +29,18 @@ class MetricsAggregationRepository @Inject constructor(
 
         val productivityBatch = metricsDao.getProductivityCompressedMetrics(sessionId)
         var emotionalBatch = metricsDao.getEmotionalCompressedMetrics(sessionId)
-        var productivityBaseline = metricsDao.getProductivityBaselines(sessionId)
+        var productivityBaseline = metricsDao.getProductivityIndexes(sessionId)
         Log.d("Aggregation_repository", "size of batch productivity ${productivityBatch.size}, emotional ${emotionalBatch.size}")
-        if((minute) > productivityBatch.size || (minute) > emotionalBatch.size){
+        if((minute) > productivityBatch.size || (minute) > emotionalBatch.size || productivityBaseline == null){
             return null
         }
         var fatigue = productivityBatch[minute-1].fatigue
         var concentration = productivityBatch[minute-1].concentration
         var productivity = productivityBatch[minute-1].productivity
         var cognitiveLoad = emotionalBatch[minute-1].cognitiveLoad
-        var norm_fatigue = Normalization.normalizeProdFatique(fatigue, productivityBaseline.fatigue)
-        var norm_concentration = Normalization.normalizeConcentration(concentration, productivityBaseline.concentration)
-        var norm_productivity = Normalization.normalizeProductivity(productivity, productivityBaseline.productivity)
+        var norm_fatigue = Normalization.normalizeProdFatique(fatigue, productivityBaseline.fatigueBaseline)
+        var norm_concentration = Normalization.normalizeConcentration(concentration, productivityBaseline.concentrationBaseline)
+        var norm_productivity = Normalization.normalizeProductivity(productivity, productivityBaseline.productivityBaseline)
         var norm_cognitiveLoad = Normalization.normalizeCognitiveLoad(cognitiveLoad)
         return CognitiveFatigueMetrics(norm_fatigue, norm_concentration, norm_productivity, norm_cognitiveLoad)
     }

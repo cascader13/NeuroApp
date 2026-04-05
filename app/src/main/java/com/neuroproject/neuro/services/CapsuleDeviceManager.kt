@@ -562,6 +562,10 @@ class CapsuleDeviceManager @Inject constructor(
         nativeStartResistance()
     }
 
+    fun importMainCalibration(indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float, indPeakFrequencySuppression: Float, indBandwidth: Float, indNormalizedPower: Float, lowerFrequency: Float, upperFrequency: Float){
+        nativeImportCalibration(indFrequency, indPeakFrequency, indPeakFrequencyPower, indPeakFrequencySuppression, indBandwidth, indNormalizedPower, lowerFrequency, upperFrequency)
+    }
+
     /**
      * Остановить измерение сопротивления электродов
      */
@@ -1103,6 +1107,9 @@ class CapsuleDeviceManager @Inject constructor(
         /** Остановить сессию сбора данных */
         external fun nativeStopSession()
 
+        /** Начать калибровку Productivity */
+        external fun nativeStartProductivity()
+
         /**
          * Импорт параметров калибровки
          *
@@ -1119,6 +1126,23 @@ class CapsuleDeviceManager @Inject constructor(
             indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float,
             indPeakFrequencySuppression: Float, indBandwidth: Float, indNormalizedPower: Float,
             lowerFrequency: Float, upperFrequency: Float
+        )
+
+        external fun nativeImportProductivityCalibration(
+            gravity: Float,
+            b_productivity: Float,
+            fatigue: Float,
+            reverseFatigue: Float,
+            relaxation: Float,
+            concentration: Float
+        )
+
+        external fun nativeImportPhysiologicalCalibration(
+            alpha: Float,
+            beta: Float,
+            alphaGravity: Float,
+            betaGravity: Float,
+            concentration: Float
         )
 
         /** Очистка всех ресурсов */

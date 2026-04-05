@@ -3,6 +3,7 @@ package com.neuroproject.neuro.data
 import android.content.Context
 import com.google.gson.Gson
 import com.neuroproject.neuro.data.remote.*
+import com.neuroproject.neuro.data.session.SessionDao
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,7 @@ import kotlin.math.pow
 class MetricsUploadRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val metricsDao: MetricsDao,
+    private val sessionDao: SessionDao,
     private val gson: Gson,
     private val apiService: MetricsApiService
 ) {
@@ -262,6 +264,9 @@ class MetricsUploadRepository @Inject constructor(
         request.cardioMetrics?.forEach {
             allMetrics.add(TypedMetric.Cardio(it))
         }
+        request.sessionResult?.forEach {
+            allMetrics.add(TypedMetric.Session(it))
+        }
 
         // Сжатые данные
         request.nfbMetricsCompressed?.forEach {
@@ -355,7 +360,8 @@ class MetricsUploadRepository @Inject constructor(
                 cardioMetricsCompressed = chunk.filterIsInstance<TypedMetric.CardioCompressed>().map { it.data },
                 physiologicalBaseline = chunk.filterIsInstance<TypedMetric.PhysiologicalBaseline>().map { it.data },
                 productivityBaseline = chunk.filterIsInstance<TypedMetric.ProductivityBaseline>().map { it.data },
-                productivityIndex = chunk.filterIsInstance<TypedMetric.ProductivityIndex>().map { it.data }
+                productivityIndex = chunk.filterIsInstance<TypedMetric.ProductivityIndex>().map { it.data },
+                sessionResult = chunk.filterIsInstance<TypedMetric.Session>().map {it.data}
             )
 
             if (batchRequest.hasData()) {
@@ -521,6 +527,13 @@ class MetricsUploadRepository @Inject constructor(
                 metricsDao.safeMarkProductivityIndexesAsSynced(metrics.map { it.timestamp })
             }
         }
+
+        //SessionResults
+        batch.request.sessionResult?.let {metrics ->
+            if (metrics.isNotEmpty()) {
+                sessionDao.safeMarkSessionResultAsSynced(metrics.map {it.session})
+            }
+        }
     }
 
     // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
@@ -540,6 +553,7 @@ class MetricsUploadRepository @Inject constructor(
             val productivityMetrics = metricsDao.getUnmarkedProductivityMetrics()
             val emotionalMetrics = metricsDao.getUnmarkedEmotionalMetrics()
             val cardioMetrics = metricsDao.getUnmarkedCardioMetrics()
+            val sessions = sessionDao.getUnmarkedSessionResult()
 
             // Compressed данные
             val nfbMetricsCompressed = metricsDao.getUnmarkedNFBMetricsCompressed()
@@ -563,7 +577,7 @@ class MetricsUploadRepository @Inject constructor(
                 nfbMetricsCompressed, physiologicalMetricsCompressed, eegRawMetricsCompressed,
                 eegProceedMetricsCompressed, eegArtifactsMetricsCompressed, memsMetricsCompressed,
                 productivityMetricsCompressed, emotionalMetricsCompressed, cardioMetricsCompressed,
-                physiologicalBaselines, productivityBaselines, productivityIndexes
+                physiologicalBaselines, productivityBaselines, productivityIndexes, sessions
             )
 
             if (totalRecords == 0) {
@@ -591,7 +605,8 @@ class MetricsUploadRepository @Inject constructor(
                 cardioMetricsCompressed = cardioMetricsCompressed.map { it.toServerDto() },
                 physiologicalBaseline = physiologicalBaselines.map { it.toServerDto() },
                 productivityBaseline = productivityBaselines.map { it.toServerDto() },
-                productivityIndex = productivityIndexes.map { it.toServerDto() }
+                productivityIndex = productivityIndexes.map { it.toServerDto() },
+                sessionResult = sessions.map {it.toServerDto()}
             )
 
             UploadPreparationResult.Ready(
@@ -617,7 +632,8 @@ class MetricsUploadRepository @Inject constructor(
                 cardioCompressedCount = cardioMetricsCompressed.size,
                 physiologicalBaselinesCount = physiologicalBaselines.size,
                 productivityBaselinesCount = productivityBaselines.size,
-                productivityIndexesCount = productivityIndexes.size
+                productivityIndexesCount = productivityIndexes.size,
+                sessionsCount =  sessions.size
             )
 
         } catch (e: Exception) {
@@ -838,6 +854,7 @@ sealed class TypedMetric {
     data class PhysiologicalBaseline(val data: PhysiologicalBaselineDto) : TypedMetric()
     data class ProductivityBaseline(val data: ProductivityBaselineDto) : TypedMetric()
     data class ProductivityIndex(val data: ProductivityIndexDto) : TypedMetric()
+    data class Session(val data: SessionDto) : TypedMetric()
 }
 
 /**
@@ -963,7 +980,8 @@ sealed class UploadPreparationResult {
         val cardioCompressedCount: Int,
         val physiologicalBaselinesCount: Int,
         val productivityBaselinesCount: Int,
-        val productivityIndexesCount: Int
+        val productivityIndexesCount: Int,
+        val sessionsCount: Int
     ) : UploadPreparationResult()
     data class Error(val message: String) : UploadPreparationResult()
 }
