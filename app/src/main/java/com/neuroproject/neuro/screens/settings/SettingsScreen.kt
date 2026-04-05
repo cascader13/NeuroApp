@@ -204,7 +204,7 @@ private fun DataStatsCard(state: SettingsState) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "📊 Статистика данных",
+                text = "Статистика данных",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

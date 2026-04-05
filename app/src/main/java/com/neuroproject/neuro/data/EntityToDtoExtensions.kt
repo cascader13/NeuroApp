@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.data
 
 import com.neuroproject.neuro.data.remote.*
+import com.neuroproject.neuro.data.session.SessionEntity
 
 /**
  * Преобразование сущностей Room в DTO для отправки на сервер
@@ -442,5 +443,34 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
         relaxationBaseline = this.relaxationBaseline.toDouble(),
         concentrationBaseline = this.concentrationBaseline.toDouble(),
         hasArtifacts = this.hasArtifacts
+    )
+}
+
+/**
+ * Преобразование данных о сессии в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
+fun SessionEntity.toServerDto(): SessionDto {
+    return SessionDto(
+        session = sessionId,
+        objectiveCognitive = objectiveCognitive,
+        objectivePsychological = objectivePsychological,
+        objectivePhysiological = objectivePhysiological,
+        subjectiveCognitive = subjectiveCognitive,
+        subjectivePsychological = subjectivePsychological,
+        subjectivePhysiological = subjectivePhysiological,
+        totalIndex = totalIndex,
+        averageObjective = averageObjective,
+        averageSubjective = averageSubjective,
+        totalCognitive = totalCognitive,
+        totalPsychological = totalPsychological,
+        totalPhysiological =  totalPhysiological,
+        durationMinutes = durationMinutes,
+        endTime = endTime?.toSecondsInt(),
+        sessionCategory = sessionCategory,
+        comment = comment,
+        objectiveFatigue = objectiveFatigue,
+        objectiveStress = objectiveStress
     )
 }

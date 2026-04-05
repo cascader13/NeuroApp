@@ -960,3 +960,10 @@ JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_removeAll(JNIEnv* env, jobject thiz) {
     removeAll();
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeStartProductivity(
+        JNIEnv *env, jobject thiz) {
+    clCPhysiologicalStates_StartBaselineCalibration(ps);
+    clCProductivity_StartBaselineCalibration(productivity);
+}

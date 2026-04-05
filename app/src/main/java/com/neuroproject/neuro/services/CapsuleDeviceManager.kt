@@ -1103,6 +1103,9 @@ class CapsuleDeviceManager @Inject constructor(
         /** Остановить сессию сбора данных */
         external fun nativeStopSession()
 
+        /** Начать калибровку Productivity */
+        external fun nativeStartProductivity()
+
         /**
          * Импорт параметров калибровки
          *

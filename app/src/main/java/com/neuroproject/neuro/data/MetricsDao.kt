@@ -737,6 +737,9 @@ interface MetricsDao {
     @Query("SELECT * FROM productivity_baselines WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getProductivityBaselines(sessionId: Long) : ProductivityBaselinesEntity
 
+    @Query("SELECT * FROM productivity_indexes WHERE sessionId = :sessionId LIMIT 1")
+    suspend fun getProductivityIndexes(sessionId: Long) : ProductivityIndexesEntity
+
     @Query("""
         SELECT * FROM emotional_metrics 
         WHERE sessionId = :sessionId 
