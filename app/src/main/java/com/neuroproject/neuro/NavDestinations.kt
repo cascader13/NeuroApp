@@ -37,6 +37,15 @@ object NavDestinations {
     /** Пустой экран (для будущего использования) */
     const val BLANK = "blank"
 
+    /** История сессий */
+    const val HISTORY = "history"
+
+    /** Графики по сессиям */
+    const val CHARTS = "charts"
+
+    /** Подробности по сессии */
+    const val SESSION_DETAIL = "session_detail/{sessionId}"
+
     // ==================== СТЕК ПОДКЛЮЧЕНИЯ УСТРОЙСТВА ====================
 
     /**

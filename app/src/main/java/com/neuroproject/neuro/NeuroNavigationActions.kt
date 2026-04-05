@@ -81,6 +81,18 @@ class NeuroNavigationActions(val navController: NavController) {
         }
     }
 
+    fun navigateToHistory() {
+        navController.navigate(NavDestinations.HISTORY) { launchSingleTop = true }
+    }
+
+    fun navigateToCharts() {
+        navController.navigate(NavDestinations.CHARTS) { launchSingleTop = true }
+    }
+
+    fun navigateToSessionDetail(sessionId: Long) {
+        navController.navigate("session_detail/$sessionId") { launchSingleTop = true }
+    }
+
     /**
      * Переход на главный экран с очисткой стека
      *

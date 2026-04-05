@@ -116,4 +116,7 @@ interface SessionDao {
         comment: String?,
         endTime: Long?
     )
+
+    @Query("SELECT * FROM sessions ORDER BY sessionId DESC")
+    suspend fun getAllSessions(): List<SessionEntity>
 }

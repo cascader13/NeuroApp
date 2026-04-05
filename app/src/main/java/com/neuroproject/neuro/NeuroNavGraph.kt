@@ -6,12 +6,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.neuroproject.neuro.screens.calibration.CalibrationScreen
 import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
+import com.neuroproject.neuro.screens.history.ChartsScreen
+import com.neuroproject.neuro.screens.history.HistoryScreen
+import com.neuroproject.neuro.screens.history.SessionDetailScreen
 import com.neuroproject.neuro.screens.login.LoginScreen
 import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
 import com.neuroproject.neuro.screens.subtest.SubTestScreen
@@ -87,6 +92,9 @@ fun NeuroNavGraph(
                 },
                 onSettingsClick = {
                     navActions.navigateToSettings()
+                },
+                onViewResultsClick = {
+                    navActions.navigateToHistory()
                 }
             )
         }
@@ -102,6 +110,40 @@ fun NeuroNavGraph(
                     navActions.navigateToMain()
                 },
                 vm = hiltViewModel(),
+            )
+        }
+
+        // ==================== ЭКРАНЫ ИСТОРИИ И ГРАФИКОВ ====================
+
+        /**
+         * Экран истории сессий
+         * Отображает список всех завершённых сессий с основными показателями
+         */
+        composable(NavDestinations.HISTORY) {
+            HistoryScreen(
+                onBackClick = { navActions.navigateBack() },
+                onChartClick = { navActions.navigateToCharts() },
+                onSessionClick = { sessionId -> navActions.navigateToSessionDetail(sessionId) }
+            )
+        }
+
+        /**
+         * Экран графиков тенденций
+         * Позволяет выбрать метрики и построить график их изменения по сессиям
+         */
+        composable(NavDestinations.CHARTS) {
+            ChartsScreen(
+                onBackClick = { navActions.navigateBack() }
+            )
+        }
+
+        composable(
+            route = NavDestinations.SESSION_DETAIL,
+            arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getLong("sessionId") ?: 0L
+            SessionDetailScreen(
+                onBackClick = { navActions.navigateBack() }
             )
         }
 

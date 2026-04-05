@@ -124,8 +124,14 @@ private fun MenuButtons(
             contentColor = MaterialTheme.colorScheme.onPrimary,
             onClick = onStartSessionClick
         )
-        // Если нужна кнопка "Предыдущие результаты", раскомментируйте
-        // MenuButton(...)
+
+        MenuButton(
+            title = "Предыдущие результаты",
+            subtitle = "",
+            backgroundColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            onClick = onViewResultsClick
+        )
     }
 }
 
