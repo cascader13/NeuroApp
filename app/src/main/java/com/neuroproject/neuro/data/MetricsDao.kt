@@ -114,9 +114,26 @@ interface MetricsDao {
     suspend fun getMEMSMetricsCompressedCount(): Int
 
 
-    @Query("SELECT *  FROM calibration_history WHERE user_id = :user_id ORDER BY id DESC LIMIT 1")
+
+    @Query("SELECT *  FROM calibration_history WHERE user_id = :user_id" +
+            " AND productivityConcentration IS NOT NULL AND physiologicalAlpha IS NOT NULL " +
+            "  ORDER BY id DESC LIMIT 1") // Нужно проверить хотя бы одной метрики каждой категории,для того чтобы удостовериться что есть все остальные
     suspend fun getCalibration(user_id: String): List<CalibrationHistoryEntity>
 
+    @Query("UPDATE calibration_history SET productivityGravity = :gravity," +
+            " productivityProductivity = :productivity," +
+            " productivityFatigue = :fatigue," +
+            " productivityReverseFatigue = :reverseFatigue," +
+            " productivityRelaxation = :relaxation," +
+            " productivityConcentration = :concentration WHERE user_id = :userId AND id = (SELECT MAX(id) FROM calibration_history)")
+    suspend fun insertProductivityCalibration(userId: String, gravity: Float, productivity: Float, fatigue: Float, reverseFatigue: Float, relaxation: Float, concentration: Float)
+
+    @Query("UPDATE calibration_history SET physiologicalAlpha = :alpha," +
+            " physiologicalBeta = :beta, " +
+            "physiologicalAlphaGravity = :alphaGravity, " +
+            "physiologicalBetaGravity = :betaGravity, " +
+            "physiologicalConcentration = :concentration WHERE user_id = :userId AND id = (SELECT MAX(id) FROM calibration_history)")
+    suspend fun insertPhysiologicalCalibration(userId: String, alpha: Float, beta: Float, alphaGravity: Float, betaGravity: Float, concentration: Float)
 
     @Query("SELECT relaxation FROM productivity_indexes WHERE sessionId = :sessionId ORDER BY timestamp")
     suspend fun getRelaxationValuesBySession(sessionId: Long): List<String>
@@ -736,6 +753,9 @@ interface MetricsDao {
 
     @Query("SELECT * FROM productivity_baselines WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getProductivityBaselines(sessionId: Long) : ProductivityBaselinesEntity
+
+    @Query("SELECT * FROM productivity_indexes WHERE user_id = :userId ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLastProductivityIndexForUser(userId: String) : ProductivityIndexesEntity
 
     @Query("SELECT * FROM productivity_indexes WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getProductivityIndexes(sessionId: Long) : ProductivityIndexesEntity

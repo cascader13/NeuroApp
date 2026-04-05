@@ -524,6 +524,11 @@ void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologi
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
     }
+
+}
+
+void onPhysiologicalCalibrationProgressUpdated(clCPhysiologicalStates, const float value) noexcept{
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological baseline calibration progress: %f", &value);
 }
 
 void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalStates_Value* value) noexcept {
@@ -845,6 +850,7 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
     ps = clCPhysiologicalStates_Create(device, &error);
     if (ps != nullptr) {
         clCPhysiologicalStates_SetOnCalibratedEvent(ps, onPhysiologicalStatesCalibrated, &error);
+        clCPhysiologicalStates_SetOnCalibrationProgressUpdateEvent(ps, onPhysiologicalCalibrationProgressUpdated, &error);
         clCPhysiologicalStates_SetOnStatesUpdateEvent(ps, onPhysiologicalStatesUpdate, &error);
         clCPhysiologicalStates_SetOnIndividualNFBUpdateEvent(ps, onPhysiologicalStatesIndividualNFBUpdate, &error);
     }
@@ -966,4 +972,35 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
         JNIEnv *env, jobject thiz) {
     clCPhysiologicalStates_StartBaselineCalibration(ps);
     clCProductivity_StartBaselineCalibration(productivity);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeImportProductivityCalibration(
+        JNIEnv *env, jobject thiz, jfloat gravity, jfloat b_productivity, jfloat fatigue,
+        jfloat reverse_fatigue, jfloat relaxation, jfloat concentration) {
+    clCError error;
+    clCProductivity_Baselines prob{
+        .gravity = gravity,
+        .productivity = b_productivity,
+        .fatigue = fatigue,
+        .reverseFatigue = reverse_fatigue,
+        .relaxation = relaxation,
+        .concentration = concentration
+    };
+    clCProductivity_ImportBaselines(productivity, &prob, &error);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeImportPhysiologicalCalibration(
+        JNIEnv *env, jobject thiz, jfloat alpha, jfloat beta, jfloat alpha_gravity,
+        jfloat beta_gravity, jfloat concentration) {
+    clCError error;
+    clCPhysiologicalStates_Baselines prob {
+        .alpha = alpha,
+        .beta = beta,
+        .alphaGravity = alpha_gravity,
+        .betaGravity = beta_gravity,
+        .concentration = concentration
+    };
+    clCPhysiologicalStates_ImportBaselines(ps, &prob);
 }

@@ -15,7 +15,18 @@ data class CalibrationHistoryEntity(
     val individualBandwidth: Float,
     val individualNormalizedPower: Float,
     val lowerFrequency: Float,
-    val upperFrequency: Float
+    val upperFrequency: Float,
+    val productivityGravity: Float? = null,
+    val productivityProductivity: Float? = null,
+    val productivityFatigue: Float? = null,
+    val productivityReverseFatigue: Float? = null,
+    val productivityRelaxation: Float? = null,
+    val productivityConcentration: Float? = null,
+    val physiologicalAlpha: Float? = null,
+    val physiologicalBeta: Float? = null,
+    val physiologicalAlphaGravity: Float? = null,
+    val physiologicalBetaGravity: Float? = null,
+    val physiologicalConcentration: Float? = null
 )
 
 @Entity(tableName = "EEG_Raw_metrics")
