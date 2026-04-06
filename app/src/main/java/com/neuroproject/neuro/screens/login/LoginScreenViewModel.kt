@@ -128,8 +128,8 @@ class LoginScreenViewModel @Inject constructor(
             return false
         }
 
-        if (userId.length < 3) {
-            errorMessage.value = "ID должен содержать минимум 3 символа"
+        if (userId.length < 2) {
+            errorMessage.value = "ID должен содержать минимум 2 символа"
             return false
         }
 
@@ -148,7 +148,7 @@ class LoginScreenViewModel @Inject constructor(
      * @return true если авторизация успешна
      */
     private suspend fun performLogin(userId: String): Boolean {
-        return userId.isNotEmpty() && userId.length >= 3
+        return userId.isNotEmpty() && userId.length >= 2
     }
 
     /**

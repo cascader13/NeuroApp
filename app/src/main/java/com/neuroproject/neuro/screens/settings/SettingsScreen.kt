@@ -415,7 +415,7 @@ private fun ActionButtons(
                 )
             }
         }
-
+        /* for developers
         Button(
             onClick = onSaveToFileClicked,
             modifier = Modifier
@@ -432,7 +432,7 @@ private fun ActionButtons(
                 text = "Сохранить в файл (для отладки)",
                 style = MaterialTheme.typography.labelMedium
             )
-        }
+        }*/
     }
 }
 

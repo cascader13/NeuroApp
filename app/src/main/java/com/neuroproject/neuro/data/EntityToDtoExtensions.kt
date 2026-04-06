@@ -471,6 +471,7 @@ fun SessionEntity.toServerDto(): SessionDto {
         sessionCategory = sessionCategory,
         comment = comment,
         objectiveFatigue = objectiveFatigue,
-        objectiveStress = objectiveStress
+        objectiveStress = objectiveStress,
+        passingPrematurely = passingPrematurely
     )
 }

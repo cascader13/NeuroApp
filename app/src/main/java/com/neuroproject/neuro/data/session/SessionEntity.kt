@@ -63,11 +63,15 @@ data class SessionEntity(
     val endTime: Long? = null,               // timestamp окончания
     val sessionCategory: SessionCategory? = null,
     val comment: String? = null,
+    val passingPrematurely: Boolean = false,
 
 
     // Объективные метрики (строковые)
     val objectiveFatigue: String? = null,
     val objectiveStress: String? = null,
+
+
+
 
     val isMarked: Boolean = false
 )

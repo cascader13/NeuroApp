@@ -42,6 +42,7 @@ class SubTestViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<SubTestScreenState>(SubTestScreenState.SessionSettings)
     val uiState: StateFlow<SubTestScreenState> = _uiState.asStateFlow()
 
+    var passingPrematurely = false
     var productivityScore = recordManager.productivityScore
 
     private val _questions = MutableStateFlow<List<SubjectiveQuestionEntity>>(emptyList())
@@ -261,6 +262,7 @@ class SubTestViewModel @Inject constructor(
             timerJob?.cancel()
             timerJob = null
             recordManager.stopRecording()
+            passingPrematurely = true
             finishTest()
         }
     }
@@ -269,7 +271,6 @@ class SubTestViewModel @Inject constructor(
         viewModelScope.launch {
             recordManager.stopRecording()
             val endTime = System.currentTimeMillis()
-
             val sid = sessionId ?: return@launch
             val session = sessionDao.getSession(sid) ?: return@launch
 
@@ -334,7 +335,8 @@ class SubTestViewModel @Inject constructor(
                 objectiveFatigue = objFatigue,
                 objectiveStress = objStress,
                 endTime = endTime,
-                comment = _comment.value.takeIf { it.isNotBlank() }
+                comment = _comment.value.takeIf { it.isNotBlank() },
+                passingPrematurely = passingPrematurely
             )
             sessionDao.update(updatedSession)
 

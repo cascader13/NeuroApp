@@ -868,6 +868,7 @@ data class SessionDto(
     @SerializedName("objectiveFatigue")
     val objectiveFatigue: String?,
     @SerializedName("objectiveStress")
-    val objectiveStress: String?
+    val objectiveStress: String?,
+    val passingPrematurely: Boolean?
 
 )

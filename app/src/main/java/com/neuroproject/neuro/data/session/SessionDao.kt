@@ -94,7 +94,8 @@ interface SessionDao {
         totalPhysiological = :totalPhys,
         totalPsychological = :totalPsy,
         comment = :comment,
-        endTime = :endTime
+        endTime = :endTime,
+        passingPrematurely = :passingPrematurely
         WHERE sessionId = :sessionId
         """
     )
@@ -115,7 +116,8 @@ interface SessionDao {
         totalPhys: Int?,
         totalPsy: Int?,
         comment: String?,
-        endTime: Long?
+        endTime: Long?,
+        passingPrematurely: Boolean?
     )
 
     @Query("SELECT * FROM sessions ORDER BY sessionId DESC")
