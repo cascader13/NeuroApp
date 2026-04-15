@@ -6,15 +6,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.neuroproject.neuro.data.session.SessionEntity
+import com.neuroproject.neuro.domain.model.Session
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import java.text.SimpleDateFormat
 import java.util.*
@@ -23,27 +26,31 @@ import java.util.*
 fun HistoryScreen(
     onBackClick: () -> Unit,
     onChartClick: () -> Unit,
-    onSessionClick: (Long) -> Unit,  // новый параметр
+    onSessionClick: (Long) -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
-    val sessions by viewModel.sessions.collectAsState()
+    val state by viewModel.state.collectAsState()
+    
     HistoryScreenContent(
-        sessions = sessions,
+        state = state,
         onBackClick = onBackClick,
         onChartClick = onChartClick,
-        onSessionClick = onSessionClick
+        onSessionClick = onSessionClick,
+        onRetry = { viewModel.loadSessions() },
+        onClearError = { viewModel.clearError() }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryScreenContent(
-    sessions: List<SessionEntity>,
+    state: HistoryState,
     onBackClick: () -> Unit,
     onChartClick: () -> Unit,
-    onSessionClick: (Long) -> Unit
+    onSessionClick: (Long) -> Unit,
+    onRetry: () -> Unit,
+    onClearError: () -> Unit
 ) {
-    val isLoading = sessions.isEmpty()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -69,19 +76,32 @@ private fun HistoryScreenContent(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(sessions) { session ->
-                        SessionCard(
-                            session = session,
-                            onClick = { onSessionClick(session.sessionId) }
-                        )
+            when {
+                state.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                state.error != null -> {
+                    ErrorScreen(
+                        error = state.error!!,
+                        onRetry = onRetry,
+                        onClearError = onClearError
+                    )
+                }
+                state.sessions.isEmpty() -> {
+                    EmptyScreen()
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.sessions) { session ->
+                            SessionCard(
+                                session = session,
+                                onClick = { onSessionClick(session.sessionId) }
+                            )
+                        }
                     }
                 }
             }
@@ -90,8 +110,79 @@ private fun HistoryScreenContent(
 }
 
 @Composable
+private fun ErrorScreen(
+    error: String,
+    onRetry: () -> Unit,
+    onClearError: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Error,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Ошибка загрузки",
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Icon(Icons.Default.Refresh, "Повторить")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Повторить")
+        }
+    }
+}
+
+@Composable
+private fun EmptyScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Timeline,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Нет сессий",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "История сессий пуста.\nНачните первую сессию для записи данных.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 fun SessionCard(
-    session: SessionEntity,
+    session: Session,
     onClick: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
@@ -108,7 +199,10 @@ fun SessionCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(dateFormat.format(Date(session.sessionId)), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "${session.formattedDate} ${session.formattedTime}",
+                    style = MaterialTheme.typography.titleMedium
+                )
                 session.totalIndex?.let {
                     Text("Общий: $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 }
@@ -130,10 +224,11 @@ fun SessionCard(
     }
 }
 
-fun createMockSession(offsetDays: Int, totalIndex: Int, totalCog: Int, totalPsy: Int, totalPhys: Int): SessionEntity {
+fun createMockSession(offsetDays: Int, totalIndex: Int, totalCog: Int, totalPsy: Int, totalPhys: Int): Session {
     val now = System.currentTimeMillis()
-    return SessionEntity(
+    return Session(
         sessionId = now - offsetDays * 86400000L,
+        startTime = now - offsetDays * 86400000L,
         totalIndex = totalIndex,
         totalCognitive = totalCog,
         totalPsychological = totalPsy,
@@ -143,7 +238,9 @@ fun createMockSession(offsetDays: Int, totalIndex: Int, totalCog: Int, totalPsy:
         subjectivePhysiological = totalPhys,
         objectiveCognitive = totalCog,
         objectivePsychological = totalPsy,
-        objectivePhysiological = totalPhys
+        objectivePhysiological = totalPhys,
+        expeditionId = "0",
+        userId = "0"
     )
 }
 
@@ -157,10 +254,12 @@ fun PreviewHistoryScreen() {
             createMockSession(3, 82, 85, 80, 78)
         )
         HistoryScreenContent(
-            sessions = mockSessions,
+            state = HistoryState(sessions = mockSessions),
             onBackClick = {},
             onChartClick = {},
-            onSessionClick = {}
+            onSessionClick = {},
+            onRetry = {},
+            onClearError = {}
         )
     }
 }

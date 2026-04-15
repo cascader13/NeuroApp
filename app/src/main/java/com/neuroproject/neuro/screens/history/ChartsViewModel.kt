@@ -1,26 +1,64 @@
 package com.neuroproject.neuro.screens.history
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.neuroproject.neuro.data.session.SessionDao
-import com.neuroproject.neuro.data.session.SessionEntity
+import android.util.Log
+import com.neuroproject.neuro.domain.BaseViewModel
+import com.neuroproject.neuro.domain.model.Session
+import com.neuroproject.neuro.domain.usecase.GetSessionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Состояние экрана графиков
+ */
+data class ChartsState(
+    val sessions: List<Session> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+/**
+ * Модель представления для экрана графиков
+ * 
+ * Использует GetSessionsUseCase вместо прямого доступа к SessionDao
+ */
 @HiltViewModel
-open class ChartsViewModel @Inject constructor(
-    private val sessionDao: SessionDao
-) : ViewModel() {
-    private val _sessions = MutableStateFlow<List<SessionEntity>>(emptyList())
-    open val sessions: StateFlow<List<SessionEntity>> = _sessions.asStateFlow()
+class ChartsViewModel @Inject constructor(
+    private val getSessions: GetSessionsUseCase
+) : BaseViewModel<ChartsState>() {
 
     init {
-        viewModelScope.launch {
-            _sessions.value = sessionDao.getAllSessions()
+        loadSessions()
+    }
+
+    override fun createInitialState(): ChartsState {
+        return ChartsState(isLoading = true)
+    }
+
+    override fun handleError(error: Throwable) {
+        setState { 
+            copy(
+                isLoading = false,
+                error = error.message ?: "Неизвестная ошибка"
+            )
         }
+        Log.e("ChartsViewModel", "Failed to load sessions", error)
+    }
+
+    /**
+     * Загрузка списка сессий для графиков
+     */
+    fun loadSessions() {
+        safeLaunchWithResult(
+            block = { getSessions() },
+            onSuccess = { sessions ->
+                setState { 
+                    copy(
+                        sessions = sessions,
+                        isLoading = false,
+                        error = null
+                    )
+                }
+            }
+        )
     }
 }

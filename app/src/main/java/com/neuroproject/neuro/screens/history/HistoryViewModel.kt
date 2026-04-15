@@ -1,35 +1,79 @@
 package com.neuroproject.neuro.screens.history
 
 import android.util.Log
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.neuroproject.neuro.data.session.SessionDao
-import com.neuroproject.neuro.data.session.SessionEntity
+import com.neuroproject.neuro.domain.BaseViewModel
+import com.neuroproject.neuro.domain.Result
+import com.neuroproject.neuro.domain.usecase.GetSessionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Модель представления для экрана истории
+ * 
+ * Использует:
+ * - GetSessionsUseCase для загрузки сессий (вместо прямого доступа к DAO)
+ * - BaseViewModel для уменьшения boilerplate кода
+ * - HistoryState для типизированного состояния
+ * 
+ * ## Преимущества нового подхода:
+ * - Меньше кода (нет ручного управления StateFlow)
+ * - Единая обработка ошибок
+ * - Легче тестировать (зависит от UseCase а не от DAO)
+ * - Понятнее структура состояния
+ */
 @HiltViewModel
-open class HistoryViewModel @Inject constructor(
-    private val sessionDao: SessionDao
-) : ViewModel() {
-    private val _sessions = MutableStateFlow<List<SessionEntity>>(emptyList())
-    val sessions: StateFlow<List<SessionEntity>> = _sessions.asStateFlow()
+class HistoryViewModel @Inject constructor(
+    private val getSessions: GetSessionsUseCase
+) : BaseViewModel<HistoryState>() {
 
     init {
         loadSessions()
     }
 
-    fun loadSessions() {
-        viewModelScope.launch {
-            try {
-                _sessions.value = sessionDao.getAllSessions()
-            } catch (e: Exception) {
-                Log.e("HistoryViewModel", "Failed to load sessions", e)
-            }
+    override fun createInitialState(): HistoryState {
+        return HistoryState(isLoading = true)
+    }
+
+    override fun handleError(error: Throwable) {
+        setState { 
+            copy(
+                isLoading = false,
+                error = error.message ?: "Неизвестная ошибка"
+            )
         }
+        Log.e("HistoryViewModel", "Failed to load sessions", error)
+    }
+
+    /**
+     * Загрузка списка сессий
+     */
+    fun loadSessions() {
+        safeLaunchWithResult(
+            block = { getSessions() },
+            onSuccess = { sessions ->
+                setState { 
+                    copy(
+                        sessions = sessions,
+                        isLoading = false,
+                        error = null
+                    )
+                }
+            },
+            onError = { error ->
+                setState {
+                    copy(
+                        isLoading = false,
+                        error = error.message ?: "Ошибка загрузки сессий"
+                    )
+                }
+            }
+        )
+    }
+
+    /**
+     * Очистка сообщения об ошибке
+     */
+    fun clearError() {
+        setState { copy(error = null) }
     }
 }

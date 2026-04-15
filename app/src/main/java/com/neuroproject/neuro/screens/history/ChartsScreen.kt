@@ -12,10 +12,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.components.LineChart
-import com.neuroproject.neuro.data.session.SessionEntity
+import com.neuroproject.neuro.domain.model.Session
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,9 +21,9 @@ fun ChartsScreen(
     onBackClick: () -> Unit,
     viewModel: ChartsViewModel = hiltViewModel()
 ) {
-    val sessions by viewModel.sessions.collectAsState()
+    val state by viewModel.state.collectAsState()
     ChartsScreenContent(
-        sessions = sessions,
+        state = state,
         onBackClick = onBackClick
     )
 }
@@ -33,20 +31,22 @@ fun ChartsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChartsScreenContent(
-    sessions: List<SessionEntity>,
+    state: ChartsState,
     onBackClick: () -> Unit
 ) {
+    val sessions = state.sessions
+    
     val metricsList = listOf(
-        "Общий индекс" to { s: SessionEntity -> s.totalIndex?.toFloat() },
-        "Субъективный когнитивный" to { s: SessionEntity -> s.subjectiveCognitive?.toFloat() },
-        "Субъективный психологический" to { s: SessionEntity -> s.subjectivePsychological?.toFloat() },
-        "Субъективный физический" to { s: SessionEntity -> s.subjectivePhysiological?.toFloat() },
-        "Объективный когнитивный" to { s: SessionEntity -> s.objectiveCognitive?.toFloat() },
-        "Объективный психологический" to { s: SessionEntity -> s.objectivePsychological?.toFloat() },
-        "Объективный физический" to { s: SessionEntity -> s.objectivePhysiological?.toFloat() },
-        "Общий когнитивный" to { s: SessionEntity -> s.totalCognitive?.toFloat() },
-        "Общий психологический" to { s: SessionEntity -> s.totalPsychological?.toFloat() },
-        "Общий физический" to { s: SessionEntity -> s.totalPhysiological?.toFloat() }
+        "Общий индекс" to { s: Session -> s.totalIndex?.toFloat() },
+        "Субъективный когнитивный" to { s: Session -> s.subjectiveCognitive?.toFloat() },
+        "Субъективный психологический" to { s: Session -> s.subjectivePsychological?.toFloat() },
+        "Субъективный физический" to { s: Session -> s.subjectivePhysiological?.toFloat() },
+        "Объективный когнитивный" to { s: Session -> s.objectiveCognitive?.toFloat() },
+        "Объективный психологический" to { s: Session -> s.objectivePsychological?.toFloat() },
+        "Объективный физический" to { s: Session -> s.objectivePhysiological?.toFloat() },
+        "Общий когнитивный" to { s: Session -> s.totalCognitive?.toFloat() },
+        "Общий психологический" to { s: Session -> s.totalPsychological?.toFloat() },
+        "Общий физический" to { s: Session -> s.totalPhysiological?.toFloat() }
     )
 
     val selectedMetrics = remember { mutableStateMapOf<String, Boolean>().apply {
@@ -59,7 +59,7 @@ private fun ChartsScreenContent(
                     .takeIf { it.any { value -> value != null } }
     }
 
-    val xLabels = sessions.map { SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(it.sessionId)) }
+    val xLabels = sessions.map { it.formattedDate }
 
     Scaffold(
         topBar = {
@@ -113,21 +113,5 @@ private fun ChartsScreenContent(
                 Text("Выберите хотя бы одну метрику", style = MaterialTheme.typography.bodyLarge)
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewChartsScreen() {
-    NeuroApplicationTheme {
-        val mockSessions = listOf(
-            createMockSession(1, 78, 75, 80, 70),
-            createMockSession(2, 65, 60, 70, 65),
-            createMockSession(3, 82, 85, 80, 78)
-        )
-        ChartsScreenContent(
-            sessions = mockSessions,
-            onBackClick = {}
-        )
     }
 }

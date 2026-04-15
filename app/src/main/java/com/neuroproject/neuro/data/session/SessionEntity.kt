@@ -39,7 +39,8 @@ import androidx.room.PrimaryKey
 data class SessionEntity(
     @PrimaryKey
     val sessionId: Long,                     // timestamp начала в миллисекундах
-
+    val id: String? = null,
+    val expedition_id: String? = null,
     // Объективные числовые по категориям
     val objectiveCognitive: Int? = null,
     val objectivePsychological: Int? = null,

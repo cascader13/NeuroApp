@@ -141,6 +141,14 @@ class RecordManager @Inject constructor(
         Log.d("RecordManager", "IDs refreshed - userId: $userId, expeditionId: $expeditionId")
     }
 
+    fun getIndividualNumber():String {
+        return userId
+    }
+
+    fun getExpeditionId():String {
+        return expeditionId
+    }
+
     /**
      * Начало записи данных
      *

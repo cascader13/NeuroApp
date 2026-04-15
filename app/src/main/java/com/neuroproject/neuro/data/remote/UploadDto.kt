@@ -824,7 +824,10 @@ data class ProductivityIndexDto(
 data class SessionDto(
     @SerializedName("session")
     val session : Long,
-
+    @SerializedName("individualNumber")
+    val individualNumber: String?,
+    @SerializedName("expeditionId")
+    val expeditionId: String?,
     // Объективные оценки
     @SerializedName("objectiveCognitive")
     val objectiveCognitive: Int?,

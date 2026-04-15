@@ -201,7 +201,9 @@ fun PreviewSessionDetailScreen() {
             averageObjective = 72,
             durationMinutes = 10,
             sessionCategory = SessionCategory.EVENING,
-            comment = "Тестовый комментарий. Было интересно, но немного устал."
+            comment = "Тестовый комментарий. Было интересно, но немного устал.",
+            expedition_id = "0",
+            id = "0"
         )
         SessionDetailContent(
             session = mockSession,

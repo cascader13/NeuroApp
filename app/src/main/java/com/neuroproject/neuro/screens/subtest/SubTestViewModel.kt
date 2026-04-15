@@ -320,6 +320,8 @@ class SubTestViewModel @Inject constructor(
 
             // Обновляем сессию
             val updatedSession = session.copy(
+                expedition_id = recordManager.getExpeditionId(),
+                id = recordManager.getIndividualNumber(),
                 subjectiveCognitive = subjCog,
                 subjectivePsychological = subjEmo,
                 subjectivePhysiological = subjPhys,

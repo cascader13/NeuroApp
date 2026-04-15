@@ -79,6 +79,8 @@ interface SessionDao {
     @Query(
         """
         UPDATE sessions SET
+        expedition_id = :expId,
+        id = :userId,
         objectiveFatigue = :objFatigue,
         objectiveStress = :objStress,
         objectiveCognitive = :objCog,
@@ -101,6 +103,8 @@ interface SessionDao {
     )
     suspend fun updateSessionResults(
         sessionId: Long,
+        expId: String?,
+        userId: String?,
         objFatigue: String?,
         objStress: String?,
         objCog: Int?,

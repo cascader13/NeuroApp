@@ -454,6 +454,8 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
 fun SessionEntity.toServerDto(): SessionDto {
     return SessionDto(
         session = sessionId,
+        expeditionId = expedition_id,
+        individualNumber = id,
         objectiveCognitive = objectiveCognitive,
         objectivePsychological = objectivePsychological,
         objectivePhysiological = objectivePhysiological,
