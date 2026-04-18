@@ -2,6 +2,7 @@ package com.neuroproject.neuro.domain
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.neuroproject.neuro.domain.model.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,19 +49,35 @@ abstract class BaseViewModel<T : Any> : ViewModel() {
      * Внутренний изменяемый StateFlow
      * Доступен только внутри ViewModel
      */
-    private val _state = MutableStateFlow(createInitialState())
+    private lateinit var _state: MutableStateFlow<T>
     
     /**
      * Публичный неизменяемый StateFlow
      * Используется в UI для подписки на состояние
      */
-    val state: StateFlow<T> = _state.asStateFlow()
+    val state: StateFlow<T>
+        get() {
+            ensureInitialized()
+            return _state.asStateFlow()
+        }
     
     /**
      * Создание начального состояния экрана
      * Должно быть переопределено в дочерних классах
      */
     protected abstract fun createInitialState(): T
+
+    protected fun initializeState() {
+        if (!::_state.isInitialized) {
+            _state = MutableStateFlow(createInitialState())
+        }
+    }
+
+    private fun ensureInitialized() {
+        if (!::_state.isInitialized) {
+            initializeState()
+        }
+    }
     
     /**
      * Обновление состояния
@@ -73,6 +90,7 @@ abstract class BaseViewModel<T : Any> : ViewModel() {
      * ```
      */
     protected fun setState(reducer: T.() -> T) {
+        ensureInitialized()
         _state.update { currentState ->
             currentState.reducer()
         }
@@ -82,7 +100,7 @@ abstract class BaseViewModel<T : Any> : ViewModel() {
      * Безопасный запуск корутины с автоматической обработкой ошибок
      * 
      * Автоматически ловит исключения и обновляет состояние с ошибкой.
-     * Переопределите [onError] для кастомной обработки ошибок.
+     * Переопределите [com.neuroproject.neuro.domain.model.onError] для кастомной обработки ошибок.
      * 
      * @param block Блок кода для выполнения
      * 
@@ -148,6 +166,7 @@ abstract class BaseViewModel<T : Any> : ViewModel() {
      * @param error Исключение
      */
     protected open fun handleError(error: Throwable) {
+        ensureInitialized()
         setState { 
             // Предполагается что у состояния есть поле error
             // Дочерние классы должны это реализовать
@@ -163,5 +182,8 @@ abstract class BaseViewModel<T : Any> : ViewModel() {
      * Доступно только внутри ViewModel
      */
     protected val currentState: T
-        get() = _state.value
+        get() {
+            ensureInitialized()
+            return _state.value
+        }
 }

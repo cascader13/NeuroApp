@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.xml.validation.Validator
 import kotlin.concurrent.thread
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -333,6 +334,14 @@ data class ProductivityScore(
     val score: Float = 0f
 )
 
+/**
+ * Заряд устройства
+ * @property value заряд устройства в процентах
+ */
+data class BatteryCharge(
+    val value: Float = 0f
+)
+
 
 /**
  * Главный менеджер для управления устройством Capsule (нейро-гарнитурой)
@@ -399,6 +408,7 @@ class CapsuleDeviceManager @Inject constructor(
     private var _eegProcessedData = MutableStateFlow(EEGProcessedSample())
     private var _eegArtifacts = MutableStateFlow(EEGArtifactsSample())
     private var _productivityScore = MutableStateFlow(ProductivityScore())
+    private var _batteryCharge = MutableStateFlow(BatteryCharge())
 
     // Публичные Flow для подписки на данные
     /** Поток данных об этапах калибровки */
@@ -435,13 +445,9 @@ class CapsuleDeviceManager @Inject constructor(
     var calibrationState = _calibrationState.asStateFlow()
     /** Поток состояния калибровки Productivity(в %) */
     var productivityScore = _productivityScore.asStateFlow()
+    /** Поток состояния зарядки устройства */
+    var BatteryChargeValue = _batteryCharge.asStateFlow()
 
-    /**
-     * Callback для получения уровня заряда батареи
-     *
-     * @param Int уровень заряда в процентах (0-100)
-     */
-    var batteryChanged: (Int) -> Unit = {}
 
     /**
      * Callback для получения данных сопротивления электродов
@@ -633,6 +639,34 @@ class CapsuleDeviceManager @Inject constructor(
             _connectionState.emit(DeviceConnectionState.entries[state])
         }
         Log.d("JCAPSULE", "deviceConnectionState")
+    }
+
+    /**
+     * Обработчик ошибок подключения к устройству
+     *
+     * Вызывается из нативного кода при возникновении ошибок во время
+     * подключения или работы с устройством.
+     *
+     * @param errorMessage сообщение об ошибке
+     */
+    fun onConnectionError(errorMessage: String) {
+        Log.e("JCAPSULE", "Connection error: $errorMessage")
+
+        scope.launch {
+            _connectionState.emit(DeviceConnectionState.error)
+        }
+    }
+
+    /**
+     * Callback для получения состояния зарядки устройства
+     * @param value зарядка устройства в процентах
+     */
+    fun onBatteryChargeReceived(value:Float) {
+        Log.d("JCAPSULE", "BatteryCharge: $value")
+
+        scope.launch {
+            _batteryCharge.emit(BatteryCharge(value))
+        }
     }
 
     /**

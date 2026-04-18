@@ -1,0 +1,39 @@
+package com.neuroproject.neuro.data.repositories
+
+import com.neuroproject.neuro.domain.model.Result
+import com.neuroproject.neuro.data.datasources.LocalAuthDataSource
+import com.neuroproject.neuro.domain.repository.AuthRepository
+import javax.inject.Inject
+
+
+class AuthRepositoryImpl @Inject constructor(
+    private val localDataSource: LocalAuthDataSource
+) : AuthRepository {
+
+    override fun login(userId: String): Result<Unit> {
+        return try {
+            if (userId.isNotEmpty() && userId.length >= 2) {
+                localDataSource.saveUserId(userId)
+                Result.Success(Unit)
+            } else {
+                Result.Error(Exception("Неверный ID пользователя"))
+            }
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+
+    override fun getSavedUserId(): String? = localDataSource.getSavedUserId()
+
+    override fun saveUserId(userId: String) = localDataSource.saveUserId(userId)
+
+    override fun clearSavedData() = localDataSource.clearSavedData()
+
+    override fun hasSavedData(): Boolean = localDataSource.hasSavedData()
+
+    override fun getUserIdHistory(): List<String> = localDataSource.getUserIdHistory()
+
+    override fun removeFromHistory(userId: String) = localDataSource.removeFromHistory(userId)
+
+    override fun clearHistory() = localDataSource.clearHistory()
+}

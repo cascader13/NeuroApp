@@ -5,8 +5,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -32,6 +35,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.neuroproject.neuro.R
 import com.neuroproject.neuro.components.BackButton
 import com.neuroproject.neuro.components.BackHandler
@@ -47,6 +51,7 @@ fun SensorCheckingScreen(
 ) {
     val connectionState by vm.capsuleDM.connectionState.collectAsState()
     val resistState by vm.resistState.collectAsState()
+    val batteryCharge by vm.batteryCharge.collectAsState()
 
     // Обработка отключения устройства
     LaunchedEffect(connectionState) {
@@ -143,7 +148,26 @@ fun SensorCheckingScreen(
                         )
                     }
                 }
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 16.dp, end = 16.dp)
+                        .background(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🔋 ${batteryCharge.toInt()}%",
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
             }
+
+
 
             Spacer(modifier = Modifier.weight(1f))
 

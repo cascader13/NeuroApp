@@ -1,16 +1,14 @@
 package com.neuroproject.neuro.screens.login
 
-import android.content.Context
-import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.neuroproject.neuro.domain.BaseViewModel
+import com.neuroproject.neuro.domain.repository.AuthRepository
+import com.neuroproject.neuro.domain.usecases.LoginUseCase
+import com.neuroproject.neuro.domain.usecases.ValidateUserIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.neuroproject.neuro.domain.model.Result
+import kotlinx.coroutines.launch
 
 /**
  * Состояние авторизации
@@ -20,12 +18,15 @@ import javax.inject.Inject
  * @property Connected Авторизован успешно
  * @property Error Ошибка авторизации
  */
-sealed class LoginState {
-    object Disconnected : LoginState()
-    object Connecting : LoginState()
-    object Connected : LoginState()
-    object Error : LoginState()
-}
+data class LoginUIState (
+    val userId: String = "",
+    val isLoggedIn: Boolean = false,
+    val errorMessage: String? = null,
+    val hasSavedData: Boolean = false,
+    val isValid: Boolean = false,
+    val userIdHistory: List<String> = emptyList(),
+    val showDropdown: Boolean = false
+    )
 
 /**
  * Модель представления для экрана входа
@@ -35,31 +36,33 @@ sealed class LoginState {
  *
  * ## Правила валидации ID:
  * - Не может быть пустым
- * - Минимум 3 символа
+ * - Минимум 2 символа
  * - Только буквы, цифры, дефис и подчеркивание
  *
  * @property context Контекст приложения
  */
 @HiltViewModel
 class LoginScreenViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
-) : ViewModel() {
-
-    /** Состояние авторизации */
-    private val _loginState = MutableStateFlow<LoginState>(LoginState.Disconnected)
-    val loginState = _loginState.asStateFlow()
-
-    /** Введенный ID пользователя */
-    val userId = mutableStateOf("")
-
-    /** Текст ошибки валидации */
-    val errorMessage = mutableStateOf<String?>(null)
-
-    /** SharedPreferences для хранения данных пользователя */
-    private val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
+    private val loginUseCase: LoginUseCase,
+    private val validateUserIdUseCase: ValidateUserIdUseCase,
+    private val authRepository: AuthRepository
+) : BaseViewModel<LoginUIState>() {
 
     init {
-        loadSavedData()
+        initializeState()
+    }
+
+    /** Создание начального состояния для поля ввода*/
+    override fun createInitialState(): LoginUIState {
+        val savedUserId = authRepository.getSavedUserId() ?: ""
+        val history = authRepository.getUserIdHistory()
+        return LoginUIState(
+            userId = savedUserId,
+            hasSavedData = authRepository.hasSavedData(),
+            isValid = validateUserIdUseCase(savedUserId) is ValidateUserIdUseCase.ValidationResult.Success,
+            userIdHistory = history,
+            showDropdown = false
+        )
     }
 
     /**
@@ -68,127 +71,126 @@ class LoginScreenViewModel @Inject constructor(
      * @param value Новое значение ID
      */
     fun onUserIdChange(value: String) {
-        userId.value = value
-        errorMessage.value = null
+        val validationResult = validateUserIdUseCase(value)
+        val isValid = validationResult is ValidateUserIdUseCase.ValidationResult.Success
+        val showDropdown = currentState.userIdHistory.isNotEmpty() &&
+                value.isNotEmpty() &&
+                currentState.userIdHistory.any { it.contains(value, ignoreCase = true) }
+
+        setState {
+            copy(
+                userId = value,
+                isValid = isValid,
+                showDropdown = showDropdown,
+                errorMessage = if (validationResult is ValidateUserIdUseCase.ValidationResult.Error)
+                    validationResult.message else null
+            )
+        }
     }
 
-    /**
-     * Выполнение входа
-     *
-     * Валидирует ID, имитирует сетевой запрос и сохраняет данные
-     */
-    fun login() {
-        val id = userId.value.trim()
-
-        if (!isFormValid(id)) {
-            return
+    fun showDropdown() {
+        if (currentState.userIdHistory.isNotEmpty()) {
+            setState { copy(showDropdown = true) }
         }
+    }
 
-        _loginState.value = LoginState.Connecting
-        errorMessage.value = null
-
-        viewModelScope.launch {
-            try {
-                delay(1500) // Имитация сетевого запроса
-                val success = performLogin(id)
-
-                if (success) {
-                    saveUserData(id)
-                    _loginState.value = LoginState.Connected
-                } else {
-                    _loginState.value = LoginState.Error
-                    errorMessage.value = "Неверный ID пользователя"
+    fun onTextFieldFocusChange(focused: Boolean) {
+        if (focused && currentState.userId.isNotEmpty() && currentState.userIdHistory.isNotEmpty()) {
+            setState { copy(showDropdown = true) }
+        } else if (!focused) {
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(200)
+                if (currentState.showDropdown) {
+                    setState { copy(showDropdown = false) }
                 }
-            } catch (e: Exception) {
-                _loginState.value = LoginState.Error
-                errorMessage.value = "Ошибка подключения: ${e.message}"
             }
         }
     }
 
-    /**
-     * Очистка сообщения об ошибке
-     */
-    fun clearError() {
-        errorMessage.value = null
-        if (_loginState.value is LoginState.Error) {
-            _loginState.value = LoginState.Disconnected
+    fun selectUserIdFromHistory(userId: String) {
+        val validationResult = validateUserIdUseCase(userId)
+        val isValid = validationResult is ValidateUserIdUseCase.ValidationResult.Success
+
+        setState {
+            copy(
+                userId = userId,
+                isValid = isValid,
+                showDropdown = false,
+                errorMessage = if (validationResult is ValidateUserIdUseCase.ValidationResult.Error)
+                    validationResult.message else null
+            )
         }
     }
 
-    /**
-     * Валидация формы входа
-     *
-     * @param userId ID пользователя
-     * @return true если ID прошел валидацию
-     */
-    private fun isFormValid(userId: String): Boolean {
-        if (userId.isBlank()) {
-            errorMessage.value = "Введите ID пользователя"
-            return false
-        }
+    fun removeFromHistory(userId: String) {
+        authRepository.removeFromHistory(userId)
+        val updatedHistory = authRepository.getUserIdHistory()
 
-        if (userId.length < 2) {
-            errorMessage.value = "ID должен содержать минимум 2 символа"
-            return false
-        }
-
-        if (!userId.matches(Regex("^[a-zA-Z0-9_-]+$"))) {
-            errorMessage.value = "ID может содержать только буквы, цифры, дефис и подчеркивание"
-            return false
-        }
-
-        return true
-    }
-
-    /**
-     * Выполнение логина (имитация API запроса)
-     *
-     * @param userId ID пользователя
-     * @return true если авторизация успешна
-     */
-    private suspend fun performLogin(userId: String): Boolean {
-        return userId.isNotEmpty() && userId.length >= 2
-    }
-
-    /**
-     * Сохранение данных пользователя
-     *
-     * @param userId ID пользователя
-     */
-    private fun saveUserData(userId: String) {
-        val editor = sharedPreferences.edit()
-        editor.putString("saved_user_id", userId)
-        editor.apply()
-    }
-
-    /**
-     * Загрузка сохраненных данных
-     */
-    private fun loadSavedData() {
-        val savedUserId = sharedPreferences.getString("saved_user_id", "")
-        if (!savedUserId.isNullOrEmpty()) {
-            userId.value = savedUserId
+        setState {
+            copy(
+                userIdHistory = updatedHistory,
+                // Если удалили текущий ID, очищаем поле
+                userId = if (currentState.userId == userId) "" else currentState.userId,
+                isValid = if (currentState.userId == userId) false else currentState.isValid,
+                showDropdown = updatedHistory.isNotEmpty() && currentState.userId.isNotEmpty()
+            )
         }
     }
 
-    /**
-     * Очистка сохраненных данных (выход)
-     */
+    fun login() {
+        val currentState = currentState
+
+        if (!currentState.isValid) {
+            return
+        }
+
+        val result = loginUseCase(currentState.userId)
+
+        when (result) {
+            is Result.Success -> {
+                setState {
+                    copy(
+                        isLoggedIn = true,
+                        hasSavedData = true,
+                        errorMessage = null,
+                        userIdHistory = authRepository.getUserIdHistory()
+                    )
+                }
+            }
+            is Result.Error -> {
+                setState {
+                    copy(
+                        isLoggedIn = false,
+                        errorMessage = result.message ?: "Ошибка входа"
+                    )
+                }
+            }
+            is Result.Loading -> {
+                // Не используется в синхронном коде, но нужно для полноты when
+                // Можно игнорировать или не обрабатывать
+            }
+        }
+    }
+
     fun clearSavedData() {
-        sharedPreferences.edit().apply {
-            remove("saved_user_id")
-        }.apply()
-        userId.value = ""
-        _loginState.value = LoginState.Disconnected
+        authRepository.clearSavedData()
+        setState {
+            copy(
+                userId = "",
+                hasSavedData = false,
+                errorMessage = null,
+                isValid = false,
+                userIdHistory = emptyList(),
+                showDropdown = false
+            )
+        }
     }
 
-    /**
-     * Проверка наличия сохраненных данных
-     *
-     * @return true если есть сохраненный пользователь
-     */
-    fun hasSavedData(): Boolean {
-        return sharedPreferences.contains("saved_user_id")
+    fun clearError() {
+        setState { copy(errorMessage = null) }
+    }
+
+    fun dismissDropdown() {
+        setState { copy(showDropdown = false) }
     }
 }

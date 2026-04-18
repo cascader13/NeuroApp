@@ -2,7 +2,6 @@ package com.neuroproject.neuro.screens.history
 
 import android.util.Log
 import com.neuroproject.neuro.domain.BaseViewModel
-import com.neuroproject.neuro.domain.Result
 import com.neuroproject.neuro.domain.usecase.GetSessionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -27,6 +26,7 @@ class HistoryViewModel @Inject constructor(
 ) : BaseViewModel<HistoryState>() {
 
     init {
+        initializeState()
         loadSessions()
     }
 

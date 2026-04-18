@@ -67,6 +67,7 @@ static jmethodID mid_onEmotionReceived = nullptr;
 static jmethodID mid_onEEGRawDataReceived = nullptr;
 static jmethodID mid_onEEGProcessedDataReceived = nullptr;
 static jmethodID mid_onEEGArtifactsReceived = nullptr;
+static jmethodID mid_onBatteryChargeReceived = nullptr;
 
 // Мьютексы для thread safety
 static std::mutex deviceMutex;
@@ -970,6 +971,25 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
 
 void onBattery(clCDevice, uint8_t charge) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE_BATTERY", "Battery: %d%%", charge);
+
+    JavaCapsuleGuard guard;
+    if (!guard.isValid()) return;
+
+    JNIEnv* env = guard.env();
+    jobject capsule = guard.capsule();
+
+    if (!mid_onBatteryChargeReceived) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
+        return;
+    }
+
+    env->CallVoidMethod(capsule, mid_onBatteryChargeReceived,
+                        static_cast<jfloat>(charge));
+
+    if (env->ExceptionCheck()) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onEmotionReceived");
+        env->ExceptionClear();
+    }
 }
 
 // ==========================================
@@ -1073,7 +1093,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* aReserved) {
 
     // Кэшируем method IDs (FIX #4)
     mid_deviceConnectionState = env->GetMethodID(capsuleClass, "deviceConnectionState", "(I)V");
-    mid_onConnectionError = env->GetMethodID(capsuleClass, "onConnectionError", "(Ljava/lang/String;)V");
+//    mid_onConnectionError = env->GetMethodID(capsuleClass, "onConnectionError", "(Ljava/lang/String;)V");
     mid_locatorEvent = env->GetMethodID(capsuleClass, "locatorEvent", "([Lcom/neuroproject/neuro/models/DeviceInfo;)V");
     mid_onResistanceReceived = env->GetMethodID(capsuleClass, "onResistanceReceived", "(DDDD)V");
     mid_onCardioReceived = env->GetMethodID(capsuleClass, "onCardioReceived", "(JFZFZZZF)V");
@@ -1091,6 +1111,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* aReserved) {
     mid_onEEGRawDataReceived = env->GetMethodID(capsuleClass, "onEEGRawDataReceived", "(JFF)V");
     mid_onEEGProcessedDataReceived = env->GetMethodID(capsuleClass, "onEEGProcessedDataReceived", "(JFF)V");
     mid_onEEGArtifactsReceived = env->GetMethodID(capsuleClass, "onEEGArtifactsReceived", "(JZZFF)V");
+    mid_onBatteryChargeReceived = env->GetMethodID(capsuleClass, "onBatteryChargeReceived", "(F)V");
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "JNI initialized successfully");
 

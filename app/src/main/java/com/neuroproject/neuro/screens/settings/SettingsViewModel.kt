@@ -155,10 +155,10 @@ class SettingsViewModel @Inject constructor(
             try {
                 // Используем новую пакетную отправку
                 uploadRepository.uploadInBatches(
-                    batchSize = 100,      // 100 записей на пакет
+                    batchSize = 500,      // 500 записей на пакет
                     enableRetry = true,   // Включить повторные попытки
                     stopOnError = false,  // Не останавливаться при ошибке
-                    batchDelayMs = 500    // 500 мс между пакетами
+                    batchDelayMs = 50    // 50 мс между пакетами
                 )
                     .onEach { progress ->
                         handleBatchUploadProgress(progress)

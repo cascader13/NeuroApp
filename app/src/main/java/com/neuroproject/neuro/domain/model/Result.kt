@@ -1,4 +1,4 @@
-package com.neuroproject.neuro.domain
+package com.neuroproject.neuro.domain.model
 
 /**
  * Универсальный класс для представления результата операции

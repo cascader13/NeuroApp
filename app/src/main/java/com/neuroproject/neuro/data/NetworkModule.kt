@@ -46,6 +46,7 @@ object NetworkModule {
     fun provideGson(): Gson {
         return GsonBuilder()
             .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+            .disableHtmlEscaping()
             .create()
     }
 
@@ -79,10 +80,10 @@ object NetworkModule {
         loggingInterceptor: HttpLoggingInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(20000, TimeUnit.SECONDS)
-            .writeTimeout(20000, TimeUnit.SECONDS)
-            .callTimeout(20000, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(120, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
 
             .build()

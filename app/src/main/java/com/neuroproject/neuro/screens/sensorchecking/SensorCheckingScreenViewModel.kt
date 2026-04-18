@@ -82,7 +82,19 @@ class SensorCheckingScreenViewModel @Inject constructor(dm: CapsuleDeviceManager
     private val _resistState = MutableStateFlow(ResistStateRecord())
     val resistState = _resistState.asStateFlow()
 
+    private val _batteryCharge = MutableStateFlow(0f)
+
+    val batteryCharge = _batteryCharge.asStateFlow()
+
+
     init {
+
+        _scope.launch {
+            capsuleDM.BatteryChargeValue.collect { batteryChargeData ->
+                _batteryCharge.emit(batteryChargeData.value)
+                Log.d("SensorCheckingScreenViewModel", "Battery charge: ${batteryChargeData.value}%")
+            }
+        }
         capsuleDM.resistanceReceived = { o1: Double, o2: Double, t3: Double, t4: Double ->
             Log.d("SensorCheckingScreenViewModel", "o1 = $o1, o2 = $o2, t3 = $t3, t4 = $t4")
             _scope.launch {

@@ -1,6 +1,6 @@
 package com.neuroproject.neuro.domain.usecase
 
-import com.neuroproject.neuro.domain.Result
+import com.neuroproject.neuro.domain.model.Result
 import com.neuroproject.neuro.domain.model.Session
 import com.neuroproject.neuro.domain.model.toDomain
 import com.neuroproject.neuro.data.session.SessionDao
