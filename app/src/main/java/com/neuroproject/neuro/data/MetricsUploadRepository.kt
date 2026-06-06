@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.data
 
 import android.content.Context
+import android.util.Log
 import com.google.gson.Gson
 import com.neuroproject.neuro.data.remote.*
 import com.neuroproject.neuro.data.session.SessionDao
@@ -8,13 +9,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import retrofit2.HttpException
+import kotlinx.coroutines.sync.Mutex
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.pow
 
 @Singleton
 class MetricsUploadRepository @Inject constructor(
@@ -31,7 +31,15 @@ class MetricsUploadRepository @Inject constructor(
         private const val RETRY_DELAY_MS = 2000L // 2 секунды
         private const val MAX_RETRIES = 3
         private const val BATCH_DELAY_MS = 500L // Задержка между пакетами
+        private const val TAG = "MetricsUploadRepository"
     }
+
+    /**
+     * Защита от одновременного запуска ручной синхронизации и WorkManager.
+     * Без этого два upload-процесса могут прочитать один и тот же набор isMarked=0
+     * и параллельно отправить дубликаты на backend.
+     */
+    private val syncMutex = Mutex()
 
     // ==================== НОВАЯ РЕАЛИЗАЦИЯ С ПАКЕТНОЙ ОТПРАВКОЙ ====================
 
@@ -49,6 +57,7 @@ class MetricsUploadRepository @Inject constructor(
         stopOnError: Boolean = true,
         batchDelayMs: Long = BATCH_DELAY_MS
     ): Flow<BatchUploadProgress> = flow {
+        syncMutex.lock()
         try {
             // Шаг 1: Подготовка данных
             emit(BatchUploadProgress.Preparing("Подготовка данных...", 0.05f))
@@ -162,6 +171,8 @@ class MetricsUploadRepository @Inject constructor(
             }
         } catch (e: Exception) {
             emit(BatchUploadProgress.Error("Критическая ошибка: ${e.message}"))
+        } finally {
+            syncMutex.unlock()
         }
     }
 
@@ -178,19 +189,19 @@ class MetricsUploadRepository @Inject constructor(
             try {
                 // ЛОГИРУЕМ РАЗМЕР ПАКЕТА
                 val jsonString = gson.toJson(batch.request)
-                println("=== BATCH ${batch.batchId} ===")
-                println("JSON size: ${jsonString.length} bytes")
-                println("Records: ${batch.recordCount}")
+                Log.d(TAG, "=== BATCH ${batch.batchId} ===")
+                Log.d(TAG, "JSON size: ${jsonString.length} bytes")
+                Log.d(TAG, "Records: ${batch.recordCount}")
 
                 val response = apiService.uploadMetrics(batch.request)
 
-                if (response.isSuccessful) {
-                    println("✅ Batch ${batch.batchId} sent successfully")
+                if (response.isSuccessful && response.body()?.result == true) {
+                    Log.i(TAG, "Batch ${batch.batchId} sent successfully")
                     return BatchSendResult.Success(batch.batchId)
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    println("❌ Batch ${batch.batchId} FAILED with ${response.code()}")
-                    println("Error response: $errorBody")
+                    Log.w(TAG, "Batch ${batch.batchId} FAILED with ${response.code()}")
+                    Log.w(TAG, "Error response: $errorBody")
 
                     // СОХРАНЯЕМ ПРОБЛЕМНЫЙ JSON В ФАЙЛ
                     saveFailedJson(batch.request, batch.batchId, response.code(), errorBody)
@@ -198,8 +209,9 @@ class MetricsUploadRepository @Inject constructor(
                     // АНАЛИЗИРУЕМ СОДЕРЖИМОЕ ПАКЕТА
                     analyzeBatchContent(batch.request)
 
-                    val errorMessage = when (response.code()) {
-                        400 -> "Некорректный запрос. Сохранён в failed_requests/"
+                    val errorMessage = when {
+                        response.isSuccessful -> "Сервер вернул result=false. Сохранён в failed_requests/"
+                        response.code() == 400 -> "Некорректный запрос. Сохранён в failed_requests/"
                         else -> "HTTP ${response.code()}: ${response.message()}"
                     }
 
@@ -241,51 +253,51 @@ class MetricsUploadRepository @Inject constructor(
             val jsonString = gson.toJson(fullLog)
             jsonFile.writeText(jsonString)
 
-            println("📁 Failed request saved to: ${jsonFile.absolutePath}")
+            Log.i(TAG, "Failed request saved to: ${jsonFile.absolutePath}")
         } catch (e: Exception) {
-            println("Failed to save JSON: ${e.message}")
+            Log.e(TAG, "Failed to save JSON: ${e.message}", e)
         }
     }
 
     private fun analyzeBatchContent(request: UploadRequest) {
-        println("=== BATCH CONTENT ANALYSIS ===")
+        Log.d(TAG, "=== BATCH CONTENT ANALYSIS ===")
 
         // Проверяем каждый тип данных
         request.nfbMetrics?.let {
-            println("NFB metrics: ${it.size} records")
+            Log.d(TAG, "NFB metrics: ${it.size} records")
             if (it.isNotEmpty()) {
                 val sample = it.first()
-                println("  Sample: timestamp=${sample.timestamp}, alpha=${sample.alpha}, beta=${sample.beta}")
+                Log.d(TAG, "  Sample: timestamp=${sample.timestamp}, alpha=${sample.alpha}, beta=${sample.beta}")
                 // Проверяем валидность значений
-                if (sample.individualNumber.isBlank()) println("  ⚠️ WARNING: empty individualNumber!")
-                if (sample.expeditionId.isBlank()) println("  ⚠️ WARNING: empty expeditionId!")
-                if (sample.timestamp <= 0) println("  ⚠️ WARNING: invalid timestamp!")
+                if (sample.individualNumber.isBlank()) Log.w(TAG, "  ⚠️ WARNING: empty individualNumber!")
+                if (sample.expeditionId.isBlank()) Log.w(TAG, "  ⚠️ WARNING: empty expeditionId!")
+                if (sample.timestamp <= 0) Log.w(TAG, "  ⚠️ WARNING: invalid timestamp!")
             }
-        } ?: println("NFB metrics: null")
+        } ?: Log.d(TAG, "NFB metrics: null")
 
         request.physiologicalMetrics?.let {
-            println("Physiological metrics: ${it.size} records")
+            Log.d(TAG, "Physiological metrics: ${it.size} records")
             if (it.isNotEmpty()) {
                 val sample = it.first()
-                println("  Sample: relax=${sample.relax}, concentration=${sample.concentration}, stress=${sample.stress}")
+                Log.d(TAG, "  Sample: relax=${sample.relax}, concentration=${sample.concentration}, stress=${sample.stress}")
                 // Проверяем диапазоны
-                if (sample.relax !in 0.0..1.0) println("  ⚠️ WARNING: relax out of range [0-1]: ${sample.relax}")
-                if (sample.concentration !in 0.0..1.0) println("  ⚠️ WARNING: concentration out of range: ${sample.concentration}")
+                if (sample.relax !in 0.0..1.0) Log.w(TAG, "  ⚠️ WARNING: relax out of range [0-1]: ${sample.relax}")
+                if (sample.concentration !in 0.0..1.0) Log.w(TAG, "  ⚠️ WARNING: concentration out of range: ${sample.concentration}")
             }
-        } ?: println("Physiological metrics: null")
+        } ?: Log.d(TAG, "Physiological metrics: null")
 
         request.cardioMetrics?.let {
-            println("Cardio metrics: ${it.size} records")
+            Log.d(TAG, "Cardio metrics: ${it.size} records")
             if (it.isNotEmpty()) {
                 val sample = it.first()
-                println("  Sample: heartRate=${sample.heartRate}, skinContact=${sample.skinContact}")
-                if (sample.heartRate < 30 || sample.heartRate > 200) println("  ⚠️ WARNING: unusual heart rate: ${sample.heartRate}")
+                Log.d(TAG, "  Sample: heartRate=${sample.heartRate}, skinContact=${sample.skinContact}")
+                if (sample.heartRate < 30 || sample.heartRate > 200) Log.w(TAG, "  ⚠️ WARNING: unusual heart rate: ${sample.heartRate}")
             }
-        } ?: println("Cardio metrics: null")
+        } ?: Log.d(TAG, "Cardio metrics: null")
 
         // Добавьте другие типы метрик по необходимости
 
-        println("=== END ANALYSIS ===")
+        Log.d(TAG, "=== END ANALYSIS ===")
     }
 
 
@@ -450,152 +462,152 @@ class MetricsUploadRepository @Inject constructor(
         // Uncompressed NFB
         batch.request.nfbMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkNFBMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkNFBMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed Physiological
         batch.request.physiologicalMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkPhysiologicalMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkPhysiologicalMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed EEG Raw
         batch.request.EEGRawMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEEGRAWMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEEGRAWMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed EEG Proceed
         batch.request.EEGProceedMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEEGProceedMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEEGProceedMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed EEG Artifacts
         batch.request.EEGArtifactsMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEEGArtifactsMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEEGArtifactsMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed MEMS
         batch.request.memsMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkMEMSMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkMEMSMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed Productivity
         batch.request.productivityMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkProductivityMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkProductivityMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed Emotional
         batch.request.emotionalMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEmotionalMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEmotionalMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Uncompressed Cardio
         batch.request.cardioMetrics?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkCardioMetricsAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkCardioMetricsAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed NFB
         batch.request.nfbMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkNFBMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkNFBMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed Physiological
         batch.request.physiologicalMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkPhysiologicalMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed EEG Raw
         batch.request.EEGRawMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEEGRAWMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed EEG Proceed
         batch.request.EEGProceedMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEEGProceedMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed EEG Artifacts
         batch.request.EEGArtifactsMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEEGArtifactsMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed MEMS
         batch.request.memsMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkMEMSMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkMEMSMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed Productivity
         batch.request.productivityMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkProductivityMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkProductivityMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed Emotional
         batch.request.emotionalMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkEmotionalMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkEmotionalMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Compressed Cardio
         batch.request.cardioMetricsCompressed?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkCardioMetricsCompressedAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkCardioMetricsCompressedAsSynced(metrics.map { it.rowId })
             }
         }
 
         // Baselines
         batch.request.physiologicalBaseline?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkPhysiologicalBaselineAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkPhysiologicalBaselineAsSynced(metrics.map { it.rowId })
             }
         }
 
         batch.request.productivityBaseline?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkProductivityBaselineAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkProductivityBaselineAsSynced(metrics.map { it.rowId })
             }
         }
 
         batch.request.productivityIndex?.let { metrics ->
             if (metrics.isNotEmpty()) {
-                metricsDao.safeMarkProductivityIndexesAsSynced(metrics.map { it.timestamp })
+                metricsDao.safeMarkProductivityIndexesAsSynced(metrics.map { it.rowId })
             }
         }
 
         //SessionResults
         batch.request.sessionResult?.let {metrics ->
             if (metrics.isNotEmpty()) {
-                sessionDao.safeMarkSessionResultAsSynced(metrics.map {it.session})
+                sessionDao.safeMarkSessionResultAsSynced(metrics.mapNotNull { it.localSessionId })
             }
         }
     }
@@ -618,6 +630,7 @@ class MetricsUploadRepository @Inject constructor(
             val emotionalMetrics = metricsDao.getUnmarkedEmotionalMetrics()
             val cardioMetrics = metricsDao.getUnmarkedCardioMetrics()
             val sessions = sessionDao.getUnmarkedSessionResult()
+                .filter { !it.id.isNullOrBlank() && !it.expedition_id.isNullOrBlank() }
 
             // Compressed данные
             val nfbMetricsCompressed = metricsDao.getUnmarkedNFBMetricsCompressed()
@@ -794,10 +807,11 @@ class MetricsUploadRepository @Inject constructor(
         val emotionalCompressedCount = metricsDao.getAllEmotionalMetricsCountCompressed()
         val cardioCompressedCount = metricsDao.getAllCardioMetricsCountCompressed()
 
-        // Baseline counts
+        // Baseline/session counts
         val physiologicalBaselinesCount = metricsDao.getAllPhysiologicalBaselineCount()
         val productivityBaselinesCount = metricsDao.getAllProductivityBaselineCount()
         val productivityIndexesCount = metricsDao.getAllProductivityIndexesCount()
+        val sessionsCount = sessionDao.getSessionResultCount()
 
         // Uncompressed unsynced counts
         val nfbUnsynced = metricsDao.getUnmarkedNFBMetricsCount()
@@ -821,24 +835,25 @@ class MetricsUploadRepository @Inject constructor(
         val emotionalCompressedUnsynced = metricsDao.getUnmarkedEmotionalMetricsCountCompressed()
         val cardioCompressedUnsynced = metricsDao.getUnmarkedCardioMetricsCountCompressed()
 
-        // Baseline unsynced counts
+        // Baseline/session unsynced counts
         val physiologicalBaselinesUnsynced = metricsDao.getUnmarkedPhysiologicalBaseline().size
         val productivityBaselinesUnsynced = metricsDao.getUnmarkedProductivityBaseline().size
         val productivityIndexesUnsynced = metricsDao.getUnmarkedProductivityIndexes().size
+        val sessionsUnsynced = sessionDao.getUnmarkedSessionResultCount()
 
         val totalRecords = nfbCount + physiologicalCount + eegRawCount + eegProceedCount +
                 eegArtifactsCount + memsCount + productivityCount + emotionalCount + cardioCount +
                 nfbCompressedCount + physiologicalCompressedCount + eegRawCompressedCount +
                 eegProceedCompressedCount + eegArtifactsCompressedCount + memsCompressedCount +
                 productivityCompressedCount + emotionalCompressedCount + cardioCompressedCount +
-                physiologicalBaselinesCount + productivityBaselinesCount + productivityIndexesCount
+                physiologicalBaselinesCount + productivityBaselinesCount + productivityIndexesCount + sessionsCount
 
         val unsyncedRecords = nfbUnsynced + physiologicalUnsynced + eegRawUnsynced + eegProceedUnsynced +
                 eegArtifactsUnsynced + memsUnsynced + productivityUnsynced + emotionalUnsynced + cardioUnsynced +
                 nfbCompressedUnsynced + physiologicalCompressedUnsynced + eegRawCompressedUnsynced +
                 eegProceedCompressedUnsynced + eegArtifactsCompressedUnsynced + memsCompressedUnsynced +
                 productivityCompressedUnsynced + emotionalCompressedUnsynced + cardioCompressedUnsynced +
-                physiologicalBaselinesUnsynced + productivityBaselinesUnsynced + productivityIndexesUnsynced
+                physiologicalBaselinesUnsynced + productivityBaselinesUnsynced + productivityIndexesUnsynced + sessionsUnsynced
 
         return UploadStats(
             totalRecords = totalRecords,
@@ -864,6 +879,7 @@ class MetricsUploadRepository @Inject constructor(
             physiologicalBaselinesCount = physiologicalBaselinesCount,
             productivityBaselinesCount = productivityBaselinesCount,
             productivityIndexesCount = productivityIndexesCount,
+            sessionsCount = sessionsCount,
             nfbUnsynced = nfbUnsynced,
             physiologicalUnsynced = physiologicalUnsynced,
             eegRawUnsynced = eegRawUnsynced,
@@ -884,7 +900,8 @@ class MetricsUploadRepository @Inject constructor(
             cardioCompressedUnsynced = cardioCompressedUnsynced,
             physiologicalBaselinesUnsynced = physiologicalBaselinesUnsynced,
             productivityBaselinesUnsynced = productivityBaselinesUnsynced,
-            productivityIndexesUnsynced = productivityIndexesUnsynced
+            productivityIndexesUnsynced = productivityIndexesUnsynced,
+            sessionsUnsynced = sessionsUnsynced
         )
     }
 }
@@ -1014,7 +1031,8 @@ fun UploadRequest.hasData(): Boolean {
             (cardioMetricsCompressed?.isNotEmpty() == true) ||
             (physiologicalBaseline?.isNotEmpty() == true) ||
             (productivityBaseline?.isNotEmpty() == true) ||
-            (productivityIndex?.isNotEmpty() == true)
+            (productivityIndex?.isNotEmpty() == true) ||
+            (sessionResult?.isNotEmpty() == true)
 }
 
 // ==================== СУЩЕСТВУЮЩИЕ КЛАССЫ (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ) ====================
@@ -1093,6 +1111,7 @@ data class UploadStats(
     val physiologicalBaselinesCount: Int,
     val productivityBaselinesCount: Int,
     val productivityIndexesCount: Int,
+    val sessionsCount: Int,
     val nfbUnsynced: Int,
     val physiologicalUnsynced: Int,
     val eegRawUnsynced: Int,
@@ -1113,5 +1132,6 @@ data class UploadStats(
     val cardioCompressedUnsynced: Int,
     val physiologicalBaselinesUnsynced: Int,
     val productivityBaselinesUnsynced: Int,
-    val productivityIndexesUnsynced: Int
+    val productivityIndexesUnsynced: Int,
+    val sessionsUnsynced: Int
 )

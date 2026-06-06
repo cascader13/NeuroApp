@@ -4,6 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 
+data class SubjectiveAnswerValue(
+    val value: Int
+)
+
 /**
  * DAO для работы с ответами субъективного тестирования
  *
@@ -45,6 +49,10 @@ interface SubjectiveAnswerDao {
     @Insert
     suspend fun insert(answer: SubjectiveAnswerEntity)
 
+
+    @Insert
+    suspend fun insertAll(entities: List<SubjectiveAnswerEntity>)
+
     /**
      * Получение всех ответов для конкретной сессии
      *
@@ -58,4 +66,14 @@ interface SubjectiveAnswerDao {
      */
     @Query("SELECT * FROM subjective_answers WHERE sessionId = :sessionId")
     suspend fun getBySession(sessionId: Long): List<SubjectiveAnswerEntity>
+
+    @Query("""
+    SELECT sa.value 
+    FROM subjective_answers sa 
+    LEFT JOIN sessions ss ON sa.sessionId = ss.sessionId  
+    WHERE sa.questionId = :id AND ss.id = :userId 
+    ORDER BY sa.sessionId DESC 
+    LIMIT 1
+""")
+    suspend fun getLastById(id: Int, userId: String): SubjectiveAnswerValue?
 }

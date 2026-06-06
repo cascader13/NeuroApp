@@ -1,7 +1,7 @@
-package com.neuroproject.neuro.data.repositories
+package com.neuroproject.neuro.data.repository
 
 import com.neuroproject.neuro.domain.model.Result
-import com.neuroproject.neuro.data.datasources.LocalAuthDataSource
+import com.neuroproject.neuro.data.datasource.LocalAuthDataSource
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import javax.inject.Inject
 
@@ -36,4 +36,15 @@ class AuthRepositoryImpl @Inject constructor(
     override fun removeFromHistory(userId: String) = localDataSource.removeFromHistory(userId)
 
     override fun clearHistory() = localDataSource.clearHistory()
+
+    override suspend fun getUserId(): String{
+        return localDataSource.getSavedUserId() ?: ""
+    }
+
+    override suspend fun getExpeditionId(): String = localDataSource.getExpeditionId()
+
+    override suspend fun saveExpeditionId(expeditionId: String) {
+        localDataSource.saveExpeditionId(expeditionId)
+    }
+
 }

@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# JNI/API class names used from native code and the Capsule SDK must not be renamed.
+-keep class com.neuroproject.neuro.services.CapsuleDeviceManager { *; }
+-keep class com.neuroproject.neuro.jni.JniCallbackHandler { *; }
+-keep class com.neuroproject.neuro.domain.model.DeviceInfo { *; }

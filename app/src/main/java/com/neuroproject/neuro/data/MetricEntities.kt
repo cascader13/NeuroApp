@@ -1,7 +1,9 @@
 package com.neuroproject.neuro.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.neuroproject.neuro.domain.model.CalibrationSample
 
 
 @Entity(tableName = "Calibration_History")
@@ -27,11 +29,39 @@ data class CalibrationHistoryEntity(
     val physiologicalAlphaGravity: Float? = null,
     val physiologicalBetaGravity: Float? = null,
     val physiologicalConcentration: Float? = null
-)
+) {
+    companion object {
+        fun fromDomain(userId: String, data: com.neuroproject.neuro.domain.model.CalibrationSample): CalibrationHistoryEntity {
+            return CalibrationHistoryEntity(
+                user_id = userId,
+                individualFrequency = data.individualFrequency,
+                individualPeakFrequency = data.individualPeakFrequency,
+                individualPeakFrequencyPower = data.individualPeakFrequencyPower,
+                individualPeakFrequencySuppression = data.individualPeakFrequencySuppression,
+                individualBandwidth = data.individualBandwidth,
+                individualNormalizedPower = data.individualNormalizedPower,
+                lowerFrequency = data.lowerFrequency,
+                upperFrequency = data.upperFrequency,
+                productivityGravity = data.productivityGravity,
+                productivityProductivity = data.productivityProductivity,
+                productivityFatigue = data.productivityFatigue,
+                productivityReverseFatigue = data.productivityReverseFatigue,
+                productivityRelaxation = data.productivityRelaxation,
+                productivityConcentration = data.productivityConcentration,
+                physiologicalAlpha = data.physiologicalAlpha,
+                physiologicalBeta = data.physiologicalBeta,
+                physiologicalAlphaGravity = data.physiologicalAlphaGravity,
+                physiologicalBetaGravity = data.physiologicalBetaGravity,
+                physiologicalConcentration = data.physiologicalConcentration
+            )
+        }
+    }
+}
 
-@Entity(tableName = "EEG_Raw_metrics")
+@Entity(tableName = "EEG_Raw_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGRawMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -40,9 +70,10 @@ data class EEGRawMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "EEG_Raw_metrics_compressed")
+@Entity(tableName = "EEG_Raw_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGRawMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -51,9 +82,10 @@ data class EEGRawMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "EEG_Proceed_metrics")
+@Entity(tableName = "EEG_Proceed_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGProceedMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -62,9 +94,10 @@ data class EEGProceedMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "EEG_Proceed_metrics_compressed")
+@Entity(tableName = "EEG_Proceed_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGProceedMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -73,9 +106,10 @@ data class EEGProceedMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "EEG_Artifacts_metrics")
+@Entity(tableName = "EEG_Artifacts_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGArtifactsMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -86,9 +120,10 @@ data class EEGArtifactsMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "EEG_Artifacts_metrics_compressed")
+@Entity(tableName = "EEG_Artifacts_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGArtifactsMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -99,9 +134,10 @@ data class EEGArtifactsMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "nfb_metrics")
+@Entity(tableName = "nfb_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class NFBMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -113,9 +149,10 @@ data class NFBMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "nfb_metrics_compressed")
+@Entity(tableName = "nfb_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class NFBMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -127,9 +164,10 @@ data class NFBMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "physiological_metrics")
+@Entity(tableName = "physiological_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class PhysiologicalMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -144,9 +182,10 @@ data class PhysiologicalMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "physiological_metrics_compressed")
+@Entity(tableName = "physiological_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class PhysiologicalMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -161,9 +200,10 @@ data class PhysiologicalMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "physiological_baselines")
+@Entity(tableName = "physiological_baselines", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class PhysiologicalBaselinesEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -175,9 +215,10 @@ data class PhysiologicalBaselinesEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "mems_metrics")
+@Entity(tableName = "mems_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class MEMSMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -190,9 +231,10 @@ data class MEMSMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "mems_metrics_compressed")
+@Entity(tableName = "mems_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class MEMSMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -205,10 +247,11 @@ data class MEMSMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "productivity_indexes")
+@Entity(tableName = "productivity_indexes", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 
 data class ProductivityIndexesEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -224,9 +267,10 @@ data class ProductivityIndexesEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "productivity_metrics")
+@Entity(tableName = "productivity_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class ProductivityMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -239,9 +283,10 @@ data class ProductivityMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "productivity_baselines")
+@Entity(tableName = "productivity_baselines", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class ProductivityBaselinesEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -254,9 +299,10 @@ data class ProductivityBaselinesEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "productivity_metrics_compressed")
+@Entity(tableName = "productivity_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class ProductivityMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -269,9 +315,10 @@ data class ProductivityMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "emotional_metrics")
+@Entity(tableName = "emotional_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EmotionalMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -283,9 +330,10 @@ data class EmotionalMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "emotional_metrics_compressed")
+@Entity(tableName = "emotional_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EmotionalMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -297,9 +345,10 @@ data class EmotionalMetricCompressedEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "cardio_metrics")
+@Entity(tableName = "cardio_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class CardioMetricEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,
@@ -313,9 +362,10 @@ data class CardioMetricEntity(
     val isMarked: Boolean
 )
 
-@Entity(tableName = "cardio_metrics_compressed")
+@Entity(tableName = "cardio_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class CardioMetricCompressedEntity(
-    @PrimaryKey val timestamp: Long,
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
+    val timestamp: Long,
     val id: String,
     val expedition_id: String,
     val sessionId: Long,

@@ -1,7 +1,10 @@
 package com.neuroproject.neuro
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 /**
  * Главный класс приложения Neuro Project
@@ -16,7 +19,13 @@ import dagger.hilt.android.HiltAndroidApp
  * - Управлять жизненным циклом компонентов
  */
 @HiltAndroidApp
-class MainApplication : Application() {
-    // Класс не требует дополнительной реализации,
-    // вся логика инициализации выполняется через Hilt
+class MainApplication : Application(), Configuration.Provider {
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 }

@@ -1,20 +1,25 @@
 package com.neuroproject.neuro.data
 
 import android.util.Log
+import com.neuroproject.neuro.ApplicationScope
+import com.neuroproject.neuro.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MetricsRepository @Inject constructor(
-    private val metricsDao: MetricsDao
+class MetricsRepository(
+    private val metricsDao: MetricsDao,
+    @ApplicationScope private val appScope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO)
-    private val COMPRESSED_TIME = 60000
+    private val COMPRESSED_TIME = 60000L
+
+    private fun normalizeTimestamp(timestamp: Long): Long =
+        if (timestamp > 0L) timestamp else System.currentTimeMillis()
     private data class NfbBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<NFBMetricEntity> = mutableListOf()
@@ -72,6 +77,7 @@ class MetricsRepository @Inject constructor(
 
 
     private val mutex = Mutex()
+    private val artifactProcessor = SensorArtifactProcessor()
 
 
     fun saveNFBMetric(
@@ -85,13 +91,14 @@ class MetricsRepository @Inject constructor(
         delta: Float,
         smr: Float
     ) {
-        if (alpha > 1.0) { // артефакты будут отсеиваться(пока только для nfb)
+        if (!artifactProcessor.shouldStoreNfb(alpha, beta, theta, delta, smr)) {
+            Log.w("MetricsRepository", "NFB sample skipped: non-finite value")
             return
         }
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = NFBMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -105,11 +112,11 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertNFBMetric(metric)
                 mutex.withLock {
                     if (nfbBuffer.firstTimestamp == null) {
-                        nfbBuffer.firstTimestamp = time
+                        nfbBuffer.firstTimestamp = metric.timestamp
                     }
                     nfbBuffer.values.add(metric)
 
-                    if (time - nfbBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - nfbBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushNfbBuffer()
                     }
                 }
@@ -127,10 +134,14 @@ class MetricsRepository @Inject constructor(
         channel1: Float,
         channel2: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreEeg(channel1, channel2)) {
+            Log.w("MetricsRepository", "EEG RAW sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EEGRawMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -141,10 +152,10 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertEEGRAWMetric(metric)
                 mutex.withLock {
                     if (eegRawBuffer.firstTimestamp == null) {
-                        eegRawBuffer.firstTimestamp = time
+                        eegRawBuffer.firstTimestamp = metric.timestamp
                     }
                     eegRawBuffer.values.add(metric)
-                    if (time - eegRawBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - eegRawBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGRAWBuffer()
                     }
                 }
@@ -162,10 +173,14 @@ class MetricsRepository @Inject constructor(
         channel1: Float,
         channel2: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreEeg(channel1, channel2)) {
+            Log.w("MetricsRepository", "EEG processed sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EEGProceedMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -176,11 +191,11 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertEEGPROCEEDMetric(metric)
                 mutex.withLock {
                     if (eegProceedBuffer.firstTimestamp == null) {
-                        eegProceedBuffer.firstTimestamp = time
+                        eegProceedBuffer.firstTimestamp = metric.timestamp
                     }
                     eegProceedBuffer.values.add(metric)
 
-                    if (time - eegProceedBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - eegProceedBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGPROCEEDBuffer()
                     }
                 }
@@ -200,10 +215,14 @@ class MetricsRepository @Inject constructor(
         qualityChannel1: Float,
         qualityChannel2: Float,
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreArtifacts(artifactsChannel1, artifactsChannel2, qualityChannel1, qualityChannel2)) {
+            Log.w("MetricsRepository", "EEG artifact sample skipped: non-finite quality")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EEGArtifactsMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -216,10 +235,10 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertEEGArtifactsMetric(metric)
                 mutex.withLock {
                     if (eegArtifactBuffer.firstTimestamp == null) {
-                        eegArtifactBuffer.firstTimestamp = time
+                        eegArtifactBuffer.firstTimestamp = metric.timestamp
                     }
                     eegArtifactBuffer.values.add(metric)
-                    if (time - eegArtifactBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - eegArtifactBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGArtifactBuffer()
                     }
                 }
@@ -243,10 +262,14 @@ class MetricsRepository @Inject constructor(
         nfbArtifacts: Boolean,
         cardioArtifacts: Boolean
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStorePhysiological(listOf(relax, fatigue, none, concentration, involvement, stress))) {
+            Log.w("MetricsRepository", "Physiological sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = PhysiologicalMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -263,10 +286,10 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertPhysiologicalMetric(metric)
                 mutex.withLock {
                     /*if (PhysiologicalBuffer.firstTimestamp == null) {
-                        PhysiologicalBuffer.firstTimestamp = time
+                        PhysiologicalBuffer.firstTimestamp = metric.timestamp
                     }
                     PhysiologicalBuffer.values.add(metric)
-                    if (time - PhysiologicalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - PhysiologicalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushPhysiologicalBuffer()
                     }*/
                     physiologicalBuffer.values.add(metric)
@@ -290,10 +313,14 @@ class MetricsRepository @Inject constructor(
         gyroY: Float,
         gyroZ: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreMems(listOf(accX, accY, accZ, gyroX, gyroY, gyroZ))) {
+            Log.w("MetricsRepository", "MEMS sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = MEMSMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -308,10 +335,10 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertMEMSMetric(metric)
                 mutex.withLock {
                     if (memsBuffer.firstTimestamp == null) {
-                        memsBuffer.firstTimestamp = time
+                        memsBuffer.firstTimestamp = metric.timestamp
                     }
                     memsBuffer.values.add(metric)
-                    if (time - memsBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - memsBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushMEMSBuffer()
                     }
                 }
@@ -333,10 +360,14 @@ class MetricsRepository @Inject constructor(
         relaxation: Float,
         concentration: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreProductivity(listOf(gravity, productivity, fatigue, reverseFatigue, relaxation, concentration))) {
+            Log.w("MetricsRepository", "Productivity sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = ProductivityMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -352,12 +383,12 @@ class MetricsRepository @Inject constructor(
                 Log.d("MetricsRepository", "Productivity metric saved: time=$time, productivity=$productivity")
                 mutex.withLock {
                     if (productivityBuffer.firstTimestamp == null) {
-                        productivityBuffer.firstTimestamp = time
+                        productivityBuffer.firstTimestamp = metric.timestamp
                     }
 
                     productivityBuffer.values.add(metric)
 
-                    if (time - productivityBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - productivityBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushProductivityBuffer()
                     }
                 }
@@ -382,10 +413,10 @@ class MetricsRepository @Inject constructor(
         concentrationBaselines: Float,
         hasArtifacts: Boolean
     ) {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val index = ProductivityIndexesEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = expedition_id,
                     sessionId = sessionId,
@@ -418,7 +449,7 @@ class MetricsRepository @Inject constructor(
         relaxationBaselines: Float,
         concentrationBaselines: Float,
     ){
-        scope.launch{
+        appScope.launch{
             try {
                 metricsDao.insertProductivityCalibration(userId, gravityBaseline, productivityBaseline, fatiqueBaseline, reverseFatiqueBaseline, relaxationBaselines, concentrationBaselines)
             }catch (e: Exception){
@@ -440,10 +471,10 @@ class MetricsRepository @Inject constructor(
         relaxation: Float,
         concentration: Float
     ) {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val index = ProductivityBaselinesEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = expedition_id,
                     sessionId = sessionId,
@@ -475,10 +506,10 @@ class MetricsRepository @Inject constructor(
         betaGravity: Float,
         concentration: Float
     ) {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val index = PhysiologicalBaselinesEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = expedition_id,
                     sessionId = sessionId,
@@ -505,7 +536,7 @@ class MetricsRepository @Inject constructor(
         betaGravity: Float,
         concentration: Float
     ){
-        scope.launch{
+        appScope.launch{
             try {
                 metricsDao.insertPhysiologicalCalibration(userId, alpha, beta, alphaGravity, betaGravity, concentration)
             }catch (e: Exception){
@@ -526,10 +557,14 @@ class MetricsRepository @Inject constructor(
         cognitiveControl: Float,
         selfControl: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreEmotional(listOf(attention, relaxation, cognitiveLoad, cognitiveControl, selfControl))) {
+            Log.w("MetricsRepository", "Emotional sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EmotionalMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -543,12 +578,12 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertEmotionalMetric(metric)
                 mutex.withLock {
                     if (emotionalBuffer.firstTimestamp == null) {
-                        emotionalBuffer.firstTimestamp = time
+                        emotionalBuffer.firstTimestamp = metric.timestamp
                     }
 
                     emotionalBuffer.values.add(metric)
 
-                    if (time - emotionalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - emotionalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEmotionalBuffer()
                     }
                 }
@@ -571,10 +606,14 @@ class MetricsRepository @Inject constructor(
         skinContact: Boolean,
         stressIndex: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreCardio(listOf(heartRate, kaplanIndex, stressIndex))) {
+            Log.w("MetricsRepository", "Cardio sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = CardioMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -590,12 +629,12 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertCardioMetric(metric)
                 mutex.withLock {
                     if (cardioBuffer.firstTimestamp == null) {
-                        cardioBuffer.firstTimestamp = time
+                        cardioBuffer.firstTimestamp = metric.timestamp
                     }
 
                     cardioBuffer.values.add(metric)
 
-                    if (time - cardioBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
+                    if (metric.timestamp - cardioBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushCardioBuffer()
                     }
                 }
@@ -605,8 +644,39 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    fun clearAllMetricsBySessionId(sessionId: Long){
+        appScope.launch(ioDispatcher) {
+            try{
+                metricsDao.clearNFBMetricsBySessionId(sessionId)
+                metricsDao.clearNFBMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearCardioMetricsBySessionId(sessionId)
+                metricsDao.clearCardioMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearMEMSMetricsBySessionId(sessionId)
+                metricsDao.clearMEMSMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearProductivityMetricsBySessionId(sessionId)
+                metricsDao.clearProductivityMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearProductivityIndexesBySessionId(sessionId)
+                metricsDao.clearProductivityBaselinesBySessionId(sessionId)
+                metricsDao.clearPhysiologicalMetricsBySessionId(sessionId)
+                metricsDao.clearPhysiologicalMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearPhysiologicalBaselinesBySessionId(sessionId)
+                metricsDao.clearEmotionalMetricsBySessionId(sessionId)
+                metricsDao.clearEmotionalMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearEEGRAWBySessionId(sessionId)
+                metricsDao.clearEEGRAWCompressedBySessionId(sessionId)
+                metricsDao.clearEEGPROCEEDBySessionId(sessionId)
+                metricsDao.clearEEGPROCEEDCompressedBySessionId(sessionId)
+                metricsDao.clearEEGArtifactsBySessionId(sessionId)
+                metricsDao.clearEEGArtifactsCompressedBySessionId(sessionId)
+                Log.d("MetricsRepository", "All metrics cleared by sessionId ${sessionId}")
+            } catch (e: Exception){
+                Log.e("MetricsRepository", "Error clearing metrics", e)
+            }
+        }
+    }
+
     fun clearAllMetrics() {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 metricsDao.clearNFBMetrics()
                 metricsDao.clearPhysiologicalMetrics()
@@ -794,7 +864,7 @@ class MetricsRepository @Inject constructor(
         val compressed = ProductivityMetricCompressedEntity(
             timestamp = productivityBuffer.firstTimestamp!!, // начало минутного интервала
             id = productivityBuffer.values.first().id,
-            expedition_id = productivityBuffer.values.first().id,
+            expedition_id = productivityBuffer.values.first().expedition_id,
             sessionId = productivityBuffer.values.first().sessionId,
             gravity = productivityBuffer.values.map { it.gravity }.median(),
             productivity = productivityBuffer.values.map { it.productivity }.median(),
@@ -818,7 +888,7 @@ class MetricsRepository @Inject constructor(
         val compressed = MEMSMetricCompressedEntity(
             timestamp = memsBuffer.firstTimestamp!!, // начало минутного интервала
             id = memsBuffer.values.first().id,
-            expedition_id = memsBuffer.values.first().id,
+            expedition_id = memsBuffer.values.first().expedition_id,
             sessionId = memsBuffer.values.first().sessionId,
             accelerometerX = memsBuffer.values.map { it.accelerometerX }.median(),
             accelerometerY = memsBuffer.values.map { it.accelerometerY }.median(),

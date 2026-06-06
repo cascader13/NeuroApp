@@ -34,7 +34,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /** Базовый URL основного сервера */
-    private const val BASE_URL = "http://159.194.217.94:8080"
+    private const val BASE_URL = "http://159.194.217.94:8080/"
 
     /**
      * Предоставление Gson с настройками формата даты

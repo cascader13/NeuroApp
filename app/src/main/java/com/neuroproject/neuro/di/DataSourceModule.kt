@@ -1,7 +1,7 @@
 package com.neuroproject.neuro.di
 
 import android.content.Context
-import com.neuroproject.neuro.data.datasources.LocalAuthDataSource
+import com.neuroproject.neuro.data.datasource.LocalAuthDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

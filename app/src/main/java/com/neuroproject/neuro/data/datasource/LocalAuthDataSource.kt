@@ -1,4 +1,4 @@
-package com.neuroproject.neuro.data.datasources
+package com.neuroproject.neuro.data.datasource
 
 import android.content.Context
 import com.google.gson.Gson
@@ -14,6 +14,8 @@ class LocalAuthDataSource @Inject constructor(
 
     companion object {
         private const val KEY_SAVED_USER_ID = "saved_user_id"
+        private const val KEY_SAVED_MOBILE_ID = "saved_mobile_id"
+        private const val KEY_EXPEDITION_ID = "saved_expedition_id"
         private const val KEY_USER_ID_HISTORY = "user_id_history"
         private const val MAX_HISTORY_SIZE = 10
     }
@@ -21,7 +23,11 @@ class LocalAuthDataSource @Inject constructor(
     fun getSavedUserId(): String? = sharedPreferences.getString(KEY_SAVED_USER_ID, null)
 
     fun saveUserId(userId: String) {
-        sharedPreferences.edit().putString(KEY_SAVED_USER_ID, userId).apply()
+        // Сохраняем в оба ключа: saved_user_id — основной, saved_mobile_id — legacy-ключ старого кода.
+        sharedPreferences.edit()
+            .putString(KEY_SAVED_USER_ID, userId)
+            .putString(KEY_SAVED_MOBILE_ID, userId)
+            .apply()
         addToHistory(userId)
     }
 
@@ -66,6 +72,10 @@ class LocalAuthDataSource @Inject constructor(
         val json = gson.toJson(currentHistory)
         sharedPreferences.edit().putString(KEY_USER_ID_HISTORY, json).apply()
     }
+
+    fun getExpeditionId(): String = sharedPreferences.getString(KEY_EXPEDITION_ID, "") ?: ""
+
+    fun saveExpeditionId(expeditionId: String) = sharedPreferences.edit().putString(KEY_EXPEDITION_ID, expeditionId).apply()
 
     fun clearHistory() {
         sharedPreferences.edit().remove(KEY_USER_ID_HISTORY).apply()

@@ -64,6 +64,7 @@ data class SessionEntity(
     val endTime: Long? = null,               // timestamp окончания
     val sessionCategory: SessionCategory? = null,
     val comment: String? = null,
+
     val passingPrematurely: Boolean = false,
 
 

@@ -53,8 +53,9 @@ fun NFBMetricEntity.toServerDto(): NfbMetricDto {
         beta = this.beta.toDouble(),
         theta = this.theta.toDouble(),
         delta = this.delta.toDouble(),
-        smr = this.smr.toDouble()
-    )
+        smr = this.smr.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -75,8 +76,9 @@ fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
         involvement = this.involvement.toDouble(),
         stress = this.stress.toDouble(),
         nfbArtifacts = if (this.nfbArtifacts) 1 else 0,
-        cardioArtifacts = if (this.cardioArtifacts) 1 else 0
-    )
+        cardioArtifacts = if (this.cardioArtifacts) 1 else 0,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -91,8 +93,9 @@ fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto {
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -107,8 +110,9 @@ fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto {
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -125,8 +129,9 @@ fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto {
         artifactsChannel1 = this.artifactsChannel1,
         artifactsChannel2 = this.artifactsChannel2,
         qualityChannel1 = this.qualityChannel1,
-        qualityChannel2 = this.qualityChannel2
-    )
+        qualityChannel2 = this.qualityChannel2,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -145,8 +150,9 @@ fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
         accelerometerZ = this.accelerometerZ.toDouble(),
         gyroscopeX = this.gyroscopeX.toDouble(),
         gyroscopeY = this.gyroscopeY.toDouble(),
-        gyroscopeZ = this.gyroscopeZ.toDouble()
-    )
+        gyroscopeZ = this.gyroscopeZ.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -165,8 +171,9 @@ fun ProductivityMetricEntity.toServerDto(): ProductivityMetricDto {
         fatigue = this.fatigue.toDouble(),
         reverseFatigue = this.reverseFatigue.toDouble(),
         relaxation = this.relaxation.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -184,8 +191,9 @@ fun EmotionalMetricEntity.toServerDto(): EmotionalMetricDto {
         relaxation = this.relaxation.toDouble(),
         cognitiveLoad = this.cognitiveLoad.toDouble(),
         cognitiveControl = this.cognitiveControl.toDouble(),
-        selfControl = this.selfControl.toDouble()
-    )
+        selfControl = this.selfControl.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -205,8 +213,9 @@ fun CardioMetricEntity.toServerDto(): CardioMetricDto {
         metricsAvailable = if (this.metricsAvailable) 1 else 0,
         motionArtifacts = if (this.motionArtifacts) 1 else 0,
         skinContact = if (this.skinContact) 1 else 0,
-        stressIndex = this.stressIndex.toDouble()
-    )
+        stressIndex = this.stressIndex.toDouble(),
+        rowId = this.rowId
+)
 }
 
 // ==================== COMPRESSED METRICS ====================
@@ -226,8 +235,9 @@ fun NFBMetricCompressedEntity.toServerDto(): NfbMetricCompressedDto {
         beta = this.beta.toDouble(),
         theta = this.theta.toDouble(),
         delta = this.delta.toDouble(),
-        smr = this.smr.toDouble()
-    )
+        smr = this.smr.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -248,8 +258,9 @@ fun PhysiologicalMetricCompressedEntity.toServerDto(): PhysiologicalMetricCompre
         involvement = this.involvement.toDouble(),
         stress = this.stress.toDouble(),
         nfbArtifacts = if (this.nfbArtifacts) 1 else 0,
-        cardioArtifacts = if (this.cardioArtifacts) 1 else 0
-    )
+        cardioArtifacts = if (this.cardioArtifacts) 1 else 0,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -264,8 +275,9 @@ fun EEGRawMetricCompressedEntity.toServerDto(): EEGRawMetricCompressedDto {
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -280,8 +292,9 @@ fun EEGProceedMetricCompressedEntity.toServerDto(): EEGProceedMetricCompressedDt
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -298,8 +311,9 @@ fun EEGArtifactsMetricCompressedEntity.toServerDto(): EEGArtifactMetricCompresse
         artifactsChannel1 = this.artifactsChannel1,
         artifactsChannel2 = this.artifactsChannel2,
         qualityChannel1 = this.qualityChannel1,
-        qualityChannel2 = this.qualityChannel2
-    )
+        qualityChannel2 = this.qualityChannel2,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -318,8 +332,9 @@ fun MEMSMetricCompressedEntity.toServerDto(): MemsMetricCompressedDto {
         accelerometerZ = this.accelerometerZ.toDouble(),
         gyroscopeX = this.gyroscopeX.toDouble(),
         gyroscopeY = this.gyroscopeY.toDouble(),
-        gyroscopeZ = this.gyroscopeZ.toDouble()
-    )
+        gyroscopeZ = this.gyroscopeZ.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -338,8 +353,9 @@ fun ProductivityMetricCompressedEntity.toServerDto(): ProductivityMetricCompress
         fatigue = this.fatigue.toDouble(),
         reverseFatigue = this.reverseFatigue.toDouble(),
         relaxation = this.relaxation.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -357,8 +373,9 @@ fun EmotionalMetricCompressedEntity.toServerDto(): EmotionalMetricCompressedDto 
         relaxation = this.relaxation.toDouble(),
         cognitiveLoad = this.cognitiveLoad.toDouble(),
         cognitiveControl = this.cognitiveControl.toDouble(),
-        selfControl = this.selfControl.toDouble()
-    )
+        selfControl = this.selfControl.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -378,8 +395,9 @@ fun CardioMetricCompressedEntity.toServerDto(): CardioMetricCompressedDto {
         metricsAvailable = if (this.metricsAvailable) 1 else 0,
         motionArtifacts = if (this.motionArtifacts) 1 else 0,
         skinContact = if (this.skinContact) 1 else 0,
-        stressIndex = this.stressIndex.toDouble()
-    )
+        stressIndex = this.stressIndex.toDouble(),
+        rowId = this.rowId
+)
 }
 
 // ==================== BASELINE AND INDEXES ====================
@@ -399,8 +417,9 @@ fun PhysiologicalBaselinesEntity.toServerDto(): PhysiologicalBaselineDto {
         beta = this.beta.toDouble(),
         alphaGravity = this.alphaGravity.toDouble(),
         betaGravity = this.betaGravity.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -419,8 +438,9 @@ fun ProductivityBaselinesEntity.toServerDto(): ProductivityBaselineDto {
         fatigue = this.fatigue.toDouble(),
         reverseFatigue = this.reverseFatigue.toDouble(),
         relaxation = this.relaxation.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
 /**
@@ -442,8 +462,9 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
         reverseFatigueBaseline = this.reverseFatigueBaseline.toDouble(),
         relaxationBaseline = this.relaxationBaseline.toDouble(),
         concentrationBaseline = this.concentrationBaseline.toDouble(),
-        hasArtifacts = this.hasArtifacts
-    )
+        hasArtifacts = this.hasArtifacts,
+        rowId = this.rowId
+)
 }
 
 /**
@@ -453,7 +474,7 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
  */
 fun SessionEntity.toServerDto(): SessionDto {
     return SessionDto(
-        session = sessionId,
+        session = sessionId.toSecondsInt(),
         expeditionId = expedition_id,
         individualNumber = id,
         objectiveCognitive = objectiveCognitive,
@@ -474,6 +495,7 @@ fun SessionEntity.toServerDto(): SessionDto {
         comment = comment,
         objectiveFatigue = objectiveFatigue,
         objectiveStress = objectiveStress,
-        passingPrematurely = passingPrematurely
-    )
+        passingPrematurely = passingPrematurely,
+        localSessionId = sessionId
+)
 }

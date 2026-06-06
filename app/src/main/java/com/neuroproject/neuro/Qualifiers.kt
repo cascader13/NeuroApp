@@ -3,29 +3,22 @@ package com.neuroproject.neuro
 import javax.inject.Qualifier
 
 /**
- * Квалификатор Dagger Hilt для различения экземпляров зависимостей
+ * Квалификатор Dagger Hilt для различения экземпляров зависимостей.
  *
- * Используется для предоставления разных экземпляров одного типа
- * для разных серверов или целей.
- *
- * ## Применение:
  * В приложении используются два сервера:
- * - **Основной сервер** (без квалификатора) - для загрузки метрик
- * - **Сервер мониторинга** (с @SecondServer) - для отправки строк в реальном времени
- *
- * ## Пример использования:
- * ```kotlin
- * @Provides
- * @Singleton
- * @SecondServer
- * fun provideSecondGson(): Gson = GsonBuilder().create()
- *
- * @Provides
- * @Singleton
- * fun provideMainGson(): Gson = GsonBuilder().create()
- * ```
- *
+ * - основной сервер без квалификатора — загрузка метрик;
+ * - сервер мониторинга с [SecondServer] — отправка строк в реальном времени.
  */
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class SecondServer
+
+/** Application-wide CoroutineScope. Нужен для singleton-компонентов, которые живут дольше UI. */
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ApplicationScope
+
+/** IO dispatcher для Room/файлов/сети. */
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class IoDispatcher

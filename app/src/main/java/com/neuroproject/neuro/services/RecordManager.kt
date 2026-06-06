@@ -2,24 +2,26 @@ package com.neuroproject.neuro.services
 
 import android.content.Context
 import android.util.Log
+import com.neuroproject.neuro.ApplicationScope
 import com.neuroproject.neuro.data.MetricsRepository
+import com.neuroproject.neuro.domain.repository.SensorStreamGateway
+import com.neuroproject.neuro.jni.NFBData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * Менеджер записи и сохранения данных с нейро-гарнитуры
  *
  * Этот класс отвечает за управление процессом записи данных, поступающих
- * от [CapsuleDeviceManager], и их сохранение в базу данных через [MetricsRepository].
+ * от [com.neuroproject.neuro.services.CapsuleDeviceManager], и их сохранение в базу данных через [MetricsRepository].
  *
  * ## Основные функции:
  * - Управление состоянием записи (старт/стоп)
- * - Подписка на потоки данных от [CapsuleDeviceManager]
+ * - Подписка на потоки данных от [com.neuroproject.neuro.services.CapsuleDeviceManager]
  * - Сохранение различных типов данных: NFB, ЭЭГ, физиологические, кардио, MEMS, продуктивность
  * - Автоматическая привязка данных к пользователю, экспедиции и сессии
  * - Кэширование ID пользователя и экспедиции из SharedPreferences
@@ -49,17 +51,18 @@ import kotlin.coroutines.EmptyCoroutineContext
  * }
  * ```
  *
- * @param deviceManager Экземпляр [CapsuleDeviceManager] для получения данных
+ * @param deviceManager Экземпляр [com.neuroproject.neuro.services.CapsuleDeviceManager] для получения данных
  * @param context Контекст приложения для доступа к SharedPreferences
  * @param metricsRepository Репозиторий для сохранения метрик в БД
- * @see CapsuleDeviceManager
+ * @see com.neuroproject.neuro.services.CapsuleDeviceManager
  * @see MetricsRepository
  */
 @Singleton
 class RecordManager @Inject constructor(
-    deviceManager: CapsuleDeviceManager,
+    private val sensorStreamGateway: SensorStreamGateway,
     @ApplicationContext private val context: Context,
-    private val metricsRepository: MetricsRepository
+    private val metricsRepository: MetricsRepository,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
     private var _instance = this
 
@@ -72,11 +75,8 @@ class RecordManager @Inject constructor(
         loadSavedIds()
     }
 
-    /** Менеджер устройства для подписки на данные */
-    private val capsuleDM = deviceManager
-
     /** CoroutineScope для фоновых операций */
-    private val _scope = CoroutineScope(EmptyCoroutineContext)
+    private val _scope = appScope
 
     /** Флаг активной записи данных */
     private var isRecording = false
@@ -87,7 +87,7 @@ class RecordManager @Inject constructor(
     /** Поток состояния NFB данных (для внутреннего использования) */
     private val _nfbState = MutableStateFlow(NFBData())
 
-    public val productivityScore = deviceManager.productivityScore // stateFlow для получения данных о состоянии калибровки productivity
+    val productivityScore = sensorStreamGateway.observeProductivityScore()
 
     /** ID текущей сессии записи */
     private var currentSessionId: Long? = null
@@ -189,7 +189,7 @@ class RecordManager @Inject constructor(
      * @param scope CoroutineScope для выполнения коллекции
      * @param action Действие, выполняемое при каждом новом значении
      */
-    private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectInScope(
+    private fun <T> kotlinx.coroutines.flow.Flow<T>.collectInScope(
         scope: CoroutineScope,
         action: (T) -> Unit
     ) {
@@ -210,33 +210,19 @@ class RecordManager @Inject constructor(
     private fun setupCapsuleListeners() {
         isSetup = true
 
-        /**
-         * Слушатель для NFB данных (нейрофидбек)
-         *
-         * Сохраняет спектральные характеристики ЭЭГ:
-         * - alpha (8-13 Гц) - состояние покоя
-         * - beta (13-30 Гц) - активное мышление
-         * - theta (4-8 Гц) - дремотное состояние
-         * - delta (0.5-4 Гц) - глубокий сон
-         * - smr (12-15 Гц) - сенсомоторный ритм
-         */
-        capsuleDM.nfbReceived =
-            { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float ->
-                _scope.launch {
-                    _nfbState.emit(NFBData(time, alpha, beta, theta, delta, smr))
-
-                    if (isRecording) {
-                        saveNFBData(time, alpha, beta, theta, delta, smr)
-                    }
-                }
+        sensorStreamGateway.observeNFB().collectInScope(_scope) { data ->
+            _nfbState.value = NFBData(data.timestamp, data.alpha, data.beta, data.theta, data.delta, data.smr)
+            if (isRecording) {
+                saveNFBData(data.timestamp, data.alpha, data.beta, data.theta, data.delta, data.smr)
             }
+        }
 
         /** Слушатель для физиологических данных */
-        capsuleDM.physiologicalData.collectInScope(_scope) { data ->
+        sensorStreamGateway.observePhysiological().collectInScope(_scope) { data ->
             if (isRecording) {
                 savePhysiologicalData(
-                    data.timeStampMilli,
-                    data.relax,
+                    data.timestamp,
+                    data.relaxation,
                     data.fatigue,
                     data.none,
                     data.concentration,
@@ -249,10 +235,10 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для кардио данных (ЧСС) */
-        capsuleDM.hrData.collectInScope(_scope) { hr ->
+        sensorStreamGateway.observeHR().collectInScope(_scope) { hr ->
             if (isRecording) {
                 saveCardioData(
-                    hr.timeStampMilli,
+                    hr.timestamp,
                     hr.heartRate,
                     hr.hasArtifacts,
                     hr.kaplanIndex,
@@ -265,31 +251,31 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для MEMS данных (акселерометр/гироскоп) */
-        capsuleDM.memsData.collectInScope(_scope) { mems ->
+        sensorStreamGateway.observeMEMS().collectInScope(_scope) { mems ->
             if (isRecording) {
                 saveMEMSData(
-                    mems.timeStampMilli,
-                    mems.accelerometer_x,
-                    mems.accelerometer_y,
-                    mems.accelerometer_z,
-                    mems.gyroscope_x,
-                    mems.gyroscope_y,
-                    mems.gyroscope_z
+                    mems.timestamp,
+                    mems.accelerometerX,
+                    mems.accelerometerY,
+                    mems.accelerometerZ,
+                    mems.gyroscopeX,
+                    mems.gyroscopeY,
+                    mems.gyroscopeZ
                 )
             }
         }
         Log.d("RecordManger", "start connecting Productivity")
         /** Слушатель для данных продуктивности */
-        capsuleDM.productivityData.collectInScope(_scope) { productivity ->
+        sensorStreamGateway.observeProductivity().collectInScope(_scope) { productivity ->
             Log.d("RecordManager", "Productivity data received in collector! isRecording=$isRecording")
-            Log.d("RecordManager", "Productivity: time=${productivity.timeStampMilli}, value=${productivity.productivity}")
+            Log.d("RecordManager", "Productivity: time=${productivity.timestamp}, value=${productivity.productivity}")
             if (isRecording) {
                 saveProductivityData(
-                    productivity.timeStampMilli,
+                    productivity.timestamp,
                     productivity.gravity,
                     productivity.productivity,
                     productivity.fatigue,
-                    productivity.reverse_fatique,
+                    productivity.reverseFatigue,
                     productivity.relaxation,
                     productivity.concentration
                 )
@@ -297,10 +283,10 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для индексов продуктивности */
-        capsuleDM.productivityIndexData.collectInScope(_scope) { productivityIndexes ->
+        sensorStreamGateway.observeProductivityIndexes().collectInScope(_scope) { productivityIndexes ->
             if (isRecording) {
                 saveProductivityIndexData(
-                    productivityIndexes.time,
+                    productivityIndexes.timestamp,
                     productivityIndexes.relaxation,
                     productivityIndexes.stress,
                     productivityIndexes.gravityBaseline,
@@ -315,11 +301,11 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для базовых значений продуктивности */
-        capsuleDM.productivityBaselineData.collectInScope(_scope) { productivityBaseline ->
+        sensorStreamGateway.observeProductivityBaseline().collectInScope(_scope) { productivityBaseline ->
 
             if (isRecording) {
                 saveProductivityBaselineData(
-                    productivityBaseline.time,
+                    productivityBaseline.timestamp,
                     productivityBaseline.gravity,
                     productivityBaseline.productivity,
                     productivityBaseline.fatigue,
@@ -332,10 +318,10 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для физиологических базовых значений */
-        capsuleDM.physiologicalBaselineData.collectInScope(_scope) { physiologicalBaseline ->
+        sensorStreamGateway.observePhysiologicalBaseline().collectInScope(_scope) { physiologicalBaseline ->
             if (isRecording) {
                 savePhysiologicalBaselineData(
-                    physiologicalBaseline.time,
+                    physiologicalBaseline.timestamp,
                     physiologicalBaseline.alpha,
                     physiologicalBaseline.beta,
                     physiologicalBaseline.alphaGravity,
@@ -346,31 +332,31 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для эмоциональных данных */
-        capsuleDM.emotionalData.collectInScope(_scope) { emotion ->
+        sensorStreamGateway.observeEmotional().collectInScope(_scope) { emotion ->
             if (isRecording) {
                 saveEmotionalData(
-                    emotion.timeStampMilli,
+                    emotion.timestamp,
                     emotion.attention,
                     emotion.relaxation,
-                    emotion.cognitive_load,
-                    emotion.cognitive_control,
-                    emotion.self_control
+                    emotion.cognitiveLoad,
+                    emotion.cognitiveControl,
+                    emotion.selfControl
                 )
             }
         }
 
         /** Слушатель для сырых данных ЭЭГ */
-        capsuleDM.eegRawData.collectInScope(_scope) { eegRaw ->
+        sensorStreamGateway.observeEEGRaw().collectInScope(_scope) { eegRaw ->
             if (isRecording) {
-                saveEEGRAWData(eegRaw.timeStampMilli, eegRaw.channel1, eegRaw.channel2)
+                saveEEGRAWData(eegRaw.timestamp, eegRaw.channel1, eegRaw.channel2)
             }
         }
 
         /** Слушатель для обработанных данных ЭЭГ */
-        capsuleDM.eegProcessedData.collectInScope(_scope) { eegProceed ->
+        sensorStreamGateway.observeEEGProcessed().collectInScope(_scope) { eegProceed ->
             if (isRecording) {
                 saveEEGPROCEEDData(
-                    eegProceed.timeStampMilli,
+                    eegProceed.timestamp,
                     eegProceed.channel1,
                     eegProceed.channel2
                 )
@@ -378,12 +364,12 @@ class RecordManager @Inject constructor(
         }
 
         /** Слушатель для артефактов ЭЭГ */
-        capsuleDM.eegArtifacts.collectInScope(_scope) { eegArt ->
+        sensorStreamGateway.observeEEGArtifacts().collectInScope(_scope) { eegArt ->
             if (isRecording) {
                 saveEEGArtifactData(
-                    eegArt.timeStampMilli,
-                    eegArt.artifactsChannel1,
-                    eegArt.artifactsChannel2,
+                    eegArt.timestamp,
+                    eegArt.artifactChannel1,
+                    eegArt.artifactChannel2,
                     eegArt.qualityChannel1,
                     eegArt.qualityChannel2
                 )
@@ -410,7 +396,7 @@ class RecordManager @Inject constructor(
         delta: Float,
         smr: Float
     ) {
-        if (userId.isNotEmpty() && expeditionId.isNotEmpty() && alpha <= 1.0) {
+        if (userId.isNotEmpty() && expeditionId.isNotEmpty()) {
             metricsRepository.saveNFBMetric(
                 time,
                 userId,
@@ -424,11 +410,7 @@ class RecordManager @Inject constructor(
             )
             Log.d("RecordManager", "NFB data saved: alpha=$alpha, beta=$beta")
         } else {
-            if (alpha > 1) {
-                Log.e("RecordManager", "Invalid NFB data")
-            } else {
-                Log.e("RecordManager", "Cannot save NFB data: userId or expeditionId is empty")
-            }
+            Log.e("RecordManager", "Cannot save NFB data: userId or expeditionId is empty")
         }
     }
 

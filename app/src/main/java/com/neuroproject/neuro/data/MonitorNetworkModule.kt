@@ -37,7 +37,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object MonitorNetworkModule {
 
-    private const val DEFAULT_BASE_URL = "http://10.240.68.80:5000"
+    private const val DEFAULT_BASE_URL = "http://10.240.68.80:5000/"
 
     /**
      * Предоставление Preferences для хранения адреса сервера
@@ -115,20 +115,25 @@ class ServerAddressPreferences @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    private val DEFAULT_BASE_URL = "http://10.240.68.80:5000"
+    private val DEFAULT_BASE_URL = "http://10.240.68.80:5000/"
     private val prefs = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
 
     /**
      * Получение сохраненного адреса сервера
      */
     fun getServerAddress(): String {
-        return prefs.getString("server_address", DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL
+        return normalizeBaseUrl(prefs.getString("server_address", DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL)
     }
 
     /**
      * Сохранение адреса сервера
      */
     fun saveServerAddress(address: String) {
-        prefs.edit().putString("server_address", address).apply()
+        prefs.edit().putString("server_address", normalizeBaseUrl(address)).apply()
+    }
+
+    private fun normalizeBaseUrl(address: String): String {
+        val trimmed = address.trim()
+        return if (trimmed.endsWith("/")) trimmed else "$trimmed/"
     }
 }

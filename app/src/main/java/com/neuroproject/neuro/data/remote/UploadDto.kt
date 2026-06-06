@@ -253,7 +253,9 @@ data class NfbMetricDto(
     @SerializedName("delta")
     val delta: Double,
     @SerializedName("smr")
-    val smr: Double
+    val smr: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант NFB метрик */
@@ -275,7 +277,9 @@ data class NfbMetricCompressedDto(
     @SerializedName("delta")
     val delta: Double,
     @SerializedName("smr")
-    val smr: Double
+    val smr: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== ФИЗИОЛОГИЧЕСКИЕ МЕТРИКИ ====================
@@ -318,7 +322,9 @@ data class PhysiologicalMetricDto(
     @SerializedName("nfbArtifacts")
     val nfbArtifacts: Int,
     @SerializedName("cardioArtifacts")
-    val cardioArtifacts: Int
+    val cardioArtifacts: Int,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант физиологических метрик */
@@ -346,7 +352,9 @@ data class PhysiologicalMetricCompressedDto(
     @SerializedName("nfbArtifacts")
     val nfbArtifacts: Int,
     @SerializedName("cardioArtifacts")
-    val cardioArtifacts: Int
+    val cardioArtifacts: Int,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== ЭЭГ МЕТРИКИ ====================
@@ -369,7 +377,9 @@ data class EEGRawMetricDto(
     @SerializedName("channel1")
     val channel1: Float,
     @SerializedName("channel2")
-    val channel2: Float
+    val channel2: Float,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант сырых данных ЭЭГ */
@@ -385,7 +395,9 @@ data class EEGRawMetricCompressedDto(
     @SerializedName("channel1")
     val channel1: Float,
     @SerializedName("channel2")
-    val channel2: Float
+    val channel2: Float,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /**
@@ -405,7 +417,9 @@ data class EEGProceedMetricDto(
     @SerializedName("channel1")
     val channel1: Float,
     @SerializedName("channel2")
-    val channel2: Float
+    val channel2: Float,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант обработанных данных ЭЭГ */
@@ -421,7 +435,9 @@ data class EEGProceedMetricCompressedDto(
     @SerializedName("channel1")
     val channel1: Float,
     @SerializedName("channel2")
-    val channel2: Float
+    val channel2: Float,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /**
@@ -450,7 +466,9 @@ data class EEGArtifactMetricDto(
     @SerializedName("qualityChannel1")
     val qualityChannel1: Float,
     @SerializedName("qualityChannel2")
-    val qualityChannel2: Float
+    val qualityChannel2: Float,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант артефактов ЭЭГ */
@@ -470,7 +488,9 @@ data class EEGArtifactMetricCompressedDto(
     @SerializedName("qualityChannel1")
     val qualityChannel1: Float,
     @SerializedName("qualityChannel2")
-    val qualityChannel2: Float
+    val qualityChannel2: Float,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== MEMS МЕТРИКИ ====================
@@ -507,7 +527,9 @@ data class MemsMetricDto(
     @SerializedName("gyroscopeY")
     val gyroscopeY: Double,
     @SerializedName("gyroscopeZ")
-    val gyroscopeZ: Double
+    val gyroscopeZ: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант MEMS данных */
@@ -531,7 +553,9 @@ data class MemsMetricCompressedDto(
     @SerializedName("gyroscopeY")
     val gyroscopeY: Double,
     @SerializedName("gyroscopeZ")
-    val gyroscopeZ: Double
+    val gyroscopeZ: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== ПРОДУКТИВНОСТЬ ====================
@@ -568,7 +592,9 @@ data class ProductivityMetricDto(
     @SerializedName("relaxation")
     val relaxation: Double,
     @SerializedName("concentration")
-    val concentration: Double
+    val concentration: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант метрик продуктивности */
@@ -592,7 +618,9 @@ data class ProductivityMetricCompressedDto(
     @SerializedName("relaxation")
     val relaxation: Double,
     @SerializedName("concentration")
-    val concentration: Double
+    val concentration: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== ЭМОЦИОНАЛЬНЫЕ МЕТРИКИ ====================
@@ -626,7 +654,9 @@ data class EmotionalMetricDto(
     @SerializedName("cognitiveControl")
     val cognitiveControl: Double,
     @SerializedName("selfControl")
-    val selfControl: Double
+    val selfControl: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант эмоциональных метрик */
@@ -648,7 +678,9 @@ data class EmotionalMetricCompressedDto(
     @SerializedName("cognitiveControl")
     val cognitiveControl: Double,
     @SerializedName("selfControl")
-    val selfControl: Double
+    val selfControl: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== КАРДИО МЕТРИКИ ====================
@@ -688,7 +720,9 @@ data class CardioMetricDto(
     @SerializedName("skinContact")
     val skinContact: Int,
     @SerializedName("stressIndex")
-    val stressIndex: Double
+    val stressIndex: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /** Сжатый вариант кардио метрик */
@@ -714,7 +748,9 @@ data class CardioMetricCompressedDto(
     @SerializedName("skinContact")
     val skinContact: Int,
     @SerializedName("stressIndex")
-    val stressIndex: Double
+    val stressIndex: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 // ==================== БАЗОВЫЕ ЗНАЧЕНИЯ ====================
@@ -748,7 +784,9 @@ data class PhysiologicalBaselineDto(
     @SerializedName("betaGravity")
     val betaGravity: Double,
     @SerializedName("concentration")
-    val concentration: Double
+    val concentration: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /**
@@ -774,7 +812,9 @@ data class ProductivityBaselineDto(
     @SerializedName("relaxation")
     val relaxation: Double,
     @SerializedName("concentration")
-    val concentration: Double
+    val concentration: Double,
+    @Transient
+    val rowId: Long = 0L
 )
 
 /**
@@ -818,12 +858,14 @@ data class ProductivityIndexDto(
     @SerializedName("concentrationBaseline")
     val concentrationBaseline: Double,
     @SerializedName("hasArtifacts")
-    val hasArtifacts: Boolean
+    val hasArtifacts: Boolean,
+    @Transient
+    val rowId: Long = 0L
 )
 
 data class SessionDto(
     @SerializedName("session")
-    val session : Long,
+    val session : Int,
     @SerializedName("individualNumber")
     val individualNumber: String?,
     @SerializedName("expeditionId")
@@ -872,6 +914,7 @@ data class SessionDto(
     val objectiveFatigue: String?,
     @SerializedName("objectiveStress")
     val objectiveStress: String?,
-    val passingPrematurely: Boolean?
-
+    val passingPrematurely: Boolean?,
+    @Transient
+    val localSessionId: Long? = null
 )

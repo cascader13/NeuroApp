@@ -8,10 +8,11 @@ interface AuthRepository {
     fun saveUserId(userId: String)
     fun clearSavedData()
     fun hasSavedData(): Boolean
-
     fun getUserIdHistory(): List<String>
-
     fun removeFromHistory(userId: String)
-
     fun clearHistory()
+    suspend fun getUserId(): String
+    suspend fun getExpeditionId(): String
+
+    suspend fun saveExpeditionId(expeditionId: String)
 }

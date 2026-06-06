@@ -12,14 +12,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.neuroproject.neuro.screens.calibration.CalibrationScreen
-import com.neuroproject.neuro.screens.devicesearch.DeviceSearchScreen
-import com.neuroproject.neuro.screens.history.ChartsScreen
-import com.neuroproject.neuro.screens.history.HistoryScreen
-import com.neuroproject.neuro.screens.history.SessionDetailScreen
-import com.neuroproject.neuro.screens.login.LoginScreen
-import com.neuroproject.neuro.screens.sensorchecking.SensorCheckingScreen
-import com.neuroproject.neuro.screens.subtest.SubTestScreen
+import com.neuroproject.neuro.presentation.screens.calibration.CalibrationScreen
+import com.neuroproject.neuro.presentation.screens.devicesearch.DeviceSearchScreen
+import com.neuroproject.neuro.presentation.screens.charts.ChartsScreen
+import com.neuroproject.neuro.presentation.screens.history.HistoryScreen
+import com.neuroproject.neuro.presentation.screens.sessiondetail.SessionDetailScreen
+import com.neuroproject.neuro.presentation.screens.login.LoginScreen
+import com.neuroproject.neuro.presentation.screens.sensorchecking.SensorCheckingScreen
+import com.neuroproject.neuro.presentation.screens.subtest.SubTestScreen
 
 /**
  * Граф навигации приложения
@@ -84,7 +84,7 @@ fun NeuroNavGraph(
          * Содержит кнопки для начала сессии и перехода в настройки
          */
         composable(NavDestinations.MAIN) {
-            com.neuroproject.neuro.screens.main.MainScreen(
+            com.neuroproject.neuro.presentation.screens.main.MainScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 vm = hiltViewModel(),
                 onStartSessionClick = {
@@ -104,7 +104,7 @@ fun NeuroNavGraph(
          * Управление ID пользователя, экспедиции и адресом сервера
          */
         composable(NavDestinations.SETTINGS) {
-            com.neuroproject.neuro.screens.settings.SettingsScreen(
+            com.neuroproject.neuro.presentation.screens.settings.SettingsScreen(
                 modifier = Modifier.safeDrawingPadding(),
                 onBackClick = {
                     navActions.navigateToMain()

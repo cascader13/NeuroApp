@@ -1,0 +1,627 @@
+// presentation/screens/subtest/SubTestViewModel.kt (исправленный)
+package com.neuroproject.neuro.presentation.screens.subtest
+
+import android.util.Log
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.neuroproject.neuro.domain.model.ExpeditionResult
+import com.neuroproject.neuro.domain.model.SessionCategory
+import com.neuroproject.neuro.domain.model.*
+import com.neuroproject.neuro.domain.usecase.expedition.CheckExpeditionIdUseCase
+import com.neuroproject.neuro.domain.usecase.expedition.SaveExpeditionIdUseCase
+import com.neuroproject.neuro.domain.usecase.fatigue.CalculateTotalFatigueUseCase
+import com.neuroproject.neuro.domain.usecase.recording.ObserveSensorStreamUseCase
+import com.neuroproject.neuro.domain.usecase.recording.SaveSensorSampleUseCase
+import com.neuroproject.neuro.domain.usecase.recording.StartRecordingUseCase
+import com.neuroproject.neuro.domain.usecase.recording.StopRecordingUseCase
+import com.neuroproject.neuro.domain.usecase.session.CreateSessionUseCase
+import com.neuroproject.neuro.domain.usecase.session.FinishSessionUseCase
+import com.neuroproject.neuro.domain.usecase.subjective.CalculateSubjectiveResultUseCase
+import com.neuroproject.neuro.domain.usecase.subjective.LoadQuestionsUseCase
+import com.neuroproject.neuro.domain.usecase.subjective.SaveAnswersUseCase
+import com.neuroproject.neuro.domain.repository.SensorEvent
+import com.neuroproject.neuro.domain.usecase.objective.*
+import com.neuroproject.neuro.domain.usecase.subjective.GetAnswerScoreByIdUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import javax.inject.Inject
+import kotlin.math.roundToInt
+
+@HiltViewModel
+class SubTestViewModel @Inject constructor(
+    // Use cases
+    private val loadQuestionsUseCase: LoadQuestionsUseCase,
+    private val saveAnswersUseCase: SaveAnswersUseCase,
+    private val calculateSubjectiveResultUseCase: CalculateSubjectiveResultUseCase,
+    private val calculateTotalFatigueUseCase: CalculateTotalFatigueUseCase,
+    private val createSessionUseCase: CreateSessionUseCase,
+    private val finishSessionUseCase: FinishSessionUseCase,
+    private val startRecordingUseCase: StartRecordingUseCase,
+    private val stopRecordingUseCase: StopRecordingUseCase,
+    private val observeSensorStreamUseCase: ObserveSensorStreamUseCase,
+    private val saveSensorSampleUseCase: SaveSensorSampleUseCase,
+    private val checkExpeditionIdUseCase: CheckExpeditionIdUseCase,
+    private val saveExpeditionIdUseCase: SaveExpeditionIdUseCase,
+    private val getAnswerScoreByIdUseCase: GetAnswerScoreByIdUseCase,
+    private val calculateObjectiveFatigueUseCase: CalculateObjectiveFatigueUseCase,
+    private val getAllMinuteMetricsUseCase: GetAllMinuteMetricsUseCase,
+    private val saveMinuteFatigueResultUseCase: SaveMinuteFatigueResultUseCase,
+    private val getAvailableMinutesCountUseCase: GetAvailableMinutesCountUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(SubTestUiState())
+    val uiState: StateFlow<SubTestUiState> = _uiState.asStateFlow()
+
+    private val _showExpeditionDialog = MutableStateFlow(false)
+    val showExpeditionDialog: StateFlow<Boolean> = _showExpeditionDialog.asStateFlow()
+
+    private val _expeditionInputError = MutableStateFlow<String?>(null)
+    val expeditionInputError: StateFlow<String?> = _expeditionInputError.asStateFlow()
+
+    var passingPrematurely = false
+
+    private val _questions = MutableStateFlow<List<SubjectiveQuestion>>(emptyList())
+    val questions: StateFlow<List<SubjectiveQuestion>> = _questions.asStateFlow()
+
+    private val _currentQuestionIndex = MutableStateFlow(0)
+    val currentQuestionIndex: StateFlow<Int> = _currentQuestionIndex.asStateFlow()
+
+    val currentQuestion: StateFlow<SubjectiveQuestion?> = combine(
+        questions, currentQuestionIndex
+    ) { questions, index ->
+        questions.getOrNull(index)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _answers = mutableStateMapOf<Int, Int>()
+    private val _answersList = MutableStateFlow<List<SubjectiveAnswer>>(emptyList())
+    private val _previousAnswers = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val previousAnswers: StateFlow<Map<Int, Int>> = _previousAnswers.asStateFlow()
+
+
+    private var currentSession: Session? = null
+    private var timerJob: Job? = null
+    private var sensorJob: Job? = null
+
+    // Timer state
+    private val _timeLeftMillis = MutableStateFlow(10 * 60 * 1000L)
+    private var isTimerRunning = false
+    val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
+
+    private fun getDefaultSessionCategory(): SessionCategory {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        return when (hour) {
+            in 5..11 -> SessionCategory.MORNING
+            in 12..17 -> SessionCategory.DAY
+            in 18..23 -> SessionCategory.EVENING
+            else -> SessionCategory.TECHNICAL
+        }
+    }
+
+    // Проверка expeditionId при инициализации
+    init {
+        loadQuestions()
+        observeSensorData()
+        checkExpeditionId()
+    }
+
+    private fun checkExpeditionId() {
+        viewModelScope.launch {
+            val result = checkExpeditionIdUseCase()
+            when (result) {
+                is ExpeditionResult.Success -> {
+                    _showExpeditionDialog.value = false
+                    // Можно продолжить нормальную работу
+                }
+                is ExpeditionResult.NotSet -> {
+                    _showExpeditionDialog.value = true
+                }
+                is ExpeditionResult.Error -> {
+                    _showExpeditionDialog.value = true
+                    _expeditionInputError.value = result.message
+                }
+            }
+        }
+    }
+
+    fun saveExpeditionId(expeditionId: String) {
+        viewModelScope.launch {
+            _expeditionInputError.value = null
+            val result = saveExpeditionIdUseCase(expeditionId)
+            when (result) {
+                is ExpeditionResult.Success -> {
+                    _showExpeditionDialog.value = false
+                    // После успешного сохранения можно продолжить
+                }
+                is ExpeditionResult.Error -> {
+                    _expeditionInputError.value = result.message
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun dismissExpeditionDialog() {
+        viewModelScope.launch {
+            val result = checkExpeditionIdUseCase()
+            if (result is ExpeditionResult.Success) {
+                _showExpeditionDialog.value = false
+            }
+        }
+    }
+
+    private fun loadQuestions() {
+        viewModelScope.launch {
+            val questions = loadQuestionsUseCase()
+            _questions.value = questions
+        }
+    }
+
+    private fun observeSensorData() {
+        sensorJob = viewModelScope.launch {
+            observeSensorStreamUseCase().collect { event ->
+                when (event) {
+                    is SensorEvent.ProductivityScore -> {
+                        updateCalibrationProgress(event.data)
+                    }
+                    else -> {
+                        currentSession?.let { session ->
+                            if (session.sessionId != 0L) {
+                                when (event) {
+                                    is SensorEvent.NFB -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.HR -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.Physiological -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.MEMS -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.Productivity -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.Emotional -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.EEGRaw -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.EEGProcessed -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.EEGArtifact -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.ProductivityBaseline -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.ProductivityIndexes -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    is SensorEvent.PhysiologicalBaseline -> {
+                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    }
+                                    else -> {}
+                                }
+                            } else {
+                                Log.w("SubTestViewModel", "Session ID is 0, skipping save for ${event.javaClass.simpleName}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateCalibrationProgress(sample: ProductivityScoreSample) {
+        val progress = (sample.score * 100).roundToInt()
+        val isReady = sample.score >= 1.0f
+
+        val currentState = _uiState.value.screenState
+        if (currentState is SubTestScreenState.SessionSettings) {
+            _uiState.update {
+                it.copy(
+                    screenState = currentState.copy(
+                        isCalibrationReady = isReady,
+                        calibrationProgressPercent = progress
+                    ),
+                    isCalibrationReady = isReady,
+                    calibrationProgressPercent = progress
+                )
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    isCalibrationReady = isReady,
+                    calibrationProgressPercent = progress
+                )
+            }
+        }
+    }
+
+    fun updateDuration(durationMinutes: Int) {
+        _timeLeftMillis.value = durationMinutes * 60 * 1000L
+        val currentState = _uiState.value.screenState
+        if (currentState is SubTestScreenState.SessionSettings) {
+            _uiState.update {
+                it.copy(
+                    screenState = currentState.copy(
+                        durationMinutes = durationMinutes
+                    )
+                )
+            }
+        }
+    }
+
+    fun updateCategory(category: SessionCategory) {
+        val currentState = _uiState.value.screenState
+        if (currentState is SubTestScreenState.SessionSettings) {
+            _uiState.update {
+                it.copy(
+                    screenState = currentState.copy(
+                        category = category
+                    )
+                )
+            }
+        }
+    }
+
+    val calibrationProgress: StateFlow<Int> = _uiState.map { it.calibrationProgressPercent }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = 0
+    )
+
+    private suspend fun loadPreviousAnswers(questions: List<SubjectiveQuestion>): Map<Int, Int> {
+        val previousAnswers = mutableMapOf<Int, Int>()
+        for (question in questions) {
+            try {
+                val score = getAnswerScoreByIdUseCase(question.id)
+                if (score != null && score > 0 && score <= 10) {
+                    previousAnswers[question.id] = score
+                }
+            } catch (e: Exception) {
+                Log.e("SubTestViewModel", "Error loading previous answer for question ${question.id}", e)
+            }
+        }
+        return previousAnswers
+    }
+
+    fun startTest() {
+        viewModelScope.launch {
+            currentSession = createSessionUseCase(
+                durationMinutes = getCurrentDurationMinutes(),
+                category = getCurrentCategory()
+            )
+
+            startRecordingUseCase()
+            startTimer(_timeLeftMillis.value)
+
+            // Загружаем предыдущие ответы перед показом вопросов
+            val previousAnswers = loadPreviousAnswers(_questions.value)
+
+            _uiState.update {
+                it.copy(
+                    screenState = SubTestScreenState.Question(
+                        questions = _questions.value,
+                        currentIndex = 0,
+                        currentAnswer = null,
+                        previousAnswers = previousAnswers
+                    )
+                )
+            }
+        }
+    }
+
+    private fun getCurrentDurationMinutes(): Int {
+        val state = _uiState.value.screenState
+        return if (state is SubTestScreenState.SessionSettings) {
+            state.durationMinutes
+        } else {
+            _uiState.value.selectedDurationMinutes
+        }
+    }
+
+    private fun getCurrentCategory(): SessionCategory {
+        val state = _uiState.value.screenState
+        return if (state is SubTestScreenState.SessionSettings) {
+            state.category
+        } else {
+            _uiState.value.selectedCategory
+        }
+    }
+
+    private fun startTimer(durationMillis: Long) {
+        timerJob?.cancel()
+        _timeLeftMillis.value = durationMillis
+        timerJob = viewModelScope.launch {
+            while (_timeLeftMillis.value > 0) {
+                delay(1000L)
+                _timeLeftMillis.value = (_timeLeftMillis.value - 1000L).coerceAtLeast(0)
+                val currentState = _uiState.value.screenState
+                if (currentState is SubTestScreenState.Waiting) {
+                    _uiState.update {
+                        it.copy(
+                            screenState = currentState.copy(
+                                timeLeftMillis = _timeLeftMillis.value
+                            )
+                        )
+                    }
+                }
+            }
+            if (_timeLeftMillis.value <= 0) {
+                onTimerFinished()
+            }
+        }
+    }
+
+    private fun onTimerFinished() {
+        isTimerRunning = false
+        when (_uiState.value.screenState) {
+            is SubTestScreenState.Waiting,
+            is SubTestScreenState.Comment -> {
+                finishTest()
+            }
+            else -> {
+                if (_uiState.value.screenState is SubTestScreenState.Question) {
+                    finishTest()
+                }
+            }
+        }
+    }
+
+    fun goToInstruction() {
+        _uiState.update {
+            it.copy(screenState = SubTestScreenState.Instruction)
+        }
+    }
+
+    fun loadPreviousAnswerForQuestion(questionId: Int) {
+        viewModelScope.launch {
+            try {
+                val score = getAnswerScoreByIdUseCase(questionId)
+                if (score != null && score > 0) {
+                    _previousAnswers.update {
+                        it.toMutableMap().apply { put(questionId, score) }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SubTestViewModel", "Error loading previous answer for question $questionId", e)
+            }
+        }
+    }
+
+    fun onAnswerSelected(value: Int) {
+        val question = currentQuestion.value ?: return
+        _answers[question.id] = value
+
+        val currentState = _uiState.value.screenState
+        if (currentState is SubTestScreenState.Question) {
+            _uiState.update {
+                it.copy(
+                    screenState = currentState.copy(currentAnswer = value)
+                )
+            }
+        }
+    }
+
+    fun onSaveAnswer() {
+        val currentState = _uiState.value.screenState
+        if (currentState !is SubTestScreenState.Question) return
+
+        val question = currentState.questions.getOrNull(currentState.currentIndex) ?: return
+        val answerValue = _answers[question.id] ?: return
+
+        val answer = SubjectiveAnswer(
+            questionId = question.id,
+            value = answerValue
+        )
+
+        val currentAnswers = _answersList.value.toMutableList()
+        currentAnswers.add(answer)
+        _answersList.value = currentAnswers
+
+        if (currentState.currentIndex < currentState.questions.lastIndex) {
+            val nextIndex = currentState.currentIndex + 1
+            _currentQuestionIndex.value = nextIndex
+
+            _uiState.update {
+                it.copy(
+                    screenState = currentState.copy(
+                        currentIndex = nextIndex,
+                        currentAnswer = _answers[currentState.questions[nextIndex].id]
+                        // previousAnswers остается без изменений
+                    )
+                )
+            }
+        } else {
+            _uiState.update {
+                it.copy(screenState = SubTestScreenState.Comment)
+            }
+        }
+    }
+
+    fun onCommentChanged(newComment: String) {
+        _uiState.update { it.copy(comment = newComment) }
+    }
+
+    fun onFinishTestClick() {
+        if (_timeLeftMillis.value <= 0) {
+            finishTest()
+        } else {
+            _uiState.update {
+                it.copy(
+                    screenState = SubTestScreenState.Waiting(
+                        timeLeftMillis = _timeLeftMillis.value,
+                        totalDurationMillis = getCurrentDurationMinutes() * 60 * 1000L
+                    )
+                )
+            }
+        }
+    }
+
+    fun forceStopTest() {
+        viewModelScope.launch {
+            isTimerRunning = false
+            timerJob?.cancel()
+            timerJob = null
+            stopRecordingUseCase()
+            passingPrematurely = true
+            finishTest()
+        }
+    }
+
+    private suspend fun calculateObjectiveResult(): ObjectiveFatigueResult? {
+        val session = currentSession ?: return null
+
+        return try {
+            // Получаем количество доступных минут
+            val availableMinutes = getAvailableMinutesCountUseCase(session.sessionId)
+
+            if (availableMinutes == 0) {
+                Log.w("SubTestViewModel", "No minute data available for objective calculation")
+                return null
+            }
+
+            // Получаем метрики по всем минутам
+            val allMinuteMetrics = getAllMinuteMetricsUseCase(session.sessionId)
+
+            if (allMinuteMetrics.isEmpty()) {
+                Log.w("SubTestViewModel", "Failed to load minute metrics")
+                return null
+            }
+
+            // Рассчитываем объективный результат
+            val objectiveResult = calculateObjectiveFatigueUseCase(allMinuteMetrics)
+
+            // Сохраняем результаты по каждой минуте
+            allMinuteMetrics.forEach { minuteData ->
+                val cognitiveIndex = calculateCognitiveIndexForMinute(minuteData)
+                val physiologicalIndex = calculatePhysiologicalIndexForMinute(minuteData)
+                val psychologicalIndex = calculatePsychologicalIndexForMinute(minuteData)
+
+                saveMinuteFatigueResultUseCase(
+                    FatigueResult(
+                        minuteIndex = minuteData.minuteIndex,
+                        cognitive = cognitiveIndex,
+                        physiological = physiologicalIndex,
+                        psychological = psychologicalIndex,
+                        sessionId = session.sessionId
+                    )
+                )
+            }
+
+            objectiveResult
+        } catch (e: Exception) {
+            Log.e("SubTestViewModel", "Error calculating objective result", e)
+            null
+        }
+    }
+
+    private fun calculateCognitiveIndexForMinute(minuteData: MinuteFatigueData): Float {
+        // Используем те же веса, что и в CalculateObjectiveFatigueUseCase
+        return 0.30f * minuteData.cognitive.fatigue +
+                0.25f * minuteData.cognitive.concentration +
+                0.20f * minuteData.cognitive.productivity +
+                0.25f * minuteData.cognitive.cognitiveLoad
+    }
+
+    private fun calculatePhysiologicalIndexForMinute(minuteData: MinuteFatigueData): Float {
+        return 0.35f * minuteData.physiological.fatigue +
+                0.25f * minuteData.physiological.stress +
+                0.20f * minuteData.physiological.relax +
+                0.20f * minuteData.physiological.involvement
+    }
+
+    private fun calculatePsychologicalIndexForMinute(minuteData: MinuteFatigueData): Float {
+        return 0.30f * minuteData.psychological.cognitiveLoad +
+                0.25f * minuteData.psychological.relaxation +
+                0.25f * minuteData.psychological.selfControl +
+                0.20f * minuteData.psychological.cognitiveControl
+    }
+
+    private fun finishTest() {
+        viewModelScope.launch {
+            try {
+                stopRecordingUseCase()
+
+                currentSession?.let { session ->
+                    saveAnswersUseCase(session.sessionId, _answersList.value)
+                }
+
+                val subjectiveResult = calculateSubjectiveResultUseCase(
+                    questions = _questions.value,
+                    answers = _answersList.value
+                )
+
+                val objectiveResult = calculateObjectiveResult()
+
+                val fatigueSummary = if (objectiveResult != null) {
+                    calculateTotalFatigueUseCase(
+                        subjective = subjectiveResult,
+                        objective = objectiveResult
+                    )
+                } else {
+                    FatigueSummary(
+                        subjective = subjectiveResult,
+                        objective = ObjectiveFatigueResult(
+                            cognitiveIndex = 0,
+                            psychologicalIndex = 0,
+                            physiologicalIndex = 0,
+                            averageIndex = 0,
+                            fatigueLevel = "Недостаточно данных",
+                            stressLevel = "Недостаточно данных"
+                        ),
+                        total = TotalFatigueResult(
+                            cognitiveIndex = subjectiveResult.cognitiveIndex,
+                            psychologicalIndex = subjectiveResult.emotionalIndex,
+                            physiologicalIndex = subjectiveResult.physicalIndex,
+                            averageIndex = subjectiveResult.averageIndex
+                        )
+                    )
+                }
+
+                currentSession?.let { session ->
+                    finishSessionUseCase(
+                        session = session,
+                        fatigueSummary = fatigueSummary,
+                        comment = _uiState.value.comment.takeIf { it.isNotBlank() },
+                        passedPrematurely = passingPrematurely
+                    )
+                }
+
+                _uiState.update {
+                    it.copy(
+                        screenState = SubTestScreenState.Result(fatigueSummary)
+                    )
+                }
+
+            } catch (e: Exception) {
+                Log.e("SubTestViewModel", "Error finishing test", e)
+                _uiState.update {
+                    it.copy(
+                        screenState = SubTestScreenState.SessionSettings(),
+                        errorMessage = e.message
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        isTimerRunning = false
+        timerJob?.cancel()
+        sensorJob?.cancel()
+        viewModelScope.launch {
+            stopRecordingUseCase()
+        }
+    }
+}

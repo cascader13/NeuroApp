@@ -69,6 +69,12 @@ interface SessionDao {
     @Query("DELETE FROM sessions WHERE sessionId = :sessionId")
     suspend fun deleteSession(sessionId: Long)
 
+    @Query("SELECT * FROM sessions WHERE id = :userId ORDER BY sessionId DESC")
+    suspend fun getSessionsByUserId(userId: String): List<SessionEntity>
+
+
+
+
     // ========== Специализированные методы для обновления ==========
 
     /**

@@ -1,4 +1,4 @@
-package com.neuroproject.neuro.domain.usecases
+package com.neuroproject.neuro.domain.usecase
 
 import javax.inject.Inject
 

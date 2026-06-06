@@ -1,13 +1,11 @@
 #include <jni.h>
-// JNI Capsule Manager - Исправленная версия
+// JNI Capsule Manager - Исправленная версия для Clean Architecture
 //
-// Created by aseatari on 20.09.2024.
-// Refactored: 15 апреля 2026
+// Все колбэки направляются в JniCallbackHandler
 //
 
 #include "CCapsuleAPI.h"
 #include "helpers.h"
-#include <jni.h>
 
 #include <android/log.h>
 #include <mutex>
@@ -43,14 +41,12 @@ static clCIndividualNFBCalibrationStage stage = clCIndividualNFBCalibrationStage
 
 // JVM и Java объекты
 static JavaVM* javaVM = nullptr;
-static jobject javaCapsule = nullptr;
-static jclass capsuleClass = nullptr;
-static jclass deviceInfo = nullptr;
+static jclass callbackHandlerClass = nullptr;
+static jobject callbackHandlerInstance = nullptr;
+static jclass deviceInfoClass = nullptr;
 
 // Кэшированные method IDs (для производительности)
 static jmethodID mid_deviceConnectionState = nullptr;
-static jmethodID mid_onConnectionError = nullptr;
-static jmethodID mid_locatorEvent = nullptr;
 static jmethodID mid_onResistanceReceived = nullptr;
 static jmethodID mid_onCardioReceived = nullptr;
 static jmethodID mid_calibrationStateChanged = nullptr;
@@ -68,14 +64,15 @@ static jmethodID mid_onEEGRawDataReceived = nullptr;
 static jmethodID mid_onEEGProcessedDataReceived = nullptr;
 static jmethodID mid_onEEGArtifactsReceived = nullptr;
 static jmethodID mid_onBatteryChargeReceived = nullptr;
+static jmethodID mid_onDeviceFound = nullptr;
 
 // Мьютексы для thread safety
 static std::mutex deviceMutex;
-static std::mutex javaCapsuleMutex;
-static std::atomic<bool> stopRequested{false};  // FIX #7: atomic
+static std::mutex javaCallbackMutex;
+static std::atomic<bool> stopRequested{false};
 
 // ==========================================
-// RAII helper для JNI строк (FIX #8)
+// RAII helper для JNI строк
 // ==========================================
 class JniString {
 public:
@@ -89,10 +86,8 @@ public:
             env_->ReleaseStringUTFChars(jstr_, cstr_);
         }
     }
-    // Disable copy
     JniString(const JniString&) = delete;
     JniString& operator=(const JniString&) = delete;
-    // Move
     JniString(JniString&& other) noexcept : env_(other.env_), jstr_(other.jstr_), cstr_(other.cstr_) {
         other.cstr_ = nullptr;
         other.jstr_ = nullptr;
@@ -106,60 +101,52 @@ private:
 };
 
 // ==========================================
-// Safe Java Object Guard (FIX #6)
+// Safe Java Object Guard
 // ==========================================
-class JavaCapsuleGuard {
+class JavaCallbackGuard {
 public:
-    JavaCapsuleGuard() : env_(nullptr), capsule_(nullptr) {
-        std::lock_guard<std::mutex> lock(javaCapsuleMutex);
-        if (javaCapsule == nullptr) {
+    JavaCallbackGuard() : env_(nullptr), callback_(nullptr) {
+        std::lock_guard<std::mutex> lock(javaCallbackMutex);
+        if (callbackHandlerInstance == nullptr) {
             return;
         }
         if (javaVM->GetEnv((void**)&env_, JNI_VERSION_1_6) != JNI_OK) {
             javaVM->AttachCurrentThread(&env_, nullptr);
             attached_ = true;
         }
-        capsule_ = javaCapsule;
+        callback_ = callbackHandlerInstance;
     }
-    ~JavaCapsuleGuard() {
+    ~JavaCallbackGuard() {
         if (attached_ && env_) {
             javaVM->DetachCurrentThread();
         }
     }
     JNIEnv* env() const { return env_; }
-    jobject capsule() const { return capsule_; }
-    bool isValid() const { return env_ != nullptr && capsule_ != nullptr; }
-    // Disable copy/move
-    JavaCapsuleGuard(const JavaCapsuleGuard&) = delete;
-    JavaCapsuleGuard& operator=(const JavaCapsuleGuard&) = delete;
-    JavaCapsuleGuard(JavaCapsuleGuard&&) = delete;
-    JavaCapsuleGuard& operator=(JavaCapsuleGuard&&) = delete;
+    jobject callback() const { return callback_; }
+    bool isValid() const { return env_ != nullptr && callback_ != nullptr; }
+    JavaCallbackGuard(const JavaCallbackGuard&) = delete;
+    JavaCallbackGuard& operator=(const JavaCallbackGuard&) = delete;
+    JavaCallbackGuard(JavaCallbackGuard&&) = delete;
 private:
     JNIEnv* env_;
-    jobject capsule_;
+    jobject callback_;
     bool attached_ = false;
 };
 
 // ==========================================
-// Callbacks (ИСПРАВЛЕНЫ - используют JniResolver/JavaCapsuleGuard)
+// Callbacks (направляются в JniCallbackHandler)
 // ==========================================
 
 void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_DEBUG", "Connection State Changed: %d", state);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Connection State Changed: %d", state);
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null or env invalid");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Callback handler is null");
         return;
     }
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
-
-    if (!mid_deviceConnectionState) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
 
     jint stateValue = 0;
     switch (state) {
@@ -177,7 +164,7 @@ void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noex
             return;
     }
 
-    env->CallVoidMethod(capsule, mid_deviceConnectionState, stateValue);
+    env->CallVoidMethod(guard.callback(), mid_deviceConnectionState, stateValue);
 
     if (env->ExceptionCheck()) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in deviceConnectionState");
@@ -187,37 +174,12 @@ void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noex
 
 void onDeviceError(clCDevice, const char* error) noexcept {
     __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Device error: %s", error ? error : "null");
-
-    JavaCapsuleGuard guard;
-    if (!guard.isValid()) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null or env invalid");
-        return;
-    }
-
-    JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
-
-    if (!mid_onConnectionError) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    jstring errorStr = env->NewStringUTF(error ? error : "Unknown error");
-    if (errorStr) {
-        env->CallVoidMethod(capsule, mid_onConnectionError, errorStr);
-        env->DeleteLocalRef(errorStr);
-    }
-
-    if (env->ExceptionCheck()) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onConnectionError");
-        env->ExceptionClear();
-    }
+    // Ошибка логируется, но не отправляется в Kotlin (можно добавить при необходимости)
 }
 
 void onDeviceList(clCDeviceLocator, clCDeviceInfoList devices, clCDeviceLocator_FailReason fail_reason) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Locator event");
 
-    // FIX #2: Проверка device под мьютексом
     {
         std::lock_guard<std::mutex> lock(deviceMutex);
         if (device != nullptr) {
@@ -240,19 +202,13 @@ void onDeviceList(clCDeviceLocator, clCDeviceInfoList devices, clCDeviceLocator_
             return;
     }
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "javaCapsule is null or env invalid");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Callback handler is null");
         return;
     }
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
-
-    if (!mid_locatorEvent) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
 
     clCError error;
     int32_t szSensors = clCDeviceInfoList_GetCount(devices, &error);
@@ -261,67 +217,37 @@ void onDeviceList(clCDeviceLocator, clCDeviceInfoList devices, clCDeviceLocator_
         return;
     }
 
-    auto sensorsArray = env->NewObjectArray(static_cast<jsize>(szSensors), deviceInfo, nullptr);
-    if (env->ExceptionCheck() || !sensorsArray) {
-        env->ExceptionClear();
-        return;
-    }
-
-    // FIX #4: Кэшированный constructor method ID
-    static jmethodID deviceInfoCtor = nullptr;
-    if (!deviceInfoCtor) {
-        deviceInfoCtor = env->GetMethodID(deviceInfo, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
-        if (!deviceInfoCtor) {
-            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "DeviceInfo constructor not found");
-            return;
-        }
-    }
-
+    // Отправляем каждое устройство отдельно через onDeviceFound
     for (int32_t i = 0; i < szSensors; ++i) {
-        env->PushLocalFrame(4);  // Увеличили до 4 для безопасности
-
         clCDeviceInfo deviceDescriptor = clCDeviceInfoList_GetDeviceInfo(devices, i, &error);
         if (!error.success || !deviceDescriptor) {
-            env->PopLocalFrame(nullptr);
             continue;
         }
 
         const char* name = clCDeviceInfo_GetName(deviceDescriptor);
         const char* serial = clCDeviceInfo_GetSerial(deviceDescriptor);
 
-        jstring dName = name ? env->NewStringUTF(name) : nullptr;
-        jstring dID = serial ? env->NewStringUTF(serial) : nullptr;
+        if (name && serial) {
+            jstring jName = env->NewStringUTF(name);
+            jstring jSerial = env->NewStringUTF(serial);
 
-        if (dName && dID) {
-            jobject scObject = env->NewObject(deviceInfo, deviceInfoCtor, dName, dID);
-            if (scObject) {
-                env->SetObjectArrayElement(sensorsArray, i, scObject);
-            }
+            env->CallVoidMethod(guard.callback(), mid_onDeviceFound, jName, jSerial);
+
+            env->DeleteLocalRef(jName);
+            env->DeleteLocalRef(jSerial);
         }
-
-        env->PopLocalFrame(nullptr);
 
         if (env->ExceptionCheck()) {
-            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in device creation");
+            __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onDeviceFound");
             env->ExceptionClear();
         }
-    }
-
-    env->CallVoidMethod(capsule, mid_locatorEvent, sensorsArray);
-    env->DeleteLocalRef(sensorsArray);
-
-    if (env->ExceptionCheck()) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in locatorEvent");
-        env->ExceptionClear();
     }
 }
 
 void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
     int32_t count = clCResistance_GetCount(resistance);
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_RESISTANCE", "Resistances: %d", count);
-
     if (count < 4) {
-        __android_log_print(ANDROID_LOG_WARN, "CAPSULE_RES_RESISTANCE", "Not enough resistance channels");
+        __android_log_print(ANDROID_LOG_WARN, "CAPSULE", "Not enough resistance channels");
         return;
     }
 
@@ -330,18 +256,12 @@ void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
     double t3 = clCResistance_GetValue(resistance, 1);
     double t4 = clCResistance_GetValue(resistance, 2);
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onResistanceReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onResistanceReceived,
+    env->CallVoidMethod(guard.callback(), mid_onResistanceReceived,
                         static_cast<jdouble>(o1),
                         static_cast<jdouble>(o2),
                         static_cast<jdouble>(t3),
@@ -355,28 +275,20 @@ void onDeviceResistanceUpdate(clCDevice, clCResistance resistance) noexcept {
 
 void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept {
     if (!cardioData) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_CARDIO", "cardioData is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "cardioData is null");
         return;
     }
-
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "HeartRate: %f", cardioData->heartRate);
 
     if (cardioData->heartRate + cardioData->kaplanIndex == 0) {
         return;
     }
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onCardioReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onCardioReceived,
+    env->CallVoidMethod(guard.callback(), mid_onCardioReceived,
                         static_cast<jlong>(cardioData->timestampMilli),
                         static_cast<jfloat>(cardioData->heartRate),
                         static_cast<jboolean>(cardioData->hasArtifacts),
@@ -384,7 +296,7 @@ void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept
                         static_cast<jboolean>(cardioData->metricsAvailable),
                         static_cast<jboolean>(cardioData->motionArtifacts),
                         static_cast<jboolean>(cardioData->skinContact),
-                        static_cast<jboolean>(cardioData->stressIndex != 0.0f));  // FIX: stressIndex is float, not bool
+                        static_cast<jboolean>(cardioData->stressIndex != 0.0f));
 
     if (env->ExceptionCheck()) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onCardioReceived");
@@ -393,37 +305,18 @@ void onCardioIndexesUpdate(clCCardio, const clCCardio_Data* cardioData) noexcept
 }
 
 void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_calibrationStateChanged || !mid_onCalibrationReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method IDs not cached");
-        return;
-    }
-
-    // Проверка данных калибровки
     if (data == nullptr || data->failReason != clC_IndividualNFBCalibrationFailReason_None) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Calibration failed");
-        if (data) {
-            switch (data->failReason) {
-                case clC_IndividualNFBCalibrationFailReason_TooManyArtifacts:
-                    __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Too many artifacts");
-                    break;
-                case clC_IndividualNFBCalibrationFailReason_PeakIsABorder:
-                    __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Alpha peak matches border");
-                    break;
-                default:
-                    __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_INFB", "Reason unknown: %d", data->failReason);
-            }
-        }
-        env->CallVoidMethod(capsule, mid_calibrationStateChanged, static_cast<jint>(6));
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Calibration failed");
+        env->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(6));
         return;
     }
 
-    env->CallVoidMethod(capsule, mid_onCalibrationReceived,
+    env->CallVoidMethod(guard.callback(), mid_onCalibrationReceived,
                         static_cast<jfloat>(data->individualFrequency),
                         static_cast<jfloat>(data->individualPeakFrequency),
                         static_cast<jfloat>(data->individualPeakFrequencyPower),
@@ -433,12 +326,11 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
                         static_cast<jfloat>(data->lowerFrequency),
                         static_cast<jfloat>(data->upperFrequency));
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "IAF: %f, IAPF: %f",
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "IAF: %f, IAPF: %f",
                         data->individualFrequency, data->individualPeakFrequency);
 
-    env->CallVoidMethod(capsule, mid_calibrationStateChanged, static_cast<jint>(4));
+    env->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(4));
 
-    // FIX #14: Проверка на nullptr перед вызовами
     {
         std::lock_guard<std::mutex> lock(deviceMutex);
         if (ps) {
@@ -449,7 +341,7 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
         }
     }
 
-    env->CallVoidMethod(capsule, mid_calibrationStateChanged, static_cast<jint>(5));
+    env->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(5));
 
     if (env->ExceptionCheck()) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onCalibrated");
@@ -458,19 +350,12 @@ void onCalibrated(clCNFBCalibrator, const clCIndividualNFBData* data) noexcept {
 }
 
 void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
-
-    if (!mid_calibrationStateChanged) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
 
     clCError error;
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Calibration stage finished");
 
     std::lock_guard<std::mutex> lock(deviceMutex);
 
@@ -481,25 +366,25 @@ void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
 
     switch (stage) {
         case clCIndividualNFBCalibrationStage_1:
-            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 1 finished");
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stage 1 finished");
             stage = clCIndividualNFBCalibrationStage_2;
-            env->CallVoidMethod(capsule, mid_calibrationStateChanged, static_cast<jint>(1));
+            env->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(1));
             clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
             break;
         case clCIndividualNFBCalibrationStage_2:
-            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 2 finished");
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stage 2 finished");
             stage = clCIndividualNFBCalibrationStage_3;
-            env->CallVoidMethod(capsule, mid_calibrationStateChanged, static_cast<jint>(2));
+            env->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(2));
             clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
             break;
         case clCIndividualNFBCalibrationStage_3:
-            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 3 finished");
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stage 3 finished");
             stage = clCIndividualNFBCalibrationStage_4;
-            env->CallVoidMethod(capsule, mid_calibrationStateChanged, static_cast<jint>(3));
+            env->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(3));
             clCNFBCalibrator_CalibrateIndividualNFB(calibrator, stage, &error);
             break;
         case clCIndividualNFBCalibrationStage_4:
-            __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_INFB", "Stage 4 finished - calibration complete");
+            __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stage 4 finished - calibration complete");
             break;
     }
 
@@ -511,26 +396,16 @@ void onCalibrationStageFinishedEvent(clCNFBCalibrator) noexcept {
 
 void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
     if (!userState) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_NFB", "userState is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "userState is null");
         return;
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_NFB",
-                        "NFB update: alpha=%.3f, beta=%.3f, theta=%.3f",
-                        userState->alpha, userState->beta, userState->theta);
-
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onNFBReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onNFBReceived,
+    env->CallVoidMethod(guard.callback(), mid_onNFBReceived,
                         static_cast<jlong>(userState->timestampMilli),
                         static_cast<jfloat>(userState->alpha),
                         static_cast<jfloat>(userState->beta),
@@ -545,7 +420,7 @@ void onUpdateUserState(clCNFB, const clCNFB_UserState* userState) noexcept {
 }
 
 void onNFBErrorEvent(clCNFB, const char* error) noexcept {
-    __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_NFB", "NFB error: %s", error ? error : "null");
+    __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "NFB error: %s", error ? error : "null");
 }
 
 void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
@@ -558,18 +433,12 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
     const clCPoint3d gyroscope = clCMEMSTimedData_GetGyroscope(data, 0);
     const auto timestamp = clCMEMSTimedData_GetTimestampMilli(data, 0);
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onMEMSReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onMEMSReceived,
+    env->CallVoidMethod(guard.callback(), mid_onMEMSReceived,
                         static_cast<jlong>(timestamp),
                         static_cast<jfloat>(accelerometer.x),
                         static_cast<jfloat>(accelerometer.y),
@@ -586,24 +455,16 @@ void onMEMSUpdate(clCMEMS, clCMEMSTimedData data) noexcept {
 
 void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselines* baselines) noexcept {
     if (!baselines) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_PROD", "baselines is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "baselines is null");
         return;
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity baselines update");
-
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onProductivityBaselineReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onProductivityBaselineReceived,
+    env->CallVoidMethod(guard.callback(), mid_onProductivityBaselineReceived,
                         static_cast<jlong>(baselines->timestampMilli),
                         static_cast<jfloat>(baselines->gravity),
                         static_cast<jfloat>(baselines->productivity),
@@ -620,23 +481,16 @@ void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselin
 
 void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics* metrics) noexcept {
     if (!metrics) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_PROD", "metrics is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "metrics is null");
         return;
     }
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onProductivityReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    // FIX: Передаем timestampMilli один раз (в оригинале было дважды)
-    env->CallVoidMethod(capsule, mid_onProductivityReceived,
+    env->CallVoidMethod(guard.callback(), mid_onProductivityReceived,
                         static_cast<jlong>(metrics->timestampMilli),
                         static_cast<jdouble>(metrics->timestampMilli),
                         static_cast<jfloat>(metrics->gravityScore),
@@ -654,62 +508,16 @@ void onProductivityMetricsUpdate(clCProductivity, const clCProductivity_Metrics*
 
 void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes* indexes) noexcept {
     if (!indexes) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_PROD", "indexes is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "indexes is null");
         return;
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD",
-                        "Productivity indexes update, concentration=%.3f",
-                        indexes->concentrationBaseline);
-
-    // FIX #9: Добавлены break в switch!
-    float relax_index = 0;
-    switch (indexes->relaxation) {
-        case clCProductivity_RecommendationValue_Involvement:
-            relax_index = 0;
-            break;
-        case clCProductivity_RecommendationValue_Relaxation:
-            relax_index = 1;
-            break;
-        case clCProductivity_RecommendationValue_SlightFatigue:
-            relax_index = 2;
-            break;
-        case clCProductivity_RecommendationValue_SevereFatigue:
-            relax_index = 3;
-            break;
-        case clCProductivity_RecommendationValue_ChronicFatigue:
-            relax_index = 4;
-            break;
-        case clCProductivity_RecommendationValue_NoRecommendation:
-            relax_index = -1;
-            break;
-    }
-
-    float stress_index = 0;
-    switch (indexes->stress) {
-        case clCProductivity_StressValue_NoStress:
-            stress_index = 0;
-            break;
-        case clCProductivity_StressValue_Anxiety:
-            stress_index = 1;
-            break;
-        case clCProductivity_StressValue_Stress:
-            stress_index = 2;
-            break;
-    }
-
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onProductivityIndexesReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onProductivityIndexesReceived,
+    env->CallVoidMethod(guard.callback(), mid_onProductivityIndexesReceived,
                         static_cast<jlong>(indexes->timestampMilli),
                         static_cast<jfloat>(indexes->relaxation),
                         static_cast<jfloat>(indexes->stress),
@@ -728,21 +536,14 @@ void onProductivityIndexesUpdate(clCProductivity, const clCProductivity_Indexes*
 }
 
 void onProductivityCalibrationProgress(clCProductivity, float progress) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD",
-                        "Productivity baseline calibration progress: %.2f%%", progress);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Productivity calibration progress: %.2f%%", progress);
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onProductivityScore) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onProductivityScore, static_cast<jfloat>(progress));
+    env->CallVoidMethod(guard.callback(), mid_onProductivityScore, static_cast<jfloat>(progress));
 
     if (env->ExceptionCheck()) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onProductivityScore");
@@ -751,29 +552,21 @@ void onProductivityCalibrationProgress(clCProductivity, float progress) noexcept
 }
 
 void onProductivityIndividualNFBUpdate(clCProductivity) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PROD", "Productivity individual NFB updated");
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Productivity individual NFB updated");
 }
 
 void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologicalStates_Baselines* baselines) noexcept {
     if (!baselines) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_PHYS", "baselines is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "baselines is null");
         return;
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological baselines calibrated");
-
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onPhysiologicalBaselineReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onPhysiologicalBaselineReceived,
+    env->CallVoidMethod(guard.callback(), mid_onPhysiologicalBaselineReceived,
                         static_cast<jlong>(baselines->timestampMilli),
                         static_cast<jfloat>(baselines->alpha),
                         static_cast<jfloat>(baselines->beta),
@@ -788,29 +581,21 @@ void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologi
 }
 
 void onPhysiologicalCalibrationProgressUpdated(clCPhysiologicalStates, const float value) noexcept {
-    // FIX #10: Убран & (печатало адрес вместо значения)
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS",
-                        "Physiological baseline calibration progress: %.2f%%", value);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Physiological calibration progress: %.2f%%", value);
 }
 
 void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalStates_Value* value) noexcept {
     if (!value) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_PHYS", "value is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "value is null");
         return;
     }
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onPhysiologicalReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onPhysiologicalReceived,
+    env->CallVoidMethod(guard.callback(), mid_onPhysiologicalReceived,
                         static_cast<jlong>(value->timestampMilli),
                         static_cast<jfloat>(value->relaxation),
                         static_cast<jfloat>(value->fatigue),
@@ -828,27 +613,21 @@ void onPhysiologicalStatesUpdate(clCPhysiologicalStates, const clCPhysiologicalS
 }
 
 void onPhysiologicalStatesIndividualNFBUpdate(clCPhysiologicalStates) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_PHYS", "Physiological individual NFB updated");
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Physiological individual NFB updated");
 }
 
 void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noexcept {
     if (!states) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_RES_EMOTION", "states is null");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "states is null");
         return;
     }
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onEmotionReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onEmotionReceived,
+    env->CallVoidMethod(guard.callback(), mid_onEmotionReceived,
                         static_cast<jlong>(states->timestampMilli),
                         static_cast<jfloat>(states->attention),
                         static_cast<jfloat>(states->relaxation),
@@ -863,7 +642,7 @@ void onEmotionalStatesUpdate(clCEmotions, const clCEmotions_States* states) noex
 }
 
 void onCardioCalibrated(clCCardio) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_CARDIO", "Cardio calibrated");
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Cardio calibrated");
 }
 
 // ==========================================
@@ -877,26 +656,15 @@ void onEEGData(clCDevice, clCEEGTimedData eegData) noexcept {
     const int32_t samples = clCEEGTimedData_GetSamplesCount(eegData, &error);
     const int32_t channels = clCEEGTimedData_GetChannelsCount(eegData, &error);
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_EEG",
-                        "EEG data: %d channels, %d samples", channels, samples);
-
     if (channels < 2 || samples <= 0) {
         return;
     }
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onEEGRawDataReceived || !mid_onEEGProcessedDataReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method IDs not cached");
-        return;
-    }
-
-    // Отправляем только первый сэмпл (как в оригинале - "Костыль")
-    // TODO: Оптимизировать - отправлять батчами
     const int32_t sampleIndex = 0;
     const long timestamp = clCEEGTimedData_GetTimestampMilli(eegData, sampleIndex, &error);
 
@@ -905,7 +673,7 @@ void onEEGData(clCDevice, clCEEGTimedData eegData) noexcept {
     float rawCh2 = clCEEGTimedData_GetRawValue(eegData, 1, sampleIndex, &error);
 
     if (error.success) {
-        env->CallVoidMethod(capsule, mid_onEEGRawDataReceived,
+        env->CallVoidMethod(guard.callback(), mid_onEEGRawDataReceived,
                             static_cast<jlong>(timestamp),
                             static_cast<jfloat>(rawCh1),
                             static_cast<jfloat>(rawCh2));
@@ -916,7 +684,7 @@ void onEEGData(clCDevice, clCEEGTimedData eegData) noexcept {
     float processedCh2 = clCEEGTimedData_GetProcessedValue(eegData, 1, sampleIndex, &error);
 
     if (error.success) {
-        env->CallVoidMethod(capsule, mid_onEEGProcessedDataReceived,
+        env->CallVoidMethod(guard.callback(), mid_onEEGProcessedDataReceived,
                             static_cast<jlong>(timestamp),
                             static_cast<jfloat>(processedCh1),
                             static_cast<jfloat>(processedCh2));
@@ -935,20 +703,12 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
     const int32_t channels = clCEEGArtifacts_GetChannelsCount(eegArtifacts, &error);
     const long timestamp = clCEEGArtifacts_GetTimestampMilli(eegArtifacts, &error);
 
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_RES_EEG", "EEG artifacts: %d channels", channels);
-
     if (channels < 2) return;
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
-
-    if (!mid_onEEGArtifactsReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
 
     bool artifact1 = clCEEGArtifacts_GetArtifactByChannel(eegArtifacts, 0, &error);
     bool artifact2 = clCEEGArtifacts_GetArtifactByChannel(eegArtifacts, 1, &error);
@@ -956,7 +716,7 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
     float quality1 = clCEEGArtifacts_GetEEGQuality(eegArtifacts, 0, &error);
     float quality2 = clCEEGArtifacts_GetEEGQuality(eegArtifacts, 1, &error);
 
-    env->CallVoidMethod(capsule, mid_onEEGArtifactsReceived,
+    env->CallVoidMethod(guard.callback(), mid_onEEGArtifactsReceived,
                         static_cast<jlong>(timestamp),
                         static_cast<jboolean>(artifact1),
                         static_cast<jboolean>(artifact2),
@@ -970,30 +730,23 @@ void onEEGArtifacts(clCDevice, clCEEGArtifacts eegArtifacts) noexcept {
 }
 
 void onBattery(clCDevice, uint8_t charge) noexcept {
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE_BATTERY", "Battery: %d%%", charge);
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Battery: %d%%", charge);
 
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (!guard.isValid()) return;
 
     JNIEnv* env = guard.env();
-    jobject capsule = guard.capsule();
 
-    if (!mid_onBatteryChargeReceived) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE_DEBUG", "Method ID not cached");
-        return;
-    }
-
-    env->CallVoidMethod(capsule, mid_onBatteryChargeReceived,
-                        static_cast<jfloat>(charge));
+    env->CallVoidMethod(guard.callback(), mid_onBatteryChargeReceived, static_cast<jfloat>(charge));
 
     if (env->ExceptionCheck()) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onEmotionReceived");
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Exception in onBatteryChargeReceived");
         env->ExceptionClear();
     }
 }
 
 // ==========================================
-// Cleanup (FIX #12 - правильное освобождение)
+// Cleanup
 // ==========================================
 
 void removeAll() {
@@ -1001,54 +754,33 @@ void removeAll() {
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Removing all resources");
 
-    // Capsule API не имеет Destroy методов для classification объектов.
-    // Они автоматически освобождаются при clCDevice_Release(device).
-    // Порядок важен: сначала зануляем все, потом релизим device.
-    
-    if (emotions) {
-        emotions = nullptr;  // Будет освобождён автоматически
-    }
-    if (ps) {
-        ps = nullptr;  // Будет освобождён автоматически
-    }
-    if (productivity) {
-        productivity = nullptr;  // Будет освобождён автоматически
-    }
-    if (cardio) {
-        cardio = nullptr;  // Будет освобождён автоматически
-    }
-    if (mems) {
-        mems = nullptr;  // Будет освобождён автоматически
-    }
-    if (nfb) {
-        nfb = nullptr;  // Будет освобождён автоматически
-    }
-    if (calibrator) {
-        calibrator = nullptr;  // Привязан к device, освободится автоматически
-    }
-    
-    // Сначала отключаем устройство (если подключено)
+    emotions = nullptr;
+    ps = nullptr;
+    productivity = nullptr;
+    mems = nullptr;
+    cardio = nullptr;
+    nfb = nullptr;
+    calibrator = nullptr;
+
     if (device) {
         clCError error;
-        clCDevice_Disconnect(device, &error);  // Асинхронный disconnect
-        clCDevice_Release(device);  // Освобождает device + все classification объекты
+        clCDevice_Disconnect(device, &error);
+        clCDevice_Release(device);
         device = nullptr;
     }
-    
-    // Локатор имеет отдельный Destroy метод
+
     if (locator) {
         clCDeviceLocator_Destroy(locator);
         locator = nullptr;
     }
 
-    // Очищаем javaCapsule
-    std::lock_guard<std::mutex> javaLock(javaCapsuleMutex);
-    if (javaCapsule) {
+    std::lock_guard<std::mutex> javaLock(javaCallbackMutex);
+    if (callbackHandlerInstance) {
         JNIEnv* env = nullptr;
         if (javaVM && javaVM->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
-            env->DeleteGlobalRef(javaCapsule);
+            env->DeleteGlobalRef(callbackHandlerInstance);
         }
-        javaCapsule = nullptr;
+        callbackHandlerInstance = nullptr;
     }
 
     stopRequested.store(false);
@@ -1057,7 +789,7 @@ void removeAll() {
 }
 
 // ==========================================
-// JNI Lifecycle (FIX #1 - добавлен JNI_OnUnload)
+// JNI Lifecycle
 // ==========================================
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* aReserved) {
@@ -1074,67 +806,82 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* aReserved) {
         return JNI_ERR;
     }
 
-    // Кэшируем классы
-    jclass tempCapsuleClass = env->FindClass("com/neuroproject/neuro/services/CapsuleDeviceManager");
-    if (!tempCapsuleClass) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to find CapsuleDeviceManager class");
+    // Находим класс JniCallbackHandler
+    jclass tempCallbackHandlerClass = env->FindClass("com/neuroproject/neuro/jni/JniCallbackHandler");
+    if (!tempCallbackHandlerClass) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to find JniCallbackHandler class");
         return JNI_ERR;
     }
-    capsuleClass = static_cast<jclass>(env->NewGlobalRef(tempCapsuleClass));
-    env->DeleteLocalRef(tempCapsuleClass);
+    callbackHandlerClass = static_cast<jclass>(env->NewGlobalRef(tempCallbackHandlerClass));
+    env->DeleteLocalRef(tempCallbackHandlerClass);
 
-    jclass tempDeviceInfo = env->FindClass("com/neuroproject/neuro/models/DeviceInfo");
-    if (!tempDeviceInfo) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to find DeviceInfo class");
+    // Получаем instance JniCallbackHandler через getInstance()
+    jmethodID getInstance = env->GetStaticMethodID(callbackHandlerClass, "getInstance", "()Lcom/neuroproject/neuro/jni/JniCallbackHandler;");
+    if (!getInstance) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to find getInstance method");
         return JNI_ERR;
     }
-    deviceInfo = static_cast<jclass>(env->NewGlobalRef(tempDeviceInfo));
-    env->DeleteLocalRef(tempDeviceInfo);
 
-    // Кэшируем method IDs (FIX #4)
-    mid_deviceConnectionState = env->GetMethodID(capsuleClass, "deviceConnectionState", "(I)V");
-//    mid_onConnectionError = env->GetMethodID(capsuleClass, "onConnectionError", "(Ljava/lang/String;)V");
-    mid_locatorEvent = env->GetMethodID(capsuleClass, "locatorEvent", "([Lcom/neuroproject/neuro/models/DeviceInfo;)V");
-    mid_onResistanceReceived = env->GetMethodID(capsuleClass, "onResistanceReceived", "(DDDD)V");
-    mid_onCardioReceived = env->GetMethodID(capsuleClass, "onCardioReceived", "(JFZFZZZF)V");
-    mid_calibrationStateChanged = env->GetMethodID(capsuleClass, "calibrationStateChanged", "(I)V");
-    mid_onCalibrationReceived = env->GetMethodID(capsuleClass, "onCalibrationReceived", "(FFFFFFFF)V");
-    mid_onNFBReceived = env->GetMethodID(capsuleClass, "onNFBReceived", "(JFFFFF)V");
-    mid_onMEMSReceived = env->GetMethodID(capsuleClass, "onMEMSReceived", "(JFFFFFF)V");
-    mid_onProductivityBaselineReceived = env->GetMethodID(capsuleClass, "onProductivityBaselineReceived", "(JFFFFFF)V");
-    mid_onProductivityReceived = env->GetMethodID(capsuleClass, "onProductivityReceived", "(JDFFFFFF)V");
-    mid_onProductivityIndexesReceived = env->GetMethodID(capsuleClass, "onProductivityIndexesReceived", "(JFFFFFFFFZ)V");
-    mid_onProductivityScore = env->GetMethodID(capsuleClass, "onProductivityScore", "(F)V");
-    mid_onPhysiologicalBaselineReceived = env->GetMethodID(capsuleClass, "onPhysiologicalBaselineReceived", "(JFFFFF)V");
-    mid_onPhysiologicalReceived = env->GetMethodID(capsuleClass, "onPhysiologicalReceived", "(JFFFFFFZZ)V");
-    mid_onEmotionReceived = env->GetMethodID(capsuleClass, "onEmotionReceived", "(JFFFFF)V");
-    mid_onEEGRawDataReceived = env->GetMethodID(capsuleClass, "onEEGRawDataReceived", "(JFF)V");
-    mid_onEEGProcessedDataReceived = env->GetMethodID(capsuleClass, "onEEGProcessedDataReceived", "(JFF)V");
-    mid_onEEGArtifactsReceived = env->GetMethodID(capsuleClass, "onEEGArtifactsReceived", "(JZZFF)V");
-    mid_onBatteryChargeReceived = env->GetMethodID(capsuleClass, "onBatteryChargeReceived", "(F)V");
+    jobject instance = env->CallStaticObjectMethod(callbackHandlerClass, getInstance);
+    if (!instance) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to get JniCallbackHandler instance");
+        return JNI_ERR;
+    }
+    callbackHandlerInstance = env->NewGlobalRef(instance);
+    env->DeleteLocalRef(instance);
+
+    // Находим класс DeviceInfo (для совместимости, может не использоваться)
+    jclass tempDeviceInfo = env->FindClass("com/neuroproject/neuro/domain/model/DeviceInfo");
+    if (tempDeviceInfo) {
+        deviceInfoClass = static_cast<jclass>(env->NewGlobalRef(tempDeviceInfo));
+        env->DeleteLocalRef(tempDeviceInfo);
+    }
+
+    // Кэшируем method IDs
+    mid_deviceConnectionState = env->GetMethodID(callbackHandlerClass, "deviceConnectionState", "(I)V");
+    mid_onResistanceReceived = env->GetMethodID(callbackHandlerClass, "onResistanceReceived", "(DDDD)V");
+    mid_onCardioReceived = env->GetMethodID(callbackHandlerClass, "onCardioReceived", "(JFZFZZZF)V");
+    mid_calibrationStateChanged = env->GetMethodID(callbackHandlerClass, "onCalibrationStateReceived", "(I)V");
+    mid_onCalibrationReceived = env->GetMethodID(callbackHandlerClass, "onCalibrationReceived", "(FFFFFFFF)V");
+    mid_onNFBReceived = env->GetMethodID(callbackHandlerClass, "onNFBReceived", "(JFFFFF)V");
+    mid_onMEMSReceived = env->GetMethodID(callbackHandlerClass, "onMEMSReceived", "(JFFFFFF)V");
+    mid_onProductivityBaselineReceived = env->GetMethodID(callbackHandlerClass, "onProductivityBaselineReceived", "(JFFFFFF)V");
+    mid_onProductivityReceived = env->GetMethodID(callbackHandlerClass, "onProductivityReceived", "(JDFFFFFF)V");
+    mid_onProductivityIndexesReceived = env->GetMethodID(callbackHandlerClass, "onProductivityIndexesReceived", "(JFFFFFFFFZ)V");
+    mid_onProductivityScore = env->GetMethodID(callbackHandlerClass, "onProductivityScore", "(F)V");
+    mid_onPhysiologicalBaselineReceived = env->GetMethodID(callbackHandlerClass, "onPhysiologicalBaselineReceived", "(JFFFFF)V");
+    mid_onPhysiologicalReceived = env->GetMethodID(callbackHandlerClass, "onPhysiologicalReceived", "(JFFFFFFZZ)V");
+    mid_onEmotionReceived = env->GetMethodID(callbackHandlerClass, "onEmotionReceived", "(JFFFFF)V");
+    mid_onEEGRawDataReceived = env->GetMethodID(callbackHandlerClass, "onEEGRawDataReceived", "(JFF)V");
+    mid_onEEGProcessedDataReceived = env->GetMethodID(callbackHandlerClass, "onEEGProcessedDataReceived", "(JFF)V");
+    mid_onEEGArtifactsReceived = env->GetMethodID(callbackHandlerClass, "onEEGArtifactsReceived", "(JZZFF)V");
+    mid_onBatteryChargeReceived = env->GetMethodID(callbackHandlerClass, "onBatteryChargeReceived", "(F)V");
+    mid_onDeviceFound = env->GetMethodID(callbackHandlerClass, "onDeviceFound", "(Ljava/lang/String;Ljava/lang/String;)V");
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "JNI initialized successfully");
 
     return JNI_VERSION_1_6;
 }
 
-// FIX #1: Добавлен JNI_OnUnload
 JNIEXPORT void JNICALL JNI_OnUnload(JavaVM* vm, void* reserved) {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "JNI_OnUnload - cleaning up");
 
     JNIEnv* env = nullptr;
     if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
-        if (capsuleClass) {
-            env->DeleteGlobalRef(capsuleClass);
-            capsuleClass = nullptr;
+        if (callbackHandlerClass) {
+            env->DeleteGlobalRef(callbackHandlerClass);
+            callbackHandlerClass = nullptr;
         }
-        if (deviceInfo) {
-            env->DeleteGlobalRef(deviceInfo);
-            deviceInfo = nullptr;
+        if (callbackHandlerInstance) {
+            env->DeleteGlobalRef(callbackHandlerInstance);
+            callbackHandlerInstance = nullptr;
+        }
+        if (deviceInfoClass) {
+            env->DeleteGlobalRef(deviceInfoClass);
+            deviceInfoClass = nullptr;
         }
     }
 
-    // Очищаем все ресурсы
     removeAll();
 
     javaVM = nullptr;
@@ -1143,37 +890,15 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM* vm, void* reserved) {
 }
 
 // ==========================================
-// JNI Methods (FIX #5, #8, #13, #14)
+// JNI Methods (вызываются из Kotlin)
 // ==========================================
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeInitCapsule(
-        JNIEnv* env, jobject thiz, jobject impl) {
+        JNIEnv* env, jobject thiz) {
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "nativeInitCapsule called");
-
-    if (!impl) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "impl is null");
-        return;
-    }
-
-    // FIX: Правильная работа с GlobalRef
-    {
-        std::lock_guard<std::mutex> lock(javaCapsuleMutex);
-        if (javaCapsule) {
-            env->DeleteGlobalRef(javaCapsule);
-            javaCapsule = nullptr;
-        }
-        javaCapsule = env->NewGlobalRef(impl);
-    }
-
-    if (!javaCapsule) {
-        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create GlobalRef (OOM or null impl)");
-        return;
-    }
-
-    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Capsule initialized successfully");
 }
 
 extern "C"
@@ -1217,7 +942,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
         return;
     }
 
-    // FIX #8: RAII для строки
     JniString deviceID(env, id);
     if (!deviceID.isValid()) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to get device ID string");
@@ -1228,7 +952,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
 
     std::lock_guard<std::mutex> lock(deviceMutex);
 
-    // FIX #14: Проверка на nullptr
     if (device) {
         __android_log_print(ANDROID_LOG_WARN, "CAPSULE", "Device already connected");
         return;
@@ -1247,12 +970,10 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
         return;
     }
 
-    // Регистрируем callbacks
     clCDevice_SetOnConnectionStatusChangedEvent(device, onConnectionStatusChanged);
     clCDevice_SetOnResistanceUpdateEvent(device, onDeviceResistanceUpdate);
     clCDevice_SetOnErrorEvent(device, onDeviceError);
 
-    // Инициализация метрик
     calibrator = clCNFBCalibrator_CreateOrGet(device);
     if (calibrator) {
         clCNFBCalibrator_SetOnCalibratedEvent(calibrator, onCalibrated);
@@ -1262,7 +983,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
     nfb = clCNFB_Create(device, &error);
     if (!error.success || !nfb) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to create NFB: %s", error.message);
-        // FIX #5: Cleanup при ошибке
         goto cleanup_error;
     }
     clCNFB_SetOnUserStateChangedEvent(nfb, onUpdateUserState);
@@ -1305,7 +1025,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
     clCDevice_SetOnEEGDataEvent(device, onEEGData);
     clCDevice_SetOnEEGArtifactsEvent(device, onEEGArtifacts);
 
-    // Подключение
     clCDevice_Connect(device, true, &error);
     if (!error.success) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Connection failed: %s", error.message);
@@ -1315,17 +1034,14 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeC
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Connection initiated successfully");
     return;
 
-// FIX #5: Centralized error cleanup
-cleanup_error:
+    cleanup_error:
     __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Cleaning up after connection error");
-    // Classification объекты не имеют Destroy - просто зануляем
     emotions = nullptr;
     ps = nullptr;
     productivity = nullptr;
     mems = nullptr;
     cardio = nullptr;
     nfb = nullptr;
-    // Device нужно освободить
     if (device) {
         clCDevice_Release(device);
         device = nullptr;
@@ -1340,7 +1056,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
     __android_log_print(ANDROID_LOG_DEBUG, "CAPSULE", "Start resistance");
 
     std::lock_guard<std::mutex> lock(deviceMutex);
-    // FIX #14: Проверка на nullptr
     if (!device) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Device not connected");
         return;
@@ -1360,11 +1075,9 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Start signal and HR");
 
-    // FIX #13: Убран лишний AttachCurrentThread (мы уже в Java потоке)
-
-    JavaCapsuleGuard guard;
+    JavaCallbackGuard guard;
     if (guard.isValid()) {
-        guard.env()->CallVoidMethod(guard.capsule(), mid_calibrationStateChanged, static_cast<jint>(0));
+        guard.env()->CallVoidMethod(guard.callback(), mid_calibrationStateChanged, static_cast<jint>(0));
     }
 
     std::lock_guard<std::mutex> lock(deviceMutex);
@@ -1412,7 +1125,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Start session");
     stopRequested.store(false);
-    // TODO: Implement session logic
 }
 
 extern "C"
@@ -1421,7 +1133,7 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
         JNIEnv* env, jobject thiz) {
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stop session");
-    stopRequested.store(true);  // FIX #7: atomic store
+    stopRequested.store(true);
 }
 
 extern "C"
@@ -1430,7 +1142,6 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeS
         JNIEnv* env, jobject thiz) {
 
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Stop resistance");
-    // TODO: Implement stop resistance
 }
 
 extern "C"
@@ -1451,14 +1162,14 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
     }
 
     clCIndividualNFBData prob{
-        .individualFrequency = indFrequency,
-        .individualPeakFrequency = indPeakFrequency,
-        .individualPeakFrequencyPower = indPeakFrequencyPower,
-        .individualPeakFrequencySuppression = indPeakFrequencySuppression,
-        .individualBandwidth = indBandwidth,
-        .individualNormalizedPower = indNormalizedPower,
-        .lowerFrequency = lowerFrequency,
-        .upperFrequency = upperFrequency
+            .individualFrequency = indFrequency,
+            .individualPeakFrequency = indPeakFrequency,
+            .individualPeakFrequencyPower = indPeakFrequencyPower,
+            .individualPeakFrequencySuppression = indPeakFrequencySuppression,
+            .individualBandwidth = indBandwidth,
+            .individualNormalizedPower = indNormalizedPower,
+            .lowerFrequency = lowerFrequency,
+            .upperFrequency = upperFrequency
     };
 
     clCError error;
@@ -1519,12 +1230,12 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
     }
 
     clCProductivity_Baselines prob{
-        .gravity = gravity,
-        .productivity = b_productivity,
-        .fatigue = fatigue,
-        .reverseFatigue = reverse_fatigue,
-        .relaxation = relaxation,
-        .concentration = concentration
+            .gravity = gravity,
+            .productivity = b_productivity,
+            .fatigue = fatigue,
+            .reverseFatigue = reverse_fatigue,
+            .relaxation = relaxation,
+            .concentration = concentration
     };
 
     clCError error;
@@ -1551,11 +1262,11 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
     }
 
     clCPhysiologicalStates_Baselines prob{
-        .alpha = alpha,
-        .beta = beta,
-        .alphaGravity = alpha_gravity,
-        .betaGravity = beta_gravity,
-        .concentration = concentration
+            .alpha = alpha,
+            .beta = beta,
+            .alphaGravity = alpha_gravity,
+            .betaGravity = beta_gravity,
+            .concentration = concentration
     };
 
     clCError error;
@@ -1563,4 +1274,12 @@ Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeI
     if (!error.success) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Failed to import physiological: %s", error.message);
     }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeDisconnect(
+        JNIEnv *env, jobject thiz) {
+    clCError error;
+    clCDevice_Disconnect(device, &error);
 }

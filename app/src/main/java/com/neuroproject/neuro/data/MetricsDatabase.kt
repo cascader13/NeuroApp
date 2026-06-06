@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.neuroproject.neuro.data.session.SessionDao
 import com.neuroproject.neuro.data.session.SessionEntity
@@ -79,7 +80,7 @@ import kotlinx.coroutines.launch
         FatigueResultEntity::class,
 
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -117,9 +118,23 @@ abstract class MetricsDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MetricsDatabase::class.java,
-                    "metrics_database_1"
-                )
-                    .fallbackToDestructiveMigration()  // При миграции пересоздаем БД
+                    "metrics_database_v7"
+                ).fallbackToDestructiveMigration()
+                    .addMigrations(object : Migration(2, 3) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL("ALTER TABLE sessions ADD COLUMN id TEXT")
+                        database.execSQL("ALTER TABLE sessions ADD COLUMN expedition_id TEXT")
+
+                        // 2. Заполняем из nfb_metrics (без LIMIT 1, т.к. данные уникальны)
+                        database.execSQL("""
+                            UPDATE sessions 
+                            SET 
+                            id = (SELECT id FROM nfb_metrics WHERE nfb_metrics.sessionId = sessions.sessionId),
+                            expedition_id = (SELECT expedition_id FROM nfb_metrics WHERE nfb_metrics.sessionId = sessions.sessionId)
+                            WHERE EXISTS (SELECT 1 FROM nfb_metrics WHERE nfb_metrics.sessionId = sessions.sessionId)
+                        """)
+                    }
+                })
                     .addCallback(object : Callback() {
                         /**
                          * Заполнение базы данных вопросами при первом создании

@@ -92,7 +92,7 @@ class DynamicServerManager @Inject constructor(
      */
     fun updateServerAddress(newAddress: String): MonitorApiService {
         saveServerAddress(newAddress)
-        currentApiService = createApiService(newAddress)
+        currentApiService = createApiService(normalizeBaseUrl(newAddress))
         return currentApiService!!
     }
 
@@ -126,8 +126,9 @@ class DynamicServerManager @Inject constructor(
      * @return Текущий адрес сервера или адрес по умолчанию
      */
     fun getCurrentServerAddress(): String {
-        return prefs.getString("server_address", "http://10.240.68.80:5000")
-            ?: "http://10.240.68.80:5000"
+        return normalizeBaseUrl(
+            prefs.getString("server_address", DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL
+        )
     }
 
     /**
@@ -136,6 +137,15 @@ class DynamicServerManager @Inject constructor(
      * @param address Адрес сервера для сохранения
      */
     private fun saveServerAddress(address: String) {
-        prefs.edit().putString("server_address", address).apply()
+        prefs.edit().putString("server_address", normalizeBaseUrl(address)).apply()
+    }
+
+    private fun normalizeBaseUrl(address: String): String {
+        val trimmed = address.trim()
+        return if (trimmed.endsWith("/")) trimmed else "$trimmed/"
+    }
+
+    companion object {
+        private const val DEFAULT_BASE_URL = "http://10.240.68.80:5000/"
     }
 }

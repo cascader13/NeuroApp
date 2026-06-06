@@ -2,18 +2,16 @@ package com.neuroproject.neuro.data.repository
 
 import com.neuroproject.neuro.data.FatigueDao
 import com.neuroproject.neuro.data.MetricsDao
-import com.neuroproject.neuro.models.CognitiveFatigueMetrics
-import com.neuroproject.neuro.models.PhysiologicalFatigueMetrics
-import com.neuroproject.neuro.models.PsychologicalFatigueMetrics
+import com.neuroproject.neuro.domain.model.CognitiveFatigueMetrics
+import com.neuroproject.neuro.domain.model.PhysiologicalFatigueMetrics
+import com.neuroproject.neuro.domain.model.PsychologicalFatigueMetrics
 import com.neuroproject.neuro.utils.Normalization
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log
 import com.neuroproject.neuro.data.FatigueResultEntity
-import com.neuroproject.neuro.models.FatigueResult
-import com.neuroproject.neuro.models.SessionFatigueResult
-import kotlinx.serialization.builtins.NothingSerializer
-import kotlin.math.min
+import com.neuroproject.neuro.domain.model.FatigueResult
+import com.neuroproject.neuro.domain.model.SessionFatigueResult
 
 
 @Singleton

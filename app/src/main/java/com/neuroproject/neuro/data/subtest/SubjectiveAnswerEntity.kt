@@ -47,7 +47,6 @@ import com.neuroproject.neuro.data.session.SessionEntity
 data class SubjectiveAnswerEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-
     val sessionId: Long,      // К какой сессии относится
     val questionId: Int,      // Какой вопрос
     val value: Int            // Ответ (1-10)
