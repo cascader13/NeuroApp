@@ -8,7 +8,7 @@ import com.neuroproject.neuro.domain.model.HistoryState
 import com.neuroproject.neuro.domain.model.Result
 import com.neuroproject.neuro.domain.model.Session
 import com.neuroproject.neuro.domain.usecase.DeleteSessionUseCase
-import com.neuroproject.neuro.domain.usecase.GetSessionsUseCase
+import com.neuroproject.neuro.domain.usecase.session.GetSessionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

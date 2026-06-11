@@ -1,5 +1,4 @@
-// domain/usecase/GetSessionsUseCase.kt
-package com.neuroproject.neuro.domain.usecase
+package com.neuroproject.neuro.domain.usecase.session
 
 import com.neuroproject.neuro.domain.model.Result
 import com.neuroproject.neuro.domain.model.Session

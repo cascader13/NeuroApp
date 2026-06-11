@@ -3,7 +3,7 @@ package com.neuroproject.neuro.presentation.screens.charts
 import android.util.Log
 import com.neuroproject.neuro.presentation.BaseViewModel
 import com.neuroproject.neuro.domain.model.Session
-import com.neuroproject.neuro.domain.usecase.GetSessionsUseCase
+import com.neuroproject.neuro.domain.usecase.session.GetSessionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
