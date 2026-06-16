@@ -64,6 +64,7 @@ class CapsuleCallbackMapper @Inject constructor() {
             concentration = concentration,
             involvement = involvement,
             stress = stress,
+            none = none,
             nfbArtifacts = nfbArtifacts,
             cardioArtifacts = cardioArtifacts
         )

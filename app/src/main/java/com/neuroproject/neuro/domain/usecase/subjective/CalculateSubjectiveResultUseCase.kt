@@ -6,8 +6,28 @@ import com.neuroproject.neuro.domain.model.SubjectiveQuestion
 import com.neuroproject.neuro.domain.model.SubjectiveResult
 import javax.inject.Inject
 
+/**
+ * Use case расчёта субъективных показателей утомления.
+ *
+ * Преобразует ответы пользователя на опросник в числовые индексы (0-100)
+ * по трём блокам: когнитивный, эмоциональный, физический.
+ *
+ * Алгоритм:
+ * 1. Группирует вопросы по [BlockType]
+ * 2. Для каждого вопроса применяет трансформацию: если вопрос обратный
+ *    ([SubjectiveQuestion.isReversed]), значение инвертируется (11 - ответ)
+ * 3. Суммирует ответы и нормализует к диапазону 0-100
+ * 4. Ответы по умолчанию (нет ответа) = 5
+ */
 class CalculateSubjectiveResultUseCase @Inject constructor() {
 
+    /**
+     * Рассчитывает субъективные показатели.
+     *
+     * @param questions список вопросов опросника.
+     * @param answers ответы пользователя.
+     * @return [SubjectiveResult] с индексами по блокам и средним.
+     */
     operator fun invoke(
         questions: List<SubjectiveQuestion>,
         answers: List<SubjectiveAnswer>

@@ -6,13 +6,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import com.neuroproject.neuro.services.CapsuleDeviceManager
-import com.neuroproject.neuro.services.RecordManager
+import com.neuroproject.neuro.services.RecordingController
 
 
 @HiltViewModel
 class BlankViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val recManager: RecordManager,
+    private val recordingController: RecordingController,
     val dm: CapsuleDeviceManager
 ) : ViewModel() {
 

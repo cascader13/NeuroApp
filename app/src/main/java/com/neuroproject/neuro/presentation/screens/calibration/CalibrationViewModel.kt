@@ -9,6 +9,10 @@ import com.neuroproject.neuro.domain.usecase.calibration.CancelCalibrationUseCas
 import com.neuroproject.neuro.domain.usecase.calibration.CheckPreviousCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.ImportCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.ObserveCalibrationStageUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.ObserveResistanceUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.StopResistanceCheckUseCase
+import com.neuroproject.neuro.presentation.screens.sensorchecking.toElectrodeStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -16,6 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,7 +31,10 @@ class CalibrationViewModel @Inject constructor(
     private val importCalibrationUseCase: ImportCalibrationUseCase,
     private val cancelCalibrationUseCase: CancelCalibrationUseCase,
     private val observeCalibrationStageUseCase: ObserveCalibrationStageUseCase,
-    private val metronomePlayer: MetronomePlayer
+    private val metronomePlayer: MetronomePlayer,
+    private val observeResistanceUseCase: ObserveResistanceUseCase,
+    private val startResistanceCheckUseCase: StartResistanceCheckUseCase,
+    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalibrationUiState())
@@ -37,6 +46,32 @@ class CalibrationViewModel @Inject constructor(
     init {
         checkPreviousCalibration()
         observeCalibrationStage()
+        observeResistance()
+        startResistanceCheck()
+    }
+
+    private fun startResistanceCheck() {
+        viewModelScope.launch {
+            try {
+                delay(500)
+                startResistanceCheckUseCase()
+            } catch (e: Exception) {
+                Log.e("Calibration", "Error starting resistance check", e)
+            }
+        }
+    }
+
+    private fun observeResistance() {
+        observeResistanceUseCase()
+            .catch { error ->
+                Log.e("Calibration", "Error observing resistance", error)
+            }
+            .onEach { resistanceData ->
+                _uiState.value = _uiState.value.copy(
+                    electrodeStates = resistanceData.toElectrodeStates()
+                )
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun checkPreviousCalibration() {
@@ -201,5 +236,12 @@ class CalibrationViewModel @Inject constructor(
         super.onCleared()
         calibrationJob?.cancel()
         metronomePlayer.stop()
+        viewModelScope.launch {
+            try {
+                stopResistanceCheckUseCase()
+            } catch (e: Exception) {
+                Log.e("Calibration", "Error stopping resistance check", e)
+            }
+        }
     }
 }

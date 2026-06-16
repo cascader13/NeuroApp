@@ -2,7 +2,7 @@
 package com.neuroproject.neuro.data.local
 
 import com.neuroproject.neuro.data.MetricsDao
-import com.neuroproject.neuro.data.CalibrationHistoryEntity
+import com.neuroproject.neuro.data.entity.CalibrationHistoryEntity
 import com.neuroproject.neuro.domain.model.CalibrationSample
 import com.neuroproject.neuro.domain.repository.CalibrationRepository
 import kotlinx.coroutines.flow.Flow
@@ -44,7 +44,18 @@ fun CalibrationHistoryEntity.toDomain(): CalibrationSample = CalibrationSample(
     individualBandwidth = individualBandwidth,
     individualNormalizedPower = individualNormalizedPower,
     lowerFrequency = lowerFrequency,
-    upperFrequency = upperFrequency
+    upperFrequency = upperFrequency,
+    productivityGravity = productivityGravity,
+    productivityProductivity = productivityProductivity,
+    productivityFatigue = productivityFatigue,
+    productivityReverseFatigue = productivityReverseFatigue,
+    productivityRelaxation = productivityRelaxation,
+    productivityConcentration = productivityConcentration,
+    physiologicalAlpha = physiologicalAlpha,
+    physiologicalBeta = physiologicalBeta,
+    physiologicalAlphaGravity = physiologicalAlphaGravity,
+    physiologicalBetaGravity = physiologicalBetaGravity,
+    physiologicalConcentration = physiologicalConcentration
 )
 
 fun CalibrationHistoryEntity.fromDomain(userId: String, data: CalibrationSample): CalibrationHistoryEntity {

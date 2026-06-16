@@ -68,6 +68,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.R
+import com.neuroproject.neuro.components.ResistanceIndicatorBar
 import com.neuroproject.neuro.domain.model.BlockType
 import com.neuroproject.neuro.domain.model.FatigueSummary
 import com.neuroproject.neuro.domain.model.ObjectiveFatigueResult
@@ -154,58 +155,71 @@ fun SubTestScreenContent(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        when (val screenState = uiState.screenState) {
-            is SubTestScreenState.SessionSettings -> {
-                SessionSettingsContent(
-                    durationMinutes = screenState.durationMinutes,
-                    selectedCategory = screenState.category,
-                    isCalibrationReady = screenState.isCalibrationReady,
-                    calibrationProgressPercent = screenState.calibrationProgressPercent.coerceAtLeast(calibrationProgress),
-                    onDurationChange = onUpdateDuration,
-                    onCategoryChange = onUpdateCategory,
-                    onNext = onGoToInstruction
-                )
-            }
-            is SubTestScreenState.Instruction -> {
-                InstructionContent(onStartClick = onStartTest)
-            }
-            is SubTestScreenState.Question -> {
-                val question = screenState.questions.getOrNull(screenState.currentIndex)
-                if (question == null) {
-                    EmptyQuestionsContent()
-                } else {
-                    val previousAnswer = screenState.previousAnswers[question.id]
+        Column(modifier = Modifier.fillMaxSize()) {
+            ResistanceIndicatorBar(
+                electrodeStates = uiState.electrodeStates,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
-                    QuestionsContent(
-                        question = question,
-                        currentIndex = screenState.currentIndex,
-                        totalCount = screenState.questions.size,
-                        currentAnswer = screenState.currentAnswer,
-                        previousAnswer = previousAnswer,
-                        onAnswerSelected = onAnswerSelected,
-                        onSaveClick = onSaveAnswer
-                    )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                when (val screenState = uiState.screenState) {
+                    is SubTestScreenState.SessionSettings -> {
+                        SessionSettingsContent(
+                            durationMinutes = screenState.durationMinutes,
+                            selectedCategory = screenState.category,
+                            isCalibrationReady = screenState.isCalibrationReady,
+                            calibrationProgressPercent = screenState.calibrationProgressPercent.coerceAtLeast(calibrationProgress),
+                            onDurationChange = onUpdateDuration,
+                            onCategoryChange = onUpdateCategory,
+                            onNext = onGoToInstruction
+                        )
+                    }
+                    is SubTestScreenState.Instruction -> {
+                        InstructionContent(onStartClick = onStartTest)
+                    }
+                    is SubTestScreenState.Question -> {
+                        val question = screenState.questions.getOrNull(screenState.currentIndex)
+                        if (question == null) {
+                            EmptyQuestionsContent()
+                        } else {
+                            val previousAnswer = screenState.previousAnswers[question.id]
+
+                            QuestionsContent(
+                                question = question,
+                                currentIndex = screenState.currentIndex,
+                                totalCount = screenState.questions.size,
+                                currentAnswer = screenState.currentAnswer,
+                                previousAnswer = previousAnswer,
+                                onAnswerSelected = onAnswerSelected,
+                                onSaveClick = onSaveAnswer
+                            )
+                        }
+                    }
+                    is SubTestScreenState.Comment -> {
+                        CommentContent(
+                            comment = uiState.comment,
+                            onCommentChange = onCommentChanged,
+                            onFinishClick = onFinishTestClick
+                        )
+                    }
+                    is SubTestScreenState.Waiting -> {
+                        WaitingContent(
+                            timeLeftMillis = screenState.timeLeftMillis,
+                            totalDurationMillis = screenState.totalDurationMillis,
+                            onForceStop = onForceStop
+                        )
+                    }
+                    is SubTestScreenState.Result -> {
+                        ResultContent(
+                            result = screenState.summary,
+                            onFinish = onFinish
+                        )
+                    }
                 }
-            }
-            is SubTestScreenState.Comment -> {
-                CommentContent(
-                    comment = uiState.comment,
-                    onCommentChange = onCommentChanged,
-                    onFinishClick = onFinishTestClick
-                )
-            }
-            is SubTestScreenState.Waiting -> {
-                WaitingContent(
-                    timeLeftMillis = screenState.timeLeftMillis,
-                    totalDurationMillis = screenState.totalDurationMillis,
-                    onForceStop = onForceStop
-                )
-            }
-            is SubTestScreenState.Result -> {
-                ResultContent(
-                    result = screenState.summary,
-                    onFinish = onFinish
-                )
             }
         }
     }

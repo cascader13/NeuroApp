@@ -40,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.R
 import com.neuroproject.neuro.components.BackButton
 import com.neuroproject.neuro.components.BackHandler
+import com.neuroproject.neuro.components.ResistanceIndicatorBar
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import com.neuroproject.neuro.ui.theme.ThemeMode
 
@@ -107,6 +108,11 @@ fun CalibrationScreenContent(
                 .padding(horizontal = 16.dp)
         ) {
             BackButton { onBackPressed() }
+
+            ResistanceIndicatorBar(
+                electrodeStates = uiState.electrodeStates,
+                modifier = Modifier.padding(top = 8.dp)
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

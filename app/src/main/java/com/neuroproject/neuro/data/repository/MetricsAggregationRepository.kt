@@ -9,7 +9,7 @@ import com.neuroproject.neuro.utils.Normalization
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log
-import com.neuroproject.neuro.data.FatigueResultEntity
+import com.neuroproject.neuro.data.entity.FatigueResultEntity
 import com.neuroproject.neuro.domain.model.FatigueResult
 import com.neuroproject.neuro.domain.model.SessionFatigueResult
 
@@ -85,10 +85,6 @@ class MetricsAggregationRepository @Inject constructor(
     }
 
     suspend fun writeResultForMinute(fatigueResult: FatigueResult){
-        fatigueDao.insertFatiqueResult(FatigueResultEntity(sessionId = fatigueResult.sessionId, minuteIndex = fatigueResult.minuteIndex, cognitiveResult = fatigueResult.cognitive, physioligicalResult = fatigueResult.physiological, psychologicalResultval = fatigueResult.psychological))
-    }
-
-    suspend fun writeResultforSessia(sessionFatigueResul: SessionFatigueResult){
-        // TODO
+        fatigueDao.insertFatiqueResult(FatigueResultEntity(sessionId = fatigueResult.sessionId, minuteIndex = fatigueResult.minuteIndex, cognitiveResult = fatigueResult.cognitive, physiologicalResult = fatigueResult.physiological, psychologicalResult = fatigueResult.psychological))
     }
 }

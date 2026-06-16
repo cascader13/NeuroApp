@@ -141,7 +141,6 @@ fun NeuroNavGraph(
             route = NavDestinations.SESSION_DETAIL,
             arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
         ) { backStackEntry ->
-            val sessionId = backStackEntry.arguments?.getLong("sessionId") ?: 0L
             SessionDetailScreen(
                 onBackClick = { navActions.navigateBack() }
             )

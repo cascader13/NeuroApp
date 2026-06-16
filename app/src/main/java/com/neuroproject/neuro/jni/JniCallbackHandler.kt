@@ -2,7 +2,7 @@ package com.neuroproject.neuro.jni
 
 import android.content.Context
 import android.util.Log
-import com.neuroproject.neuro.data.CalibrationHistoryEntity
+import com.neuroproject.neuro.data.entity.CalibrationHistoryEntity
 import kotlinx.coroutines.launch
 
 /**

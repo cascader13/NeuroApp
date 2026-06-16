@@ -9,18 +9,10 @@ class LoadQuestionsUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): List<SubjectiveQuestion> {
         var questions = repository.getQuestions()
-        android.util.Log.d("LoadQuestionsUseCase", "Loaded ${questions.size} questions")
-        questions.forEach {
-            android.util.Log.d("LoadQuestionsUseCase", "Question: ${it.id} - ${it.text}")
-        }
-        if (questions.isEmpty()){
+        if (questions.isEmpty()) {
             repository.importQuestions()
         }
         questions = repository.getQuestions()
-        android.util.Log.d("LoadQuestionsUseCase", "Loaded ${questions.size} questions")
-        questions.forEach {
-            android.util.Log.d("LoadQuestionsUseCase", "Question: ${it.id} - ${it.text}")
-        }
         return questions
     }
 }

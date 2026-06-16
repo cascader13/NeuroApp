@@ -1,6 +1,7 @@
 package com.neuroproject.neuro.presentation.screens.subtest
 
 import com.neuroproject.neuro.domain.model.*
+import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeStates
 
 sealed class SubTestScreenState {
     data class SessionSettings(
@@ -38,5 +39,6 @@ data class SubTestUiState(
     val isCalibrationReady: Boolean = false,
     val calibrationProgressPercent: Int = 0,
     val comment: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val electrodeStates: ElectrodeStates = ElectrodeStates()
 )

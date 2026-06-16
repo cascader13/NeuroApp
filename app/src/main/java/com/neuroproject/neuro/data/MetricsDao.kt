@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.neuroproject.neuro.data.entity.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao

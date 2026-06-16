@@ -3,6 +3,7 @@ package com.neuroproject.neuro.data
 import android.util.Log
 import com.neuroproject.neuro.ApplicationScope
 import com.neuroproject.neuro.IoDispatcher
+import com.neuroproject.neuro.data.entity.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -285,13 +286,9 @@ class MetricsRepository(
                 )
                 metricsDao.insertPhysiologicalMetric(metric)
                 mutex.withLock {
-                    /*if (PhysiologicalBuffer.firstTimestamp == null) {
-                        PhysiologicalBuffer.firstTimestamp = metric.timestamp
+                    if (physiologicalBuffer.firstTimestamp == null) {
+                        physiologicalBuffer.firstTimestamp = metric.timestamp
                     }
-                    PhysiologicalBuffer.values.add(metric)
-                    if (metric.timestamp - PhysiologicalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
-                        flushPhysiologicalBuffer()
-                    }*/
                     physiologicalBuffer.values.add(metric)
                     flushPhysiologicalBuffer()
                 }
@@ -793,37 +790,19 @@ class MetricsRepository(
     private suspend fun flushPhysiologicalBuffer() {
         if (physiologicalBuffer.values.isEmpty()) return
 
-
-        /*val compressed = PhysiologicalMetricCompressedEntity(
-            timestamp = PhysiologicalBuffer.firstTimestamp!!, // начало минутного интервала
-            id = PhysiologicalBuffer.values.first().id,
-            expedition_id = PhysiologicalBuffer.values.first().expedition_id,
-            sessionId = PhysiologicalBuffer.values.first().sessionId,
-            relax = PhysiologicalBuffer.values.map { it.relax }.median(),
-            fatigue = PhysiologicalBuffer.values.map { it.fatigue }.median(),
-            none = PhysiologicalBuffer.values.map { it.none }.median(),
-            concentration = PhysiologicalBuffer.values.map { it.concentration }.median(),
-            involvement = PhysiologicalBuffer.values.map { it.involvement }.median(),
-            stress = PhysiologicalBuffer.values.map { it.stress }.median(),
-            nfbArtifacts = PhysiologicalBuffer.values.map { it.nfbArtifacts }.majority(),
-            cardioArtifacts = PhysiologicalBuffer.values.map { it.cardioArtifacts }.majority(),
-            isMarked = false
-        )
-        metricsDao.insertPhysiologicalCompressedMetric(compressed)*/
-
         val compressed = PhysiologicalMetricCompressedEntity(
-            timestamp = physiologicalBuffer.values.first().timestamp!!,
+            timestamp = physiologicalBuffer.firstTimestamp!!,
             id = physiologicalBuffer.values.first().id,
             expedition_id = physiologicalBuffer.values.first().expedition_id,
             sessionId = physiologicalBuffer.values.first().sessionId,
-            relax = physiologicalBuffer.values.first().relax,
-            fatigue = physiologicalBuffer.values.first().fatigue,
-            none = physiologicalBuffer.values.first().fatigue,
-            concentration = physiologicalBuffer.values.first().concentration,
-            involvement = physiologicalBuffer.values.first().involvement,
-            stress = physiologicalBuffer.values.first().stress,
-            nfbArtifacts = physiologicalBuffer.values.first().nfbArtifacts,
-            cardioArtifacts = physiologicalBuffer.values.first().cardioArtifacts,
+            relax = physiologicalBuffer.values.map { it.relax }.median(),
+            fatigue = physiologicalBuffer.values.map { it.fatigue }.median(),
+            none = physiologicalBuffer.values.map { it.none }.median(),
+            concentration = physiologicalBuffer.values.map { it.concentration }.median(),
+            involvement = physiologicalBuffer.values.map { it.involvement }.median(),
+            stress = physiologicalBuffer.values.map { it.stress }.median(),
+            nfbArtifacts = physiologicalBuffer.values.map { it.nfbArtifacts }.majority(),
+            cardioArtifacts = physiologicalBuffer.values.map { it.cardioArtifacts }.majority(),
             isMarked = false
         )
 

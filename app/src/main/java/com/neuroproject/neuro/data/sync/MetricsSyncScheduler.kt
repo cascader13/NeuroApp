@@ -8,20 +8,17 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Точка управления фоновой синхронизацией.
- *
- * enqueueManualBackgroundSync() — отправка по требованию через WorkManager.
- * enablePeriodicSync() — периодическая синхронизация при наличии сети.
- * disablePeriodicSync() — отключение фоновой периодической отправки.
- */
 @Singleton
 class MetricsSyncScheduler @Inject constructor(
     @ApplicationContext private val context: Context
@@ -83,6 +80,28 @@ class MetricsSyncScheduler @Inject constructor(
         workManager.cancelUniqueWork(MetricsSyncWorker.UNIQUE_ONE_TIME_WORK_NAME)
     }
 
+    fun observeSyncState(): Flow<SyncState> {
+        val periodicWork = workManager.getWorkInfosForUniqueWorkFlow(
+            MetricsSyncWorker.UNIQUE_PERIODIC_WORK_NAME
+        )
+        val oneTimeWork = workManager.getWorkInfosForUniqueWorkFlow(
+            MetricsSyncWorker.UNIQUE_ONE_TIME_WORK_NAME
+        )
+
+        return combine(periodicWork, oneTimeWork) { periodic, oneTime ->
+            val isPeriodicRunning = periodic.any { it.state == WorkInfo.State.RUNNING }
+            val isOneTimeRunning = oneTime.any { it.state == WorkInfo.State.RUNNING }
+            val isEnqueued = periodic.any { it.state == WorkInfo.State.ENQUEUED } ||
+                    oneTime.any { it.state == WorkInfo.State.ENQUEUED }
+
+            when {
+                isPeriodicRunning || isOneTimeRunning -> SyncState.Running
+                isEnqueued -> SyncState.Enqueued
+                else -> SyncState.Idle
+            }
+        }
+    }
+
     private fun syncConstraints(): Constraints {
         return Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -96,4 +115,10 @@ class MetricsSyncScheduler @Inject constructor(
         private const val MIN_PERIODIC_INTERVAL_MINUTES = 15L
         private const val BACKOFF_MINUTES = 5L
     }
+}
+
+enum class SyncState {
+    Idle,
+    Enqueued,
+    Running
 }

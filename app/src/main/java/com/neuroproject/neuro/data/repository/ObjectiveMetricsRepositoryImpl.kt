@@ -2,7 +2,7 @@ package com.neuroproject.neuro.data.repository
 
 import com.neuroproject.neuro.data.MetricsDao
 import com.neuroproject.neuro.data.FatigueDao
-import com.neuroproject.neuro.data.FatigueResultEntity
+import com.neuroproject.neuro.data.entity.FatigueResultEntity
 import com.neuroproject.neuro.domain.model.*
 import com.neuroproject.neuro.domain.repository.ObjectiveMetricsRepository
 import com.neuroproject.neuro.utils.Normalization
@@ -105,8 +105,8 @@ class ObjectiveMetricsRepositoryImpl @Inject constructor(
                 sessionId = result.sessionId,
                 minuteIndex = result.minuteIndex,
                 cognitiveResult = result.cognitive,
-                physioligicalResult = result.physiological,
-                psychologicalResultval = result.psychological
+                physiologicalResult = result.physiological,
+                psychologicalResult = result.psychological
             )
         )
     }
@@ -116,8 +116,8 @@ class ObjectiveMetricsRepositoryImpl @Inject constructor(
             FatigueResult(
                 minuteIndex = entity.minuteIndex,
                 cognitive = entity.cognitiveResult,
-                physiological = entity.physioligicalResult,
-                psychological = entity.psychologicalResultval,
+                physiological = entity.physiologicalResult,
+                psychological = entity.psychologicalResult,
                 sessionId = entity.sessionId
             )
         }

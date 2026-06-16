@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.data
 
+import com.neuroproject.neuro.data.entity.*
 import com.neuroproject.neuro.data.remote.*
 import com.neuroproject.neuro.data.session.SessionEntity
 

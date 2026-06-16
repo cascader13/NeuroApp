@@ -20,11 +20,19 @@ data class ElectrodeStates(
     val t3: ElectrodeState = ElectrodeState.BAD,
     val t4: ElectrodeState = ElectrodeState.BAD
 ) {
+    /** это правильная запись
     fun isAllOk(): Boolean =
         o1 == ElectrodeState.OK &&
                 o2 == ElectrodeState.OK &&
                 t3 == ElectrodeState.OK &&
                 t4 == ElectrodeState.OK
+    */
+
+    fun isAllOk(): Boolean =
+        (o1 == ElectrodeState.OK && o2 == ElectrodeState.OK && t3 == ElectrodeState.OK) ||
+                (o1 == ElectrodeState.OK && o2 == ElectrodeState.OK && t4 == ElectrodeState.OK) ||
+                (o1 == ElectrodeState.OK && t3 == ElectrodeState.OK && t4 == ElectrodeState.OK) ||
+                (o2 == ElectrodeState.OK && t4 == ElectrodeState.OK && t3 == ElectrodeState.OK)
 }
 
 /**

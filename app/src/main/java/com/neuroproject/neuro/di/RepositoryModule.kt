@@ -8,25 +8,23 @@ import com.neuroproject.neuro.data.local.RoomMetricsRepositoryAdapter
 import com.neuroproject.neuro.data.local.RoomSessionRepository
 import com.neuroproject.neuro.data.local.RoomSubjectiveTestRepository
 import com.neuroproject.neuro.data.repository.AuthRepositoryImpl
+import com.neuroproject.neuro.data.repository.RoomDatabaseExportRepository
+import com.neuroproject.neuro.data.repository.WorkManagerSyncRepository
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.CalibrationRepository
+import com.neuroproject.neuro.domain.repository.DatabaseExportRepository
 import com.neuroproject.neuro.domain.repository.DeviceGateway
 import com.neuroproject.neuro.domain.repository.MetricsRepository
 import com.neuroproject.neuro.domain.repository.SensorStreamGateway
 import com.neuroproject.neuro.domain.repository.SessionRepository
 import com.neuroproject.neuro.domain.repository.SubjectiveTestRepository
+import com.neuroproject.neuro.domain.repository.SyncRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/**
- * DI-модуль, который связывает domain-контракты с data-реализациями.
- *
- * ViewModel и use case зависят только от интерфейсов domain-слоя. Конкретные Room/JNI
- * реализации подключаются здесь, на внешнем слое приложения.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
@@ -60,4 +58,12 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideSensorStreamGateway(adapter: CapsuleSensorStreamAdapter): SensorStreamGateway = adapter
+
+    @Provides
+    @Singleton
+    fun provideSyncRepository(repository: WorkManagerSyncRepository): SyncRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideDatabaseExportRepository(repository: RoomDatabaseExportRepository): DatabaseExportRepository = repository
 }

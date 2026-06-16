@@ -1,6 +1,8 @@
 
 package com.neuroproject.neuro.presentation.screens.calibration
 
+import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeStates
+
 
 data class CalibrationUiState(
     val isCalibrating: Boolean = false,
@@ -8,5 +10,6 @@ data class CalibrationUiState(
     val progress: Float = 0f,
     val timeRemaining: Long = 60000L,
     val showPreviousCalibrationDialog: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val electrodeStates: ElectrodeStates = ElectrodeStates()
 )

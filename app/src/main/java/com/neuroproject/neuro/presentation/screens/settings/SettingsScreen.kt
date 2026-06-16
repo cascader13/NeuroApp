@@ -76,7 +76,8 @@ fun SettingsScreen(
         onExpeditionIdChanged = vm::onExpeditionIdChanged,
         onServerAddressChanged = vm::onServerAddressChanged,
         onUploadClicked = vm::onUploadClicked,
-        onSaveToFileClicked = vm::saveToFile
+        onSaveToFileClicked = vm::saveToFile,
+        onExportDatabaseClicked = vm::exportDatabase
     )
 }
 
@@ -92,7 +93,8 @@ private fun SettingsScreenContent(
     onExpeditionIdChanged: (String) -> Unit,
     onServerAddressChanged: (String) -> Unit,
     onUploadClicked: () -> Unit,
-    onSaveToFileClicked: () -> Unit
+    onSaveToFileClicked: () -> Unit,
+    onExportDatabaseClicked: () -> Unit
 ) {
 
     Scaffold(
@@ -161,8 +163,11 @@ private fun SettingsScreenContent(
             // Кнопки действий
             ActionButtons(
                 isUploading = state.isUploading,
+                isSyncRunning = state.isSyncRunning,
+                isExporting = state.isExporting,
                 onUploadClicked = onUploadClicked,
-                onSaveToFileClicked = onSaveToFileClicked
+                onSaveToFileClicked = onSaveToFileClicked,
+                onExportDatabaseClicked = onExportDatabaseClicked
             )
 
             // Сообщение об ошибке
@@ -173,6 +178,11 @@ private fun SettingsScreenContent(
             // Сообщение об успехе
             state.successMessage?.let { successMessage ->
                 SuccessMessageCard(message = successMessage)
+            }
+
+            // Сообщение об экспорте
+            state.exportMessage?.let { exportMessage ->
+                ExportMessageCard(message = exportMessage)
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -380,8 +390,11 @@ private fun UploadProgressCard(state: SettingsState) {
 @Composable
 private fun ActionButtons(
     isUploading: Boolean,
+    isSyncRunning: Boolean,
+    isExporting: Boolean,
     onUploadClicked: () -> Unit,
-    onSaveToFileClicked: () -> Unit
+    onSaveToFileClicked: () -> Unit,
+    onExportDatabaseClicked: () -> Unit
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -396,7 +409,7 @@ private fun ActionButtons(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ),
-            enabled = !isUploading
+            enabled = !isUploading && !isSyncRunning
         ) {
             Row(
                 horizontalArrangement = Arrangement.Center,
@@ -410,29 +423,33 @@ private fun ActionButtons(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isUploading) "Выгрузка..." else "Выгрузить на сервер",
+                    text = when {
+                        isSyncRunning -> "Синхронизация..."
+                        isUploading -> "Выгрузка..."
+                        else -> "Выгрузить на сервер"
+                    },
                     style = MaterialTheme.typography.labelLarge
                 )
             }
         }
-        /* for developers
+
         Button(
-            onClick = onSaveToFileClicked,
+            onClick = onExportDatabaseClicked,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             shape = MaterialTheme.shapes.medium,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
             ),
-            enabled = !isUploading
+            enabled = !isUploading && !isExporting
         ) {
             Text(
-                text = "Сохранить в файл (для отладки)",
+                text = if (isExporting) "Экспорт..." else "Экспорт базы данных",
                 style = MaterialTheme.typography.labelMedium
             )
-        }*/
+        }
     }
 }
 
@@ -490,6 +507,36 @@ private fun SuccessMessageCard(message: String) {
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExportMessageCard(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        ),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Экспорт",
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
                 modifier = Modifier.weight(1f)
             )
         }

@@ -1,15 +1,13 @@
 package com.neuroproject.neuro.domain.usecase.recording
 
-import com.neuroproject.neuro.data.repository.AuthRepositoryImpl
 import com.neuroproject.neuro.domain.model.*
 import com.neuroproject.neuro.domain.repository.AuthRepository
-
 import com.neuroproject.neuro.domain.repository.MetricsRepository
 import javax.inject.Inject
 
 class SaveSensorSampleUseCase @Inject constructor(
     private val metricsRepository: MetricsRepository,
-    private val authRepository: AuthRepositoryImpl
+    private val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(sample: SensorSample) {
         val userId = authRepository.getUserId()
@@ -27,7 +25,6 @@ class SaveSensorSampleUseCase @Inject constructor(
             is EEGRawSample -> metricsRepository.saveEEGRaw(sample.copy(userId=userId, expeditionId = expeditionId))
             is EEGProcessedSample -> metricsRepository.saveEEGProcessed(sample.copy(userId=userId, expeditionId = expeditionId))
             is EEGArtifactSample -> metricsRepository.saveEEGArtifact(sample.copy(userId=userId, expeditionId = expeditionId))
-            else -> {/*nothing*/}
         }
     }
 }

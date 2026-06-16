@@ -3,15 +3,33 @@ package com.neuroproject.neuro.domain.usecase.objective
 import com.neuroproject.neuro.domain.model.*
 import javax.inject.Inject
 
+/**
+ * Use case расчёта объективных показателей утомления.
+ *
+ * Анализирует данные сенсоров (ЭЭГ, физиология, продуктивность) по минутам
+ * и рассчитывает три индекса:
+ * - **Когнитивный** — на основе疲劳, концентрации, продуктивности, когнитивной нагрузки
+ * - **Физиологический** — на основе疲劳, стресса, расслабления, вовлечённости
+ * - **Психологический** — на основе когнитивной нагрузки, расслабления, самоконтроля
+ *
+ * Веса коэффициентов настраивается через [ObjectiveCalculationConfig].
+ *
+ * Формула для каждого индекса: `sum(weight_i * value_i) * 100`
+ */
 class CalculateObjectiveFatigueUseCase @Inject constructor() {
 
+    /**
+     * Рассчитывает объективные показатели утомления.
+     *
+     * @param minuteDataList данные по минутам сессии.
+     * @param config конфигурация весов (по умолчанию стандартные веса).
+     * @return [ObjectiveFatigueResult] или null, если данных нет.
+     */
     operator fun invoke(
         minuteDataList: List<MinuteFatigueData>,
         config: ObjectiveCalculationConfig = ObjectiveCalculationConfig()
     ): ObjectiveFatigueResult? {
         if (minuteDataList.isEmpty()) return null
-
-        val totalMinutes = minuteDataList.size
 
         val avgCognitive = minuteDataList.map { calculateCognitiveIndex(it.cognitive, config.cognitiveWeights) }.average().toFloat()
         val avgPhysiological = minuteDataList.map { calculatePhysiologicalIndex(it.physiological, config.physiologicalWeights) }.average().toFloat()

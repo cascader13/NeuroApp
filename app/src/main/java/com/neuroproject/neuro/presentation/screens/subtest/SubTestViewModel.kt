@@ -15,6 +15,9 @@ import com.neuroproject.neuro.domain.usecase.recording.ObserveSensorStreamUseCas
 import com.neuroproject.neuro.domain.usecase.recording.SaveSensorSampleUseCase
 import com.neuroproject.neuro.domain.usecase.recording.StartRecordingUseCase
 import com.neuroproject.neuro.domain.usecase.recording.StopRecordingUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.ObserveResistanceUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.StopResistanceCheckUseCase
 import com.neuroproject.neuro.domain.usecase.session.CreateSessionUseCase
 import com.neuroproject.neuro.domain.usecase.session.FinishSessionUseCase
 import com.neuroproject.neuro.domain.usecase.subjective.CalculateSubjectiveResultUseCase
@@ -23,6 +26,7 @@ import com.neuroproject.neuro.domain.usecase.subjective.SaveAnswersUseCase
 import com.neuroproject.neuro.domain.repository.SensorEvent
 import com.neuroproject.neuro.domain.usecase.objective.*
 import com.neuroproject.neuro.domain.usecase.subjective.GetAnswerScoreByIdUseCase
+import com.neuroproject.neuro.presentation.screens.sensorchecking.toElectrodeStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -51,7 +55,10 @@ class SubTestViewModel @Inject constructor(
     private val calculateObjectiveFatigueUseCase: CalculateObjectiveFatigueUseCase,
     private val getAllMinuteMetricsUseCase: GetAllMinuteMetricsUseCase,
     private val saveMinuteFatigueResultUseCase: SaveMinuteFatigueResultUseCase,
-    private val getAvailableMinutesCountUseCase: GetAvailableMinutesCountUseCase
+    private val getAvailableMinutesCountUseCase: GetAvailableMinutesCountUseCase,
+    private val observeResistanceUseCase: ObserveResistanceUseCase,
+    private val startResistanceCheckUseCase: StartResistanceCheckUseCase,
+    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubTestUiState())
@@ -107,6 +114,32 @@ class SubTestViewModel @Inject constructor(
         loadQuestions()
         observeSensorData()
         checkExpeditionId()
+        observeResistance()
+        startResistanceCheck()
+    }
+
+    private fun startResistanceCheck() {
+        viewModelScope.launch {
+            try {
+                delay(500)
+                startResistanceCheckUseCase()
+            } catch (e: Exception) {
+                Log.e("SubTestViewModel", "Error starting resistance check", e)
+            }
+        }
+    }
+
+    private fun observeResistance() {
+        observeResistanceUseCase()
+            .catch { error ->
+                Log.e("SubTestViewModel", "Error observing resistance", error)
+            }
+            .onEach { resistanceData ->
+                _uiState.value = _uiState.value.copy(
+                    electrodeStates = resistanceData.toElectrodeStates()
+                )
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun checkExpeditionId() {
@@ -622,6 +655,11 @@ class SubTestViewModel @Inject constructor(
         sensorJob?.cancel()
         viewModelScope.launch {
             stopRecordingUseCase()
+            try {
+                stopResistanceCheckUseCase()
+            } catch (e: Exception) {
+                Log.e("SubTestViewModel", "Error stopping resistance check", e)
+            }
         }
     }
 }

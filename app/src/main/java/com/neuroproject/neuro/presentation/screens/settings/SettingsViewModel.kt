@@ -4,6 +4,11 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.data.*
+import com.neuroproject.neuro.domain.model.Result
+import com.neuroproject.neuro.domain.repository.SyncState
+import com.neuroproject.neuro.domain.usecase.sync.EnablePeriodicSyncUseCase
+import com.neuroproject.neuro.domain.usecase.sync.ExportDatabaseUseCase
+import com.neuroproject.neuro.domain.usecase.sync.ObserveSyncStateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
@@ -23,6 +28,9 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val uploadRepository: MetricsUploadRepository,
+    private val observeSyncStateUseCase: ObserveSyncStateUseCase,
+    private val enablePeriodicSyncUseCase: EnablePeriodicSyncUseCase,
+    private val exportDatabaseUseCase: ExportDatabaseUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     private val _state = MutableStateFlow(SettingsState())
@@ -37,6 +45,7 @@ class SettingsViewModel @Inject constructor(
         loadSavedExpeditionId()
         loadServerAddress()
         loadStats()
+        observeSyncState()
     }
 
     private fun loadSavedMobileId() {
@@ -76,6 +85,16 @@ class SettingsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 // Логируем ошибку
+            }
+        }
+    }
+
+    private fun observeSyncState() {
+        viewModelScope.launch {
+            observeSyncStateUseCase().collect { syncState ->
+                _state.update {
+                    it.copy(isSyncRunning = syncState != SyncState.Idle)
+                }
             }
         }
     }
@@ -453,6 +472,39 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun exportDatabase() {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isExporting = true,
+                    exportMessage = null
+                )
+            }
+
+            when (val result = exportDatabaseUseCase()) {
+                is Result.Success -> {
+                    _state.update {
+                        it.copy(
+                            isExporting = false,
+                            exportMessage = result.data
+                        )
+                    }
+                    delay(5000)
+                    _state.update { it.copy(exportMessage = null) }
+                }
+                is Result.Error -> {
+                    _state.update {
+                        it.copy(
+                            isExporting = false,
+                            exportMessage = result.message
+                        )
+                    }
+                }
+                is Result.Loading -> {}
+            }
+        }
+    }
+
     fun onBackClicked() {
         uploadJob?.cancel()
         viewModelScope.launch {
@@ -466,7 +518,6 @@ class SettingsViewModel @Inject constructor(
     }
 }
 
-// ==================== ОБНОВЛЕННЫЙ STATE ====================
 
 data class SettingsState(
     val mobileId: String = "",
@@ -483,13 +534,15 @@ data class SettingsState(
     val uploadStats: UploadStats? = null,
     val savedFilePath: String? = null,
     val appInfo: String = "NeuroAssessment v0.6.3",
-    // Новые поля для пакетной отправки
     val totalBatches: Int = 0,
     val currentBatch: Int = 0,
     val currentBatchRecords: Int = 0,
     val totalSentRecords: Int = 0,
     val failedBatches: Int = 0,
-    val uploadStatus: UploadStatus = UploadStatus.Idle
+    val uploadStatus: UploadStatus = UploadStatus.Idle,
+    val isSyncRunning: Boolean = false,
+    val isExporting: Boolean = false,
+    val exportMessage: String? = null
 )
 
 enum class UploadStatus {
