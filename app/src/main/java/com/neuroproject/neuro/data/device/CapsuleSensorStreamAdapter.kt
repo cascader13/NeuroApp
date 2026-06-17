@@ -78,6 +78,10 @@ class CapsuleSensorStreamAdapter @Inject constructor(
         replay = 0, extraBufferCapacity = 50, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    private val _calibrationFlow = MutableSharedFlow<CalibrationSample>(
+        replay = 1, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
     init {
         setupCallbacks()
     }
@@ -154,6 +158,23 @@ class CapsuleSensorStreamAdapter @Inject constructor(
         // ============================================================
         // КАЛИБРОВОЧНЫЕ КОЛБЭКИ
         // ============================================================
+
+        JniCallbackHandler.onCalibrationReceived = { indFrequency, indPeakFrequency,
+                                                       indPeakFrequencyPower, indPeakFrequencySuppression,
+                                                       indBandwidth, indNormalizedPower,
+                                                       lowerFrequency, upperFrequency ->
+            val sample = CalibrationSample(
+                individualFrequency = indFrequency,
+                individualPeakFrequency = indPeakFrequency,
+                individualPeakFrequencyPower = indPeakFrequencyPower,
+                individualPeakFrequencySuppression = indPeakFrequencySuppression,
+                individualBandwidth = indBandwidth,
+                individualNormalizedPower = indNormalizedPower,
+                lowerFrequency = lowerFrequency,
+                upperFrequency = upperFrequency
+            )
+            _calibrationFlow.tryEmit(sample)
+        }
 
         JniCallbackHandler.onProductivityBaselineReceived = { time, gravity, productivity, fatigue,
                                                               reverseFatigue, relaxation, concentration ->
@@ -254,6 +275,9 @@ class CapsuleSensorStreamAdapter @Inject constructor(
     override fun observeProductivityIndexes(): Flow<ProductivityIndexSample> = _productivityIndexesFlow.asSharedFlow()
     override fun observePhysiologicalBaseline(): Flow<PhysiologicalBaselineSample> = _physiologicalBaselineFlow.asSharedFlow()
     override fun observeProductivityScore(): Flow<ProductivityScoreSample> = _productivityScoreFlow.asSharedFlow()
+
+    /** Наблюдает за результатом калибровки (параметры ЭЭГ). */
+    fun observeCalibrationResult(): Flow<CalibrationSample> = _calibrationFlow.asSharedFlow()
 
     override fun observeAll(): Flow<SensorEvent> = merge(
         observeNFB().map { SensorEvent.NFB(it) },

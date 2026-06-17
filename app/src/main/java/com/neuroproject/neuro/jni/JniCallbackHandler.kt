@@ -190,6 +190,7 @@ object JniCallbackHandler {
         time: Long, gravity: Float, productivity: Float, fatigue: Float,
         reverseFatigue: Float, relaxation: Float, concentration: Float
     ){
+        Log.d("JniCallback", "productivity baseline received")
        onProductivityBaselineReceived?.invoke(time, gravity, productivity, fatigue, reverseFatigue, relaxation, concentration)
 
     }
@@ -200,6 +201,7 @@ object JniCallbackHandler {
     productivityBaseline: Float, fatigueBaseline: Float, reverseFatigueBaseline: Float,
     relaxationBaseline: Float, concentrationBaseline: Float, hasArtifacts: Boolean
     ){
+        Log.d("JniCallback", "productivity index received")
         onProductivityIndexesReceived?.invoke(time, relaxation, stress, gravityBaseline, productivityBaseline, fatigueBaseline, reverseFatigueBaseline, relaxationBaseline, concentrationBaseline, hasArtifacts)
     }
 
@@ -212,6 +214,7 @@ object JniCallbackHandler {
     fun onPhysiologicalBaselineReceived(
         time: Long, alpha: Float, beta: Float,
         alphaGravity: Float, betaGravity: Float, concentration: Float){
+        Log.d("JniCallback", "physiological baseline received")
         onPhysiologicalBaselineReceived?.invoke(time, alpha, beta, alphaGravity, betaGravity, concentration)
     }
 

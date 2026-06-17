@@ -2,6 +2,7 @@
 package com.neuroproject.neuro.data.local
 
 import com.neuroproject.neuro.data.MetricsDao
+import com.neuroproject.neuro.data.dao.CalibrationDao
 import com.neuroproject.neuro.data.entity.CalibrationHistoryEntity
 import com.neuroproject.neuro.domain.model.CalibrationSample
 import com.neuroproject.neuro.domain.repository.CalibrationRepository
@@ -12,7 +13,8 @@ import javax.inject.Singleton
 
 @Singleton
 class RoomCalibrationRepository @Inject constructor(
-    private val metricsDao: MetricsDao
+    private val metricsDao: MetricsDao,
+    private val calibrationDao: CalibrationDao
 ) : CalibrationRepository {
 
     override suspend fun getPreviousCalibration(userId: String): CalibrationSample? {
@@ -28,6 +30,33 @@ class RoomCalibrationRepository @Inject constructor(
 
     override suspend fun hasPreviousCalibration(userId: String): Boolean {
         return metricsDao.getCalibration(userId).isNotEmpty()
+    }
+
+    override suspend fun updateProductivityCalibration(
+        userId: String,
+        gravity: Float,
+        productivity: Float,
+        fatigue: Float,
+        reverseFatigue: Float,
+        relaxation: Float,
+        concentration: Float
+    ) {
+        calibrationDao.insertProductivityCalibration(
+            userId, gravity, productivity, fatigue, reverseFatigue, relaxation, concentration
+        )
+    }
+
+    override suspend fun updatePhysiologicalCalibration(
+        userId: String,
+        alpha: Float,
+        beta: Float,
+        alphaGravity: Float,
+        betaGravity: Float,
+        concentration: Float
+    ) {
+        calibrationDao.insertPhysiologicalCalibration(
+            userId, alpha, beta, alphaGravity, betaGravity, concentration
+        )
     }
 
     override fun observeCalibrationStage(): Flow<Int> {

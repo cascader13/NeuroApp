@@ -1,8 +1,11 @@
 // data/local/RoomMetricsRepositoryAdapter.kt
 package com.neuroproject.neuro.data.local
 
+import android.util.Log
 import com.neuroproject.neuro.data.MetricsRepository as LegacyMetricsRepository
 import com.neuroproject.neuro.domain.model.*
+import com.neuroproject.neuro.domain.repository.AuthRepository
+import com.neuroproject.neuro.domain.repository.CalibrationRepository
 import com.neuroproject.neuro.domain.repository.MetricsRepository
 import com.neuroproject.neuro.domain.repository.AggregatedSessionData
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +19,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class RoomMetricsRepositoryAdapter @Inject constructor(
-    private val legacyRepository: LegacyMetricsRepository
+    private val legacyRepository: LegacyMetricsRepository,
+    private val calibrationRepository: CalibrationRepository,
+    private val authRepository: AuthRepository
 ) : MetricsRepository {
 
 
@@ -128,6 +133,24 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             relaxation = sample.relaxation,
             concentration = sample.concentration
         )
+        updateCalibrationWithProductivityBaseline(sample)
+    }
+
+    private suspend fun updateCalibrationWithProductivityBaseline(sample: ProductivityBaselineSample) {
+        try {
+            val userId = authRepository.getUserId()
+            calibrationRepository.updateProductivityCalibration(
+                userId,
+                sample.gravity,
+                sample.productivity,
+                sample.fatigue,
+                sample.reverse_fatique,
+                sample.relaxation,
+                sample.concentration
+            )
+        } catch (e: Exception) {
+            Log.e("RoomMetricsRepo", "Error updating calibration with productivity baseline", e)
+        }
     }
 
     override fun observeProductivityBaseline(): Flow<ProductivityBaselineSample> = flow { }
@@ -166,6 +189,23 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             betaGravity = sample.betaGravity,
             concentration = sample.concentration
         )
+        updateCalibrationWithPhysiologicalBaseline(sample)
+    }
+
+    private suspend fun updateCalibrationWithPhysiologicalBaseline(sample: PhysiologicalBaselineSample) {
+        try {
+            val userId = authRepository.getUserId()
+            calibrationRepository.updatePhysiologicalCalibration(
+                userId,
+                sample.alpha,
+                sample.beta,
+                sample.alphaGravity,
+                sample.betaGravity,
+                sample.concentration
+            )
+        } catch (e: Exception) {
+            Log.e("RoomMetricsRepo", "Error updating calibration with physiological baseline", e)
+        }
     }
 
     override fun observePhysiologicalBaseline(): Flow<PhysiologicalBaselineSample> = flow { }

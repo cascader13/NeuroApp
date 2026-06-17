@@ -4,11 +4,17 @@ package com.neuroproject.neuro.presentation.screens.calibration
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.neuroproject.neuro.domain.model.CalibrationSample
 import com.neuroproject.neuro.domain.model.CalibrationStage
+import com.neuroproject.neuro.domain.model.DeviceConnectionState
+import com.neuroproject.neuro.domain.repository.AuthRepository
+import com.neuroproject.neuro.domain.repository.CalibrationRepository
+import com.neuroproject.neuro.domain.repository.DeviceGateway
 import com.neuroproject.neuro.domain.usecase.calibration.CancelCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.CheckPreviousCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.ImportCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.ObserveCalibrationStageUseCase
+import com.neuroproject.neuro.domain.usecase.device.ObserveConnectionStateUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.ObserveResistanceUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.StopResistanceCheckUseCase
@@ -34,20 +40,48 @@ class CalibrationViewModel @Inject constructor(
     private val metronomePlayer: MetronomePlayer,
     private val observeResistanceUseCase: ObserveResistanceUseCase,
     private val startResistanceCheckUseCase: StartResistanceCheckUseCase,
-    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase
+    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase,
+    private val deviceGateway: DeviceGateway,
+    private val calibrationRepository: CalibrationRepository,
+    private val authRepository: AuthRepository,
+    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalibrationUiState())
     val uiState: StateFlow<CalibrationUiState> = _uiState.asStateFlow()
 
+    private val _isDeviceDisconnected = MutableStateFlow(false)
+    val isDeviceDisconnected: StateFlow<Boolean> = _isDeviceDisconnected.asStateFlow()
+
     private var calibrationJob: Job? = null
     private val totalCalibrationTime = 60000L
+
+    // Накопленные данные калибровки
+    private var latestCalibration: CalibrationSample = CalibrationSample()
 
     init {
         checkPreviousCalibration()
         observeCalibrationStage()
         observeResistance()
+        observeCalibrationResult()
         startResistanceCheck()
+        observeConnectionState()
+    }
+
+    private fun observeConnectionState() {
+        observeConnectionStateUseCase()
+            .catch { error ->
+                Log.e("Calibration", "Error observing connection state", error)
+            }
+            .onEach { state ->
+                if (state == DeviceConnectionState.disconnected || state == DeviceConnectionState.error) {
+                    if (_uiState.value.isCalibrating) {
+                        cancelCalibration()
+                    }
+                    _isDeviceDisconnected.value = true
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun startResistanceCheck() {
@@ -70,6 +104,18 @@ class CalibrationViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     electrodeStates = resistanceData.toElectrodeStates()
                 )
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeCalibrationResult() {
+        deviceGateway.observeCalibrationResult()
+            .catch { error ->
+                Log.e("Calibration", "Error observing calibration result", error)
+            }
+            .onEach { calibrationSample ->
+                latestCalibration = calibrationSample
+                Log.d("Calibration", "Received calibration: freq=${calibrationSample.individualFrequency}")
             }
             .launchIn(viewModelScope)
     }
@@ -195,6 +241,18 @@ class CalibrationViewModel @Inject constructor(
 
     private fun completeCalibration() {
         metronomePlayer.stop()
+
+        // Сохраняем данные калибровки в БД
+        viewModelScope.launch {
+            try {
+                val userId = authRepository.getUserId()
+                calibrationRepository.saveCalibration(userId, latestCalibration)
+                Log.d("Calibration", "Calibration saved: freq=${latestCalibration.individualFrequency}")
+            } catch (e: Exception) {
+                Log.e("Calibration", "Error saving calibration", e)
+            }
+        }
+
         _uiState.value = CalibrationUiState(
             isCalibrating = false,
             isComplete = true,

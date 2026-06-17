@@ -35,6 +35,25 @@ interface CalibrationRepository {
      */
     suspend fun hasPreviousCalibration(userId: String): Boolean
 
+    suspend fun updateProductivityCalibration(
+        userId: String,
+        gravity: Float,
+        productivity: Float,
+        fatigue: Float,
+        reverseFatigue: Float,
+        relaxation: Float,
+        concentration: Float
+    )
+
+    suspend fun updatePhysiologicalCalibration(
+        userId: String,
+        alpha: Float,
+        beta: Float,
+        alphaGravity: Float,
+        betaGravity: Float,
+        concentration: Float
+    )
+
     /**
      * Наблюдает за этапом калибровки.
      *

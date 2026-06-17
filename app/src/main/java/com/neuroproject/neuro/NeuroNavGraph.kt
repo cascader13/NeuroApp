@@ -222,6 +222,9 @@ fun NeuroNavGraph(
                 SubTestScreen(
                     onFinish = {
                         navActions.navigateToMain()
+                    },
+                    onDeviceUnconnected = {
+                        navActions.navigateToMain()
                     }
                 )
             }

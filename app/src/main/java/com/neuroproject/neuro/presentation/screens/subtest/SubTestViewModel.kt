@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.domain.model.ExpeditionResult
 import com.neuroproject.neuro.domain.model.SessionCategory
 import com.neuroproject.neuro.domain.model.*
+import com.neuroproject.neuro.domain.usecase.device.ObserveConnectionStateUseCase
 import com.neuroproject.neuro.domain.usecase.expedition.CheckExpeditionIdUseCase
 import com.neuroproject.neuro.domain.usecase.expedition.SaveExpeditionIdUseCase
 import com.neuroproject.neuro.domain.usecase.fatigue.CalculateTotalFatigueUseCase
@@ -15,16 +16,18 @@ import com.neuroproject.neuro.domain.usecase.recording.ObserveSensorStreamUseCas
 import com.neuroproject.neuro.domain.usecase.recording.SaveSensorSampleUseCase
 import com.neuroproject.neuro.domain.usecase.recording.StartRecordingUseCase
 import com.neuroproject.neuro.domain.usecase.recording.StopRecordingUseCase
-import com.neuroproject.neuro.domain.usecase.sensor.ObserveResistanceUseCase
-import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
-import com.neuroproject.neuro.domain.usecase.sensor.StopResistanceCheckUseCase
 import com.neuroproject.neuro.domain.usecase.session.CreateSessionUseCase
 import com.neuroproject.neuro.domain.usecase.session.FinishSessionUseCase
 import com.neuroproject.neuro.domain.usecase.subjective.CalculateSubjectiveResultUseCase
 import com.neuroproject.neuro.domain.usecase.subjective.LoadQuestionsUseCase
 import com.neuroproject.neuro.domain.usecase.subjective.SaveAnswersUseCase
 import com.neuroproject.neuro.domain.repository.SensorEvent
+import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.usecase.objective.*
+import com.neuroproject.neuro.domain.usecase.sensor.ObserveResistanceUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
+import com.neuroproject.neuro.domain.usecase.sensor.StopResistanceCheckUseCase
+import com.neuroproject.neuro.data.device.SessionIdProvider
 import com.neuroproject.neuro.domain.usecase.subjective.GetAnswerScoreByIdUseCase
 import com.neuroproject.neuro.presentation.screens.sensorchecking.toElectrodeStates
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,11 +61,17 @@ class SubTestViewModel @Inject constructor(
     private val getAvailableMinutesCountUseCase: GetAvailableMinutesCountUseCase,
     private val observeResistanceUseCase: ObserveResistanceUseCase,
     private val startResistanceCheckUseCase: StartResistanceCheckUseCase,
-    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase
+    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase,
+    private val authRepository: AuthRepository,
+    private val sessionIdProvider: SessionIdProvider,
+    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubTestUiState())
     val uiState: StateFlow<SubTestUiState> = _uiState.asStateFlow()
+
+    private val _isDeviceDisconnected = MutableStateFlow(false)
+    val isDeviceDisconnected: StateFlow<Boolean> = _isDeviceDisconnected.asStateFlow()
 
     private val _showExpeditionDialog = MutableStateFlow(false)
     val showExpeditionDialog: StateFlow<Boolean> = _showExpeditionDialog.asStateFlow()
@@ -116,6 +125,41 @@ class SubTestViewModel @Inject constructor(
         checkExpeditionId()
         observeResistance()
         startResistanceCheck()
+        createSession()
+        observeConnectionState()
+    }
+
+    private fun observeConnectionState() {
+        observeConnectionStateUseCase()
+            .catch { error ->
+                Log.e("SubTestViewModel", "Error observing connection state", error)
+            }
+            .onEach { state ->
+                if (state == DeviceConnectionState.disconnected || state == DeviceConnectionState.error) {
+                    viewModelScope.launch {
+                        try {
+                            timerJob?.cancel()
+                            stopRecordingUseCase()
+                        } catch (e: Exception) {
+                            Log.e("SubTestViewModel", "Error stopping on disconnect", e)
+                        }
+                    }
+                    _isDeviceDisconnected.value = true
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun createSession() {
+        viewModelScope.launch {
+            currentSession = createSessionUseCase(
+                durationMinutes = getCurrentDurationMinutes(),
+                category = getCurrentCategory()
+            )
+            currentSession?.let { session ->
+                sessionIdProvider.setSessionId(session.sessionId.toString())
+            }
+        }
     }
 
     private fun startResistanceCheck() {
@@ -329,10 +373,10 @@ class SubTestViewModel @Inject constructor(
 
     fun startTest() {
         viewModelScope.launch {
-            currentSession = createSessionUseCase(
-                durationMinutes = getCurrentDurationMinutes(),
-                category = getCurrentCategory()
-            )
+            currentSession?.let { session ->
+                sessionIdProvider.setSessionId(session.sessionId.toString())
+            }
+            currentSession = currentSession?.copy(durationMinutes = getCurrentDurationMinutes(), category = getCurrentCategory())
 
             startRecordingUseCase()
             startTimer(_timeLeftMillis.value)
@@ -621,11 +665,24 @@ class SubTestViewModel @Inject constructor(
                     )
                 }
 
+                // Формируем комментарий с номером устройства
+                val deviceName = authRepository.getDeviceName()
+                val baseComment = _uiState.value.comment
+                val finalComment = if (deviceName.isNotBlank()) {
+                    if (baseComment.isNotBlank()) {
+                        "$baseComment\n[Устройство: $deviceName]"
+                    } else {
+                        "[Устройство: $deviceName]"
+                    }
+                } else {
+                    baseComment.takeIf { it.isNotBlank() }
+                }
+
                 currentSession?.let { session ->
                     finishSessionUseCase(
                         session = session,
                         fatigueSummary = fatigueSummary,
-                        comment = _uiState.value.comment.takeIf { it.isNotBlank() },
+                        comment = finalComment,
                         passedPrematurely = passingPrematurely
                     )
                 }

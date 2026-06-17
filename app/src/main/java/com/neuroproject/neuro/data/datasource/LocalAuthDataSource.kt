@@ -17,6 +17,7 @@ class LocalAuthDataSource @Inject constructor(
         private const val KEY_SAVED_MOBILE_ID = "saved_mobile_id"
         private const val KEY_EXPEDITION_ID = "saved_expedition_id"
         private const val KEY_USER_ID_HISTORY = "user_id_history"
+        private const val KEY_DEVICE_NAME = "device_name"
         private const val MAX_HISTORY_SIZE = 10
     }
 
@@ -80,4 +81,10 @@ class LocalAuthDataSource @Inject constructor(
     fun clearHistory() {
         sharedPreferences.edit().remove(KEY_USER_ID_HISTORY).apply()
     }
+
+    fun saveDeviceName(name: String) {
+        sharedPreferences.edit().putString(KEY_DEVICE_NAME, name).apply()
+    }
+
+    fun getDeviceName(): String = sharedPreferences.getString(KEY_DEVICE_NAME, "") ?: ""
 }

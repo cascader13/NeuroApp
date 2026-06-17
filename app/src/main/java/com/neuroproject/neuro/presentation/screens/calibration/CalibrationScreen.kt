@@ -53,6 +53,7 @@ fun CalibrationScreen(
     onDeviceUnconnected: () -> Unit = {}
 ) {
     val uiState by vm.uiState.collectAsState()
+    val isDeviceDisconnected by vm.isDeviceDisconnected.collectAsState()
 
     // Обработка завершения калибровки
     LaunchedEffect(uiState.isComplete) {
@@ -67,6 +68,39 @@ fun CalibrationScreen(
             // Можно показать Snackbar или просто логировать
             android.util.Log.e("Calibration", error)
         }
+    }
+
+    if (isDeviceDisconnected) {
+        AlertDialog(
+            onDismissRequest = { onDeviceUnconnected() },
+            title = {
+                Text(
+                    text = "Устройство отключено",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "Связь с устройством потеряна. Возврат в главное меню...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = onDeviceUnconnected,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("OK")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        )
     }
 
     BackHandler {

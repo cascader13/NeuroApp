@@ -4,6 +4,8 @@ package com.neuroproject.neuro.presentation.screens.sensorchecking
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.neuroproject.neuro.domain.model.DeviceConnectionState
+import com.neuroproject.neuro.domain.usecase.device.ObserveConnectionStateUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.ObserveBatteryUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.ObserveResistanceUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
@@ -24,15 +26,33 @@ class SensorCheckingViewModel @Inject constructor(
     private val observeResistanceUseCase: ObserveResistanceUseCase,
     private val observeBatteryUseCase: ObserveBatteryUseCase,
     private val startResistanceCheckUseCase: StartResistanceCheckUseCase,
-    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase
+    private val stopResistanceCheckUseCase: StopResistanceCheckUseCase,
+    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SensorCheckingUiState())
     val uiState: StateFlow<SensorCheckingUiState> = _uiState.asStateFlow()
 
+    private val _isDeviceDisconnected = MutableStateFlow(false)
+    val isDeviceDisconnected: StateFlow<Boolean> = _isDeviceDisconnected.asStateFlow()
+
     init {
         observeResistance()
         observeBattery()
+        observeConnectionState()
+    }
+
+    private fun observeConnectionState() {
+        observeConnectionStateUseCase()
+            .catch { error ->
+                Log.e("SensorChecking", "Error observing connection state", error)
+            }
+            .onEach { state ->
+                if (state == DeviceConnectionState.disconnected || state == DeviceConnectionState.error) {
+                    _isDeviceDisconnected.value = true
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun observeResistance() {

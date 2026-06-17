@@ -140,6 +140,9 @@ interface DeviceGateway {
      */
     fun observeResistance(): Flow<ResistanceData>
 
+    /** Наблюдает за результатом калибровки (параметры ЭЭГ). */
+    fun observeCalibrationResult(): Flow<CalibrationSample>
+
     /** Запускает проверку сопротивления (непрерывный режим). */
     fun startResistanceCheck()
 

@@ -61,4 +61,10 @@ interface AuthRepository {
      * @param expeditionId идентификатор экспедиции.
      */
     suspend fun saveExpeditionId(expeditionId: String)
+
+    /** Сохраняет имя подключённого устройства. */
+    fun saveDeviceName(name: String)
+
+    /** Возвращает имя подключённого устройства. */
+    fun getDeviceName(): String
 }

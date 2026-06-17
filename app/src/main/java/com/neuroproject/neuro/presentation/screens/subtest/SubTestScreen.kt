@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -95,12 +96,47 @@ object SubTestScreenTags {
 fun SubTestScreen(
     modifier: Modifier = Modifier,
     viewModel: SubTestViewModel = hiltViewModel(),
-    onFinish: () -> Unit
+    onFinish: () -> Unit,
+    onDeviceUnconnected: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val calibrationProgress by viewModel.calibrationProgress.collectAsState()
     val showExpeditionDialog by viewModel.showExpeditionDialog.collectAsState()
     val expeditionError by viewModel.expeditionInputError.collectAsState()
+    val isDeviceDisconnected by viewModel.isDeviceDisconnected.collectAsState()
+
+    if (isDeviceDisconnected) {
+        AlertDialog(
+            onDismissRequest = { onDeviceUnconnected() },
+            title = {
+                Text(
+                    text = "Устройство отключено",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "Связь с устройством потеряна. Возврат в главное меню...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = onDeviceUnconnected,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("OK")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        )
+    }
 
     SubTestScreenContent(
         modifier = modifier,
@@ -152,7 +188,7 @@ fun SubTestScreenContent(
     }
 
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().systemBarsPadding(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(modifier = Modifier.fillMaxSize()) {

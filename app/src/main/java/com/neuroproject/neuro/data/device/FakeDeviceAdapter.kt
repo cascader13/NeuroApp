@@ -136,6 +136,10 @@ class FakeDeviceAdapter @Inject constructor() : DeviceGateway {
         TODO("Not yet implemented")
     }
 
+    override fun observeCalibrationResult(): Flow<CalibrationSample> = flow {
+        emit(CalibrationSample())
+    }
+
     override fun startResistanceCheck() {
         TODO("Not yet implemented")
     }

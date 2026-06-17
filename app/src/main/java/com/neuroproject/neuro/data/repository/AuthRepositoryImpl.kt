@@ -47,4 +47,9 @@ class AuthRepositoryImpl @Inject constructor(
         localDataSource.saveExpeditionId(expeditionId)
     }
 
+    override fun saveDeviceName(name: String) {
+        localDataSource.saveDeviceName(name)
+    }
+
+    override fun getDeviceName(): String = localDataSource.getDeviceName()
 }

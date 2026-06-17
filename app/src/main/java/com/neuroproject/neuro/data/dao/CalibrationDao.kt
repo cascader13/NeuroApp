@@ -22,14 +22,14 @@ interface CalibrationDao {
             " productivityFatigue = :fatigue," +
             " productivityReverseFatigue = :reverseFatigue," +
             " productivityRelaxation = :relaxation," +
-            " productivityConcentration = :concentration WHERE user_id = :userId AND id = (SELECT MAX(id) FROM calibration_history)")
+            " productivityConcentration = :concentration WHERE user_id = :userId AND id = (SELECT MAX(id) FROM calibration_history WHERE user_id = :userId)")
     suspend fun insertProductivityCalibration(userId: String, gravity: Float, productivity: Float, fatigue: Float, reverseFatigue: Float, relaxation: Float, concentration: Float)
 
     @Query("UPDATE calibration_history SET physiologicalAlpha = :alpha," +
             " physiologicalBeta = :beta, " +
             "physiologicalAlphaGravity = :alphaGravity, " +
             "physiologicalBetaGravity = :betaGravity, " +
-            "physiologicalConcentration = :concentration WHERE user_id = :userId AND id = (SELECT MAX(id) FROM calibration_history)")
+            "physiologicalConcentration = :concentration WHERE user_id = :userId AND id = (SELECT MAX(id) FROM calibration_history WHERE user_id = :userId)")
     suspend fun insertPhysiologicalCalibration(userId: String, alpha: Float, beta: Float, alphaGravity: Float, betaGravity: Float, concentration: Float)
 
     @Query("SELECT relaxation FROM productivity_indexes WHERE sessionId = :sessionId ORDER BY timestamp")

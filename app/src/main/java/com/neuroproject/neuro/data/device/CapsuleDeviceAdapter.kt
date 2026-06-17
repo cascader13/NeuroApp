@@ -2,6 +2,7 @@
 package com.neuroproject.neuro.data.device
 
 import com.neuroproject.neuro.domain.model.*
+import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.DeviceGateway
 import com.neuroproject.neuro.services.CapsuleDeviceManager
 import com.neuroproject.neuro.jni.JniCallbackHandler
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 @Singleton
 class CapsuleDeviceAdapter @Inject constructor(
     private val capsuleManager: CapsuleDeviceManager,
-    private val sensorAdapter: CapsuleSensorStreamAdapter
+    private val sensorAdapter: CapsuleSensorStreamAdapter,
+    private val authRepository: AuthRepository
 ) : DeviceGateway {
 
     // Состояния
@@ -69,6 +71,7 @@ class CapsuleDeviceAdapter @Inject constructor(
 
     override suspend fun connect(deviceId: String) {
         capsuleManager.connect(deviceId)
+        authRepository.saveDeviceName(deviceId)
     }
 
     override suspend fun disconnect() {
@@ -150,6 +153,9 @@ class CapsuleDeviceAdapter @Inject constructor(
             JniCallbackHandler.onResistanceReceived = null
         }
     }
+
+    override fun observeCalibrationResult(): Flow<CalibrationSample> =
+        sensorAdapter.observeCalibrationResult()
 
     override fun startResistanceCheck() {
         capsuleManager.startResistance()

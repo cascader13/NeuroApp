@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,9 +58,49 @@ fun SensorCheckingScreen(
     onDeviceUnconnected: () -> Unit = {}
 ) {
     val uiState by vm.uiState.collectAsState()
+    val isDeviceDisconnected by vm.isDeviceDisconnected.collectAsState()
 
     LaunchedEffect(Unit) {
         vm.start()
+    }
+
+    LaunchedEffect(isDeviceDisconnected) {
+        if (isDeviceDisconnected) {
+            vm.finish()
+        }
+    }
+
+    if (isDeviceDisconnected) {
+        AlertDialog(
+            onDismissRequest = { onDeviceUnconnected() },
+            title = {
+                Text(
+                    text = "Устройство отключено",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "Связь с устройством потеряна. Возврат в главное меню...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = onDeviceUnconnected,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("OK")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        )
     }
 
     BackHandler {

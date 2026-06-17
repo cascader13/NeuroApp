@@ -458,6 +458,7 @@ void onProductivityBaselineUpdate(clCProductivity, const clCProductivity_Baselin
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "baselines is null");
         return;
     }
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Productivity baseline updated: gravity: %f", baselines->gravity);
 
     JavaCallbackGuard guard;
     if (!guard.isValid()) return;
@@ -560,6 +561,7 @@ void onPhysiologicalStatesCalibrated(clCPhysiologicalStates, const clCPhysiologi
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "baselines is null");
         return;
     }
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Physiological baseline updated");
 
     JavaCallbackGuard guard;
     if (!guard.isValid()) return;

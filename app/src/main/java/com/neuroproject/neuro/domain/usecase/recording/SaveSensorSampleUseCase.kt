@@ -18,7 +18,8 @@ class SaveSensorSampleUseCase @Inject constructor(
             is PhysiologicalSample -> metricsRepository.savePhysiological(sample.copy(userId=userId, expeditionId = expeditionId))
             is MEMSSample -> metricsRepository.saveMEMS(sample.copy(userId=userId, expeditionId = expeditionId))
             is ProductivitySample -> metricsRepository.saveProductivity(sample.copy(userId=userId, expeditionId = expeditionId))
-            is ProductivityBaselineSample -> metricsRepository.saveProductivityBaseline(sample.copy(userId=userId, expeditionId = expeditionId))
+            is ProductivityBaselineSample -> {metricsRepository.saveProductivityBaseline(sample.copy(userId=userId, expeditionId = expeditionId))
+            }
             is ProductivityIndexSample -> metricsRepository.saveProductivityIndexes(sample.copy(userId=userId, expeditionId = expeditionId))
             is PhysiologicalBaselineSample -> metricsRepository.savePhysiologicalBaseline(sample.copy(userId=userId, expeditionId = expeditionId))
             is EmotionalSample -> metricsRepository.saveEmotional(sample.copy(userId=userId, expeditionId = expeditionId))
