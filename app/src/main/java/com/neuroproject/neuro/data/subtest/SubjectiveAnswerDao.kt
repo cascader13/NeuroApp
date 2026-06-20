@@ -76,4 +76,13 @@ interface SubjectiveAnswerDao {
     LIMIT 1
 """)
     suspend fun getLastById(id: Int, userId: String): SubjectiveAnswerValue?
+
+    @Query("DELETE FROM subjective_answers WHERE sessionId = :sessionId AND questionId = :questionId")
+    suspend fun deleteBySessionAndQuestion(sessionId: Long, questionId: Int)
+
+    @Query("DELETE FROM subjective_answers WHERE sessionId = :sessionId")
+    suspend fun deleteBySession(sessionId: Long)
+
+    @Query("SELECT * FROM subjective_answers WHERE sessionId = :sessionId AND questionId = :questionId LIMIT 1")
+    suspend fun getBySessionAndQuestion(sessionId: Long, questionId: Int): SubjectiveAnswerEntity?
 }

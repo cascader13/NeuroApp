@@ -40,7 +40,7 @@ class CalculateObjectiveFatigueUseCase @Inject constructor() {
         val psychologicalIndex = (avgPsychological * 100).toInt()
         val averageIndex = (cognitiveIndex + physiologicalIndex + psychologicalIndex) / 3
 
-        val fatigueLevel = FatigueLevel.fromValue(100 - averageIndex).description
+        val fatigueLevel = FatigueLevel.fromValue(averageIndex).description
         val stressLevel = getStressLevelFromData(minuteDataList)
 
         return ObjectiveFatigueResult(

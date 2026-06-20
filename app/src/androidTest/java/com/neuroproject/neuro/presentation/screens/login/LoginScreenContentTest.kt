@@ -28,8 +28,7 @@ class LoginScreenContentTest {
                     onLoginClick = {},
                     onClearSavedData = {},
                     onRemoveFromHistory = {},
-                    onSelectFromHistory = {},
-                    onFieldFocusChange = {}
+                    onSelectFromHistory = {}
                 )
             }
         }
@@ -51,8 +50,7 @@ class LoginScreenContentTest {
                     onLoginClick = { loginClicks++ },
                     onClearSavedData = {},
                     onRemoveFromHistory = {},
-                    onSelectFromHistory = {},
-                    onFieldFocusChange = {}
+                    onSelectFromHistory = {}
                 )
             }
         }
@@ -74,8 +72,7 @@ class LoginScreenContentTest {
                     onLoginClick = {},
                     onClearSavedData = {},
                     onRemoveFromHistory = {},
-                    onSelectFromHistory = {},
-                    onFieldFocusChange = {}
+                    onSelectFromHistory = {}
                 )
             }
         }

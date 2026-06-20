@@ -87,11 +87,13 @@ class CapsuleDeviceAdapter @Inject constructor(
     }
 
     override suspend fun startSignalAndHR() {
+        _calibrationState.value = CalibrationStage.CALIBRATOR_UNKNOWN_STAGE
         capsuleManager.startSignalAndHR()
     }
 
     override suspend fun stopSignalAndHR() {
         capsuleManager.stopSignalAndHR()
+        _calibrationState.value = CalibrationStage.CALIBRATOR_UNKNOWN_STAGE
     }
 
     override suspend fun startSession() {

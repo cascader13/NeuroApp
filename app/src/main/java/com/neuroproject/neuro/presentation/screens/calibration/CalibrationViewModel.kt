@@ -143,16 +143,17 @@ class CalibrationViewModel @Inject constructor(
                 }
                 .collect { stageValue ->
                     Log.d("Calibration", "Stage value: $stageValue")
-
-                    // stageValue - это Int из JNI (0,1,2,3,4,5,6)
+                    
                     when (stageValue) {
-                        6 -> { // Ошибка калибровки
-                            cancelCalibration()
-                            _uiState.value = _uiState.value.copy(errorMessage = "Ошибка калибровки")
-                        }
-                        4, 5 -> { // PHYSIO_INIT_STAGE или PHYSIO_BASELINE_STAGE
-                            metronomePlayer.stop()
+                        6 -> {
                             if (_uiState.value.isCalibrating) {
+                                cancelCalibration()
+                                _uiState.value = _uiState.value.copy(errorMessage = "Ошибка калибровки")
+                            }
+                        }
+                        4, 5 -> {
+                            if (_uiState.value.isCalibrating) {
+                                metronomePlayer.stop()
                                 completeCalibration()
                             }
                         }

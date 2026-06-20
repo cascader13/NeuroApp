@@ -1,6 +1,5 @@
 package com.neuroproject.neuro.presentation.screens.login
 
-import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.presentation.BaseViewModel
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.usecase.LoginUseCase
@@ -9,7 +8,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.neuroproject.neuro.domain.model.Result
 import com.neuroproject.neuro.domain.usecase.SaveMobileIdUseCase
-import kotlinx.coroutines.launch
 
 /**
  * Состояние авторизации
@@ -25,8 +23,7 @@ data class LoginUIState (
     val errorMessage: String? = null,
     val hasSavedData: Boolean = false,
     val isValid: Boolean = false,
-    val userIdHistory: List<String> = emptyList(),
-    val showDropdown: Boolean = false
+    val userIdHistory: List<String> = emptyList()
     )
 
 /**
@@ -62,8 +59,7 @@ class LoginScreenViewModel @Inject constructor(
             userId = savedUserId,
             hasSavedData = authRepository.hasSavedData(),
             isValid = validateUserIdUseCase(savedUserId) is ValidateUserIdUseCase.ValidationResult.Success,
-            userIdHistory = history,
-            showDropdown = false
+            userIdHistory = history
         )
     }
 
@@ -75,37 +71,14 @@ class LoginScreenViewModel @Inject constructor(
     fun onUserIdChange(value: String) {
         val validationResult = validateUserIdUseCase(value)
         val isValid = validationResult is ValidateUserIdUseCase.ValidationResult.Success
-        val showDropdown = currentState.userIdHistory.isNotEmpty() &&
-                value.isNotEmpty() &&
-                currentState.userIdHistory.any { it.contains(value, ignoreCase = true) }
 
         setState {
             copy(
                 userId = value,
                 isValid = isValid,
-                showDropdown = showDropdown,
                 errorMessage = if (validationResult is ValidateUserIdUseCase.ValidationResult.Error)
                     validationResult.message else null
             )
-        }
-    }
-
-    fun showDropdown() {
-        if (currentState.userIdHistory.isNotEmpty()) {
-            setState { copy(showDropdown = true) }
-        }
-    }
-
-    fun onTextFieldFocusChange(focused: Boolean) {
-        if (focused && currentState.userId.isNotEmpty() && currentState.userIdHistory.isNotEmpty()) {
-            setState { copy(showDropdown = true) }
-        } else if (!focused) {
-            viewModelScope.launch {
-                kotlinx.coroutines.delay(200)
-                if (currentState.showDropdown) {
-                    setState { copy(showDropdown = false) }
-                }
-            }
         }
     }
 
@@ -117,7 +90,6 @@ class LoginScreenViewModel @Inject constructor(
             copy(
                 userId = userId,
                 isValid = isValid,
-                showDropdown = false,
                 errorMessage = if (validationResult is ValidateUserIdUseCase.ValidationResult.Error)
                     validationResult.message else null
             )
@@ -133,8 +105,7 @@ class LoginScreenViewModel @Inject constructor(
                 userIdHistory = updatedHistory,
                 // Если удалили текущий ID, очищаем поле
                 userId = if (currentState.userId == userId) "" else currentState.userId,
-                isValid = if (currentState.userId == userId) false else currentState.isValid,
-                showDropdown = updatedHistory.isNotEmpty() && currentState.userId.isNotEmpty()
+                isValid = if (currentState.userId == userId) false else currentState.isValid
             )
         }
     }
@@ -183,8 +154,7 @@ class LoginScreenViewModel @Inject constructor(
                 hasSavedData = false,
                 errorMessage = null,
                 isValid = false,
-                userIdHistory = emptyList(),
-                showDropdown = false
+                userIdHistory = emptyList()
             )
         }
     }
@@ -193,7 +163,4 @@ class LoginScreenViewModel @Inject constructor(
         setState { copy(errorMessage = null) }
     }
 
-    fun dismissDropdown() {
-        setState { copy(showDropdown = false) }
-    }
 }

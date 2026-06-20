@@ -154,7 +154,7 @@ object SubjectiveQuestionsProvider {
                 text = "Я легко выполняю физические действия",
                 blockType = BlockType.PHYSICAL,
                 displayOrder = 7,
-                isReversed = false  // Примечание: возможно, должен быть true
+                isReversed = true
             ),
             SubjectiveQuestionEntity(
                 id = 18,

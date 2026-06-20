@@ -1,4 +1,3 @@
-// presentation/screens/subtest/SubTestViewModel.kt (исправленный)
 package com.neuroproject.neuro.presentation.screens.subtest
 
 import android.util.Log
@@ -41,7 +40,6 @@ import kotlin.math.roundToInt
 
 @HiltViewModel
 class SubTestViewModel @Inject constructor(
-    // Use cases
     private val loadQuestionsUseCase: LoadQuestionsUseCase,
     private val saveAnswersUseCase: SaveAnswersUseCase,
     private val calculateSubjectiveResultUseCase: CalculateSubjectiveResultUseCase,
@@ -118,7 +116,6 @@ class SubTestViewModel @Inject constructor(
         }
     }
 
-    // Проверка expeditionId при инициализации
     init {
         loadQuestions()
         observeSensorData()
@@ -502,8 +499,19 @@ class SubTestViewModel @Inject constructor(
         )
 
         val currentAnswers = _answersList.value.toMutableList()
-        currentAnswers.add(answer)
+        val existingIndex = currentAnswers.indexOfFirst { it.questionId == question.id }
+        if (existingIndex >= 0) {
+            currentAnswers[existingIndex] = answer
+        } else {
+            currentAnswers.add(answer)
+        }
         _answersList.value = currentAnswers
+
+        currentSession?.let { session ->
+            viewModelScope.launch {
+                saveAnswersUseCase(session.sessionId, currentAnswers)
+            }
+        }
 
         if (currentState.currentIndex < currentState.questions.lastIndex) {
             val nextIndex = currentState.currentIndex + 1
@@ -514,7 +522,6 @@ class SubTestViewModel @Inject constructor(
                     screenState = currentState.copy(
                         currentIndex = nextIndex,
                         currentAnswer = _answers[currentState.questions[nextIndex].id]
-                        // previousAnswers остается без изменений
                     )
                 )
             }
@@ -522,6 +529,24 @@ class SubTestViewModel @Inject constructor(
             _uiState.update {
                 it.copy(screenState = SubTestScreenState.Comment)
             }
+        }
+    }
+
+    fun goToPreviousQuestion() {
+        val currentState = _uiState.value.screenState
+        if (currentState !is SubTestScreenState.Question || currentState.currentIndex <= 0) return
+
+        val prevIndex = currentState.currentIndex - 1
+        val prevQuestion = currentState.questions[prevIndex]
+        _currentQuestionIndex.value = prevIndex
+
+        _uiState.update {
+            it.copy(
+                screenState = currentState.copy(
+                    currentIndex = prevIndex,
+                    currentAnswer = _answers[prevQuestion.id]
+                )
+            )
         }
     }
 

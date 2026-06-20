@@ -2,6 +2,7 @@ package com.neuroproject.neuro.presentation.screens.subtest
 
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
@@ -27,6 +28,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -39,6 +42,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
@@ -105,6 +109,10 @@ fun SubTestScreen(
     val expeditionError by viewModel.expeditionInputError.collectAsState()
     val isDeviceDisconnected by viewModel.isDeviceDisconnected.collectAsState()
 
+    BackHandler {
+        onFinish()
+    }
+
     if (isDeviceDisconnected) {
         AlertDialog(
             onDismissRequest = { onDeviceUnconnected() },
@@ -150,6 +158,7 @@ fun SubTestScreen(
         onStartTest = { viewModel.startTest() },
         onAnswerSelected = { viewModel.onAnswerSelected(it) },
         onSaveAnswer = { viewModel.onSaveAnswer() },
+        onGoToPreviousQuestion = { viewModel.goToPreviousQuestion() },
         onCommentChanged = { viewModel.onCommentChanged(it) },
         onFinishTestClick = { viewModel.onFinishTestClick() },
         onForceStop = { viewModel.forceStopTest() },
@@ -171,6 +180,7 @@ fun SubTestScreenContent(
     onStartTest: () -> Unit,
     onAnswerSelected: (Int) -> Unit,
     onSaveAnswer: () -> Unit,
+    onGoToPreviousQuestion: () -> Unit,
     onCommentChanged: (String) -> Unit,
     onFinishTestClick: () -> Unit,
     onForceStop: () -> Unit,
@@ -231,7 +241,8 @@ fun SubTestScreenContent(
                                 currentAnswer = screenState.currentAnswer,
                                 previousAnswer = previousAnswer,
                                 onAnswerSelected = onAnswerSelected,
-                                onSaveClick = onSaveAnswer
+                                onSaveClick = onSaveAnswer,
+                                onPreviousClick = onGoToPreviousQuestion
                             )
                         }
                     }
@@ -428,9 +439,10 @@ fun QuestionsContent(
     currentIndex: Int,
     totalCount: Int,
     currentAnswer: Int?,
-    previousAnswer: Int? = null, // Добавляем параметр для предыдущего ответа
+    previousAnswer: Int? = null,
     onAnswerSelected: (Int) -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: () -> Unit,
+    onPreviousClick: () -> Unit = {}
 ) {
     if (totalCount == 0) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -618,21 +630,43 @@ fun QuestionsContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = onSaveClick,
-            modifier = Modifier
-                .align(Alignment.End)
-                .height(56.dp)
-                .testTag(SubTestScreenTags.SaveAnswerButton),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = if (currentIndex == totalCount - 1) "Завершить" else "Далее",
-                style = MaterialTheme.typography.labelLarge
-            )
+            if (currentIndex > 0) {
+                OutlinedButton(
+                    onClick = onPreviousClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "Назад",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+
+            Button(
+                onClick = onSaveClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+                    .testTag(SubTestScreenTags.SaveAnswerButton),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = if (currentIndex == totalCount - 1) "Завершить" else "Далее",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -909,7 +943,8 @@ fun ResultContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .padding(horizontal = 16.dp, vertical = 24.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -1044,7 +1079,7 @@ fun ResultContent(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = onFinish,
@@ -1251,7 +1286,7 @@ fun ExpeditionIdDialog(
 
 
 private fun getFatigueLevelText(index: Int): String {
-    return when (100 - index) {
+    return when (index) {
         in 0..20 -> "Низкий уровень утомления"
         in 21..40 -> "Умеренный уровень утомления"
         in 41..60 -> "Средний уровень утомления"

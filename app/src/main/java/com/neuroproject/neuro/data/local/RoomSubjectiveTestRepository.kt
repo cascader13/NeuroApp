@@ -29,6 +29,7 @@ class RoomSubjectiveTestRepository @Inject constructor(
     }
 
     override suspend fun saveAnswers(sessionId: Long, answers: List<SubjectiveAnswer>) {
+        answerDao.deleteBySession(sessionId)
         val entities = answers.map {
             SubjectiveAnswerEntity(
                 sessionId = sessionId,
@@ -37,6 +38,17 @@ class RoomSubjectiveTestRepository @Inject constructor(
             )
         }
         answerDao.insertAll(entities)
+    }
+
+    override suspend fun saveAnswer(sessionId: Long, answer: SubjectiveAnswer) {
+        answerDao.deleteBySessionAndQuestion(sessionId, answer.questionId)
+        answerDao.insert(
+            SubjectiveAnswerEntity(
+                sessionId = sessionId,
+                questionId = answer.questionId,
+                value = answer.value
+            )
+        )
     }
 
     override suspend fun getAnswers(sessionId: Long): List<SubjectiveAnswer> {

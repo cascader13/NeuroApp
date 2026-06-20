@@ -26,6 +26,14 @@ interface SubjectiveTestRepository {
      */
     suspend fun saveAnswers(sessionId: Long, answers: List<SubjectiveAnswer>)
 
+    /**
+     * Сохраняет или обновляет один ответ на вопрос для сессии (upsert).
+     *
+     * @param sessionId ID сессии.
+     * @param answer ответ пользователя.
+     */
+    suspend fun saveAnswer(sessionId: Long, answer: SubjectiveAnswer)
+
     /** Возвращает ответы для сессии. */
     suspend fun getAnswers(sessionId: Long): List<SubjectiveAnswer>
 
