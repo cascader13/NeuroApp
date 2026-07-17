@@ -30,7 +30,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             alpha = sample.alpha,
             beta = sample.beta,
             theta = sample.theta,
@@ -50,7 +50,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             heartRate = sample.heartRate,
             hasArtifacts = sample.hasArtifacts,
             kaplanIndex = sample.kaplanIndex,
@@ -69,7 +69,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             relax = sample.relaxation,
             fatigue = sample.fatigue,
             none = 0f,
@@ -89,7 +89,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             accX = sample.accelerometerX,
             accY = sample.accelerometerY,
             accZ = sample.accelerometerZ,
@@ -107,7 +107,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             gravity = sample.gravity,
             productivity = sample.productivity,
             fatigue = sample.fatigue,
@@ -121,19 +121,23 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
 
 
     override suspend fun saveProductivityBaseline(sample: ProductivityBaselineSample) {
-        legacyRepository.saveProductivityBaselines(
-            time = sample.timestamp,
-            id = sample.userId,
-            expedition_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
-            gravity = sample.gravity,
-            productivity = sample.productivity,
-            fatigue = sample.fatigue,
-            reverseFatigue = sample.reverse_fatique,
-            relaxation = sample.relaxation,
-            concentration = sample.concentration
-        )
-        updateCalibrationWithProductivityBaseline(sample)
+        try {
+            legacyRepository.saveProductivityBaselines(
+                time = sample.timestamp,
+                id = sample.userId,
+                expedition_id = sample.expeditionId,
+                sessionId = sample.sessionId.toLongOrNull() ?: 0L,
+                gravity = sample.gravity,
+                productivity = sample.productivity,
+                fatigue = sample.fatigue,
+                reverseFatigue = sample.reverse_fatique,
+                relaxation = sample.relaxation,
+                concentration = sample.concentration
+            )
+            updateCalibrationWithProductivityBaseline(sample)
+        } catch (e: Exception) {
+            Log.e("RoomMetricsRepo", "Error saving productivity baseline", e)
+        }
     }
 
     private suspend fun updateCalibrationWithProductivityBaseline(sample: ProductivityBaselineSample) {
@@ -161,7 +165,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             expedition_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             relaxation = sample.relaxation,
             stress = sample.stress,
             gravityBaseline = sample.gravityBaseline,
@@ -178,18 +182,22 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
 
 
     override suspend fun savePhysiologicalBaseline(sample: PhysiologicalBaselineSample) {
-        legacyRepository.savePhysiologicalBaselines(
-            time = sample.timestamp,
-            id = sample.userId,
-            expedition_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
-            alpha = sample.alpha,
-            beta = sample.beta,
-            alphaGravity = sample.alphaGravity,
-            betaGravity = sample.betaGravity,
-            concentration = sample.concentration
-        )
-        updateCalibrationWithPhysiologicalBaseline(sample)
+        try {
+            legacyRepository.savePhysiologicalBaselines(
+                time = sample.timestamp,
+                id = sample.userId,
+                expedition_id = sample.expeditionId,
+                sessionId = sample.sessionId.toLongOrNull() ?: 0L,
+                alpha = sample.alpha,
+                beta = sample.beta,
+                alphaGravity = sample.alphaGravity,
+                betaGravity = sample.betaGravity,
+                concentration = sample.concentration
+            )
+            updateCalibrationWithPhysiologicalBaseline(sample)
+        } catch (e: Exception) {
+            Log.e("RoomMetricsRepo", "Error saving physiological baseline", e)
+        }
     }
 
     private suspend fun updateCalibrationWithPhysiologicalBaseline(sample: PhysiologicalBaselineSample) {
@@ -216,7 +224,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             attention = sample.attention,
             relaxation = sample.relaxation,
             cognitiveLoad = sample.cognitiveLoad,
@@ -233,7 +241,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             channel1 = sample.channel1,
             channel2 = sample.channel2
         )
@@ -246,7 +254,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             channel1 = sample.channel1,
             channel2 = sample.channel2
         )
@@ -259,7 +267,7 @@ class RoomMetricsRepositoryAdapter @Inject constructor(
             time = sample.timestamp,
             id = sample.userId,
             exp_id = sample.expeditionId,
-            sessionId = sample.sessionId.toLong(),
+            sessionId = sample.sessionId.toLongOrNull() ?: 0L,
             artifactsChannel1 = sample.artifactChannel1,
             artifactsChannel2 = sample.artifactChannel2,
             qualityChannel1 = sample.qualityChannel1,

@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.presentation.screens.subtest
 
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -45,7 +46,14 @@ class SubTestScreenContentTest {
                     onCommentChanged = {},
                     onFinishTestClick = {},
                     onForceStop = {},
-                    onFinish = {}
+                    onFinish = {},
+                    showExpeditionDialog = false,
+                    expeditionError = "",
+                    onGoToPreviousQuestion = {},
+                    onRetakeTest = {},
+                    onSaveExpeditionId = {},
+                    onDismissExpeditionDialog = { },
+                    modifier = Modifier
                 )
             }
         }
@@ -78,7 +86,14 @@ class SubTestScreenContentTest {
                     onCommentChanged = {},
                     onFinishTestClick = {},
                     onForceStop = {},
-                    onFinish = {}
+                    onFinish = {},
+                    showExpeditionDialog = false,
+                    expeditionError = "",
+                    onGoToPreviousQuestion = {},
+                    onRetakeTest = {},
+                    onSaveExpeditionId = {},
+                    onDismissExpeditionDialog = { },
+                    modifier = Modifier
                 )
             }
         }
@@ -119,7 +134,14 @@ class SubTestScreenContentTest {
                     onCommentChanged = {},
                     onFinishTestClick = {},
                     onForceStop = {},
-                    onFinish = {}
+                    onFinish = {},
+                    showExpeditionDialog = false,
+                    expeditionError = "",
+                    onGoToPreviousQuestion = {},
+                    onRetakeTest = {},
+                    onSaveExpeditionId = {},
+                    onDismissExpeditionDialog = { },
+                    modifier = Modifier
                 )
             }
         }
@@ -149,7 +171,14 @@ class SubTestScreenContentTest {
                     onCommentChanged = { comment = it },
                     onFinishTestClick = { finishClicks++ },
                     onForceStop = {},
-                    onFinish = {}
+                    onFinish = {},
+                    showExpeditionDialog = false,
+                    expeditionError = "",
+                    onGoToPreviousQuestion = {},
+                    onRetakeTest = {},
+                    onSaveExpeditionId = {},
+                    onDismissExpeditionDialog = { },
+                    modifier = Modifier
                 )
             }
         }
@@ -185,7 +214,14 @@ class SubTestScreenContentTest {
                     onCommentChanged = {},
                     onFinishTestClick = {},
                     onForceStop = {},
-                    onFinish = { finishClicks++ }
+                    onFinish = { finishClicks++ },
+                    showExpeditionDialog = false,
+                    expeditionError = "",
+                    onGoToPreviousQuestion = {},
+                    onRetakeTest = {},
+                    onSaveExpeditionId = {},
+                    onDismissExpeditionDialog = { },
+                    modifier = Modifier
                 )
             }
         }

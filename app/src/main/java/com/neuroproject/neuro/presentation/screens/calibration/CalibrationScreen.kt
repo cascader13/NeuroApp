@@ -20,12 +20,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
@@ -54,6 +57,7 @@ fun CalibrationScreen(
 ) {
     val uiState by vm.uiState.collectAsState()
     val isDeviceDisconnected by vm.isDeviceDisconnected.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Обработка завершения калибровки
     LaunchedEffect(uiState.isComplete) {
@@ -65,8 +69,8 @@ fun CalibrationScreen(
     // Обработка ошибок
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { error ->
-            // Можно показать Snackbar или просто логировать
-            android.util.Log.e("Calibration", error)
+            snackbarHostState.showSnackbar(error)
+            vm.clearError()
         }
     }
 
@@ -110,15 +114,24 @@ fun CalibrationScreen(
         onBackPressed()
     }
 
-    CalibrationScreenContent(
-        uiState = uiState,
-        onBackPressed = onBackPressed,
-        onStartCalibration = { vm.startCalibration() },
-        onCancelCalibration = { vm.cancelCalibration() },
-        onUsePreviousCalibration = { vm.usePreviousCalibration() },
-        onPerformNewCalibration = { vm.performNewCalibration() },
-        onDismissDialog = { vm.dismissDialog() }
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        CalibrationScreenContent(
+            uiState = uiState,
+            onBackPressed = onBackPressed,
+            onStartCalibration = { vm.startCalibration() },
+            onCancelCalibration = { vm.cancelCalibration() },
+            onUsePreviousCalibration = { vm.usePreviousCalibration() },
+            onPerformNewCalibration = { vm.performNewCalibration() },
+            onDismissDialog = { vm.dismissDialog() }
+        )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
+    }
 }
 
 @Composable

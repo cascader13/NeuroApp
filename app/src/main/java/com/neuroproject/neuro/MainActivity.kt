@@ -1,10 +1,15 @@
 package com.neuroproject.neuro
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.gelo.capsule.CapsuleNative
 import com.gyf.immersionbar.ktx.immersionBar
 import dagger.hilt.android.AndroidEntryPoint
@@ -24,6 +29,12 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        // Разрешение получено или отклонено
+    }
 
     /**
      * Вызывается при создании активности.
@@ -52,9 +63,21 @@ class MainActivity : ComponentActivity() {
         // Запрос разрешений на Bluetooth и местоположение
         CapsuleNative.requestPermissions(this)
 
+        // Запрос разрешения на уведомления (Android 13+)
+        requestNotificationPermission()
+
         // Установка Compose контента
         setContent {
             NeuroApplication()
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(permission)
+            }
         }
     }
 }

@@ -21,7 +21,8 @@ import kotlinx.coroutines.flow.collect
 class MetricsSyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val uploadRepository: MetricsUploadRepository
+    private val uploadRepository: MetricsUploadRepository,
+    private val notificationHelper: SyncNotificationHelper
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
@@ -39,6 +40,8 @@ class MetricsSyncWorker @AssistedInject constructor(
             ).collect { progress ->
                 terminalProgress = progress
             }
+
+            terminalProgress?.let { notificationHelper.showSyncResult(it) }
 
             when (terminalProgress) {
                 is BatchUploadProgress.Completed,

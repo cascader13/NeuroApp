@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.presentation.screens.history
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -28,7 +29,9 @@ class HistoryScreenContentTest {
                     onChartClick = {},
                     onSessionClick = {},
                     onRetry = {},
-                    onClearError = {}
+                    onClearError = {},
+                    onDeleteSession = {},
+                    snackbarHostState = SnackbarHostState()
                 )
             }
         }
@@ -47,7 +50,9 @@ class HistoryScreenContentTest {
                     onChartClick = {},
                     onSessionClick = {},
                     onRetry = {},
-                    onClearError = {}
+                    onClearError = {},
+                    onDeleteSession = {},
+                    snackbarHostState = SnackbarHostState()
                 )
             }
         }
@@ -70,7 +75,9 @@ class HistoryScreenContentTest {
                     onChartClick = {},
                     onSessionClick = {},
                     onRetry = { retryClicks++ },
-                    onClearError = { clearClicks++ }
+                    onClearError = { clearClicks++ },
+                    onDeleteSession = {},
+                    snackbarHostState = SnackbarHostState()
                 )
             }
         }
@@ -101,7 +108,9 @@ class HistoryScreenContentTest {
                     onChartClick = {},
                     onSessionClick = { clickedSessionId = it },
                     onRetry = {},
-                    onClearError = {}
+                    onClearError = {},
+                    onDeleteSession = {},
+                    snackbarHostState = SnackbarHostState()
                 )
             }
         }

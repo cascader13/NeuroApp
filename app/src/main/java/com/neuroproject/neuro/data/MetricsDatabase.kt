@@ -16,8 +16,10 @@ import com.neuroproject.neuro.data.subtest.SubjectiveAnswerEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionDao
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionEntity
 import com.neuroproject.neuro.data.subtest.SubjectiveQuestionsProvider
+import com.neuroproject.neuro.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 private const val DATABASE_NAME = "metrics_database_v7"
@@ -136,11 +138,16 @@ abstract class MetricsDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .also { builder ->
+                        if (BuildConfig.DEBUG) {
+                            builder.fallbackToDestructiveMigration()
+                        }
+                    }
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             INSTANCE?.let { database ->
-                                CoroutineScope(Dispatchers.IO).launch {
+                                CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
                                     database.subjectiveQuestionDao().insertAll(
                                         SubjectiveQuestionsProvider.getQuestions()
                                     )
@@ -200,8 +207,6 @@ abstract class MetricsDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sessions_id ON sessions(id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sessions_expedition_id ON sessions(expedition_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_fatigue_results_sessionId ON fatigue_results(sessionId)")
-                db.execSQL("ALTER TABLE fatigue_results RENAME COLUMN physioligicalResult TO physiologicalResult")
-                db.execSQL("ALTER TABLE fatigue_results RENAME COLUMN psychologicalResultval TO psychologicalResult")
             }
         }
     }

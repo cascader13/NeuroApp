@@ -37,6 +37,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -77,7 +79,8 @@ fun SettingsScreen(
         onServerAddressChanged = vm::onServerAddressChanged,
         onUploadClicked = vm::onUploadClicked,
         onSaveToFileClicked = vm::saveToFile,
-        onExportDatabaseClicked = vm::exportDatabase
+        onExportDatabaseClicked = vm::exportDatabase,
+        onNotificationsToggled = vm::toggleNotifications
     )
 }
 
@@ -94,7 +97,8 @@ private fun SettingsScreenContent(
     onServerAddressChanged: (String) -> Unit,
     onUploadClicked: () -> Unit,
     onSaveToFileClicked: () -> Unit,
-    onExportDatabaseClicked: () -> Unit
+    onExportDatabaseClicked: () -> Unit,
+    onNotificationsToggled: () -> Unit
 ) {
 
     Scaffold(
@@ -143,6 +147,11 @@ private fun SettingsScreenContent(
             ThemeModeSelector(
                 selectedMode = themeMode,
                 onModeSelected = onThemeModeChange
+            )
+
+            NotificationsToggle(
+                enabled = state.notificationsEnabled,
+                onToggle = onNotificationsToggled
             )
 
             MobileIdField(
@@ -751,6 +760,43 @@ fun ThemeRadioButton(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun NotificationsToggle(
+    enabled: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Уведомления о синхронизации",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Показывать уведомления о результатах фоновой отправки данных",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = enabled,
+            onCheckedChange = { onToggle() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         )
     }
 }

@@ -28,6 +28,7 @@ import com.neuroproject.neuro.domain.usecase.sensor.StartResistanceCheckUseCase
 import com.neuroproject.neuro.domain.usecase.sensor.StopResistanceCheckUseCase
 import com.neuroproject.neuro.data.device.SessionIdProvider
 import com.neuroproject.neuro.domain.usecase.subjective.GetAnswerScoreByIdUseCase
+import com.neuroproject.neuro.domain.repository.SubjectiveTestRepository
 import com.neuroproject.neuro.presentation.screens.sensorchecking.toElectrodeStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -62,7 +63,8 @@ class SubTestViewModel @Inject constructor(
     private val stopResistanceCheckUseCase: StopResistanceCheckUseCase,
     private val authRepository: AuthRepository,
     private val sessionIdProvider: SessionIdProvider,
-    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase
+    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase,
+    private val subjectiveTestRepository: SubjectiveTestRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubTestUiState())
@@ -77,7 +79,7 @@ class SubTestViewModel @Inject constructor(
     private val _expeditionInputError = MutableStateFlow<String?>(null)
     val expeditionInputError: StateFlow<String?> = _expeditionInputError.asStateFlow()
 
-    var passingPrematurely = false
+    private var passingPrematurely = false
 
     private val _questions = MutableStateFlow<List<SubjectiveQuestion>>(emptyList())
     val questions: StateFlow<List<SubjectiveQuestion>> = _questions.asStateFlow()
@@ -104,6 +106,7 @@ class SubTestViewModel @Inject constructor(
     // Timer state
     private val _timeLeftMillis = MutableStateFlow(10 * 60 * 1000L)
     private var isTimerRunning = false
+    private var isTimerExpired = false
     val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
 
     private fun getDefaultSessionCategory(): SessionCategory {
@@ -176,9 +179,9 @@ class SubTestViewModel @Inject constructor(
                 Log.e("SubTestViewModel", "Error observing resistance", error)
             }
             .onEach { resistanceData ->
-                _uiState.value = _uiState.value.copy(
-                    electrodeStates = resistanceData.toElectrodeStates()
-                )
+                _uiState.update {
+                    it.copy(electrodeStates = resistanceData.toElectrodeStates())
+                }
             }
             .launchIn(viewModelScope)
     }
@@ -246,42 +249,18 @@ class SubTestViewModel @Inject constructor(
                         currentSession?.let { session ->
                             if (session.sessionId != 0L) {
                                 when (event) {
-                                    is SensorEvent.NFB -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.HR -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.Physiological -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.MEMS -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.Productivity -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.Emotional -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.EEGRaw -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.EEGProcessed -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.EEGArtifact -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.ProductivityBaseline -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.ProductivityIndexes -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
-                                    is SensorEvent.PhysiologicalBaseline -> {
-                                        saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
-                                    }
+                                    is SensorEvent.NFB -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.HR -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.Physiological -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.MEMS -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.Productivity -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.Emotional -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.EEGRaw -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.EEGProcessed -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.EEGArtifact -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.ProductivityBaseline -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.ProductivityIndexes -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
+                                    is SensorEvent.PhysiologicalBaseline -> saveSensorSampleUseCase(event.data.copy(sessionId = session.sessionId.toString()))
                                     else -> {}
                                 }
                             } else {
@@ -370,6 +349,8 @@ class SubTestViewModel @Inject constructor(
 
     fun startTest() {
         viewModelScope.launch {
+            isTimerExpired = false
+            _uiState.update { it.copy(isTimerExpired = false) }
             currentSession?.let { session ->
                 sessionIdProvider.setSessionId(session.sessionId.toString())
             }
@@ -378,7 +359,6 @@ class SubTestViewModel @Inject constructor(
             startRecordingUseCase()
             startTimer(_timeLeftMillis.value)
 
-            // Загружаем предыдущие ответы перед показом вопросов
             val previousAnswers = loadPreviousAnswers(_questions.value)
 
             _uiState.update {
@@ -394,23 +374,18 @@ class SubTestViewModel @Inject constructor(
         }
     }
 
-    private fun getCurrentDurationMinutes(): Int {
+    private fun currentSettings(): Pair<Int, SessionCategory> {
         val state = _uiState.value.screenState
         return if (state is SubTestScreenState.SessionSettings) {
-            state.durationMinutes
+            state.durationMinutes to state.category
         } else {
-            _uiState.value.selectedDurationMinutes
+            _uiState.value.selectedDurationMinutes to _uiState.value.selectedCategory
         }
     }
 
-    private fun getCurrentCategory(): SessionCategory {
-        val state = _uiState.value.screenState
-        return if (state is SubTestScreenState.SessionSettings) {
-            state.category
-        } else {
-            _uiState.value.selectedCategory
-        }
-    }
+    private fun getCurrentDurationMinutes(): Int = currentSettings().first
+
+    private fun getCurrentCategory(): SessionCategory = currentSettings().second
 
     private fun startTimer(durationMillis: Long) {
         timerJob?.cancel()
@@ -438,15 +413,15 @@ class SubTestViewModel @Inject constructor(
 
     private fun onTimerFinished() {
         isTimerRunning = false
+        isTimerExpired = true
+        _uiState.update { it.copy(isTimerExpired = true) }
         when (_uiState.value.screenState) {
             is SubTestScreenState.Waiting,
             is SubTestScreenState.Comment -> {
                 finishTest()
             }
             else -> {
-                if (_uiState.value.screenState is SubTestScreenState.Question) {
-                    finishTest()
-                }
+                // Пользователь ещё на экране вопросов — даём завершить
             }
         }
     }
@@ -555,14 +530,38 @@ class SubTestViewModel @Inject constructor(
     }
 
     fun onFinishTestClick() {
-        if (_timeLeftMillis.value <= 0) {
+        if (_timeLeftMillis.value <= 0 || isTimerExpired) {
             finishTest()
         } else {
             _uiState.update {
                 it.copy(
                     screenState = SubTestScreenState.Waiting(
                         timeLeftMillis = _timeLeftMillis.value,
-                        totalDurationMillis = getCurrentDurationMinutes() * 60 * 1000L
+                        totalDurationMillis = getCurrentDurationMinutes() * 60 * 1000L,
+                        hasRetaken = it.hasRetaken
+                    )
+                )
+            }
+        }
+    }
+
+    fun retakeTest() {
+        isTimerExpired = false
+        _uiState.update { it.copy(hasRetaken = true, isTimerExpired = false) }
+        viewModelScope.launch {
+            _answers.clear()
+            _answersList.value = emptyList()
+            _currentQuestionIndex.value = 0
+
+            val previousAnswers = loadPreviousAnswers(_questions.value)
+
+            _uiState.update {
+                it.copy(
+                    screenState = SubTestScreenState.Question(
+                        questions = _questions.value,
+                        currentIndex = 0,
+                        currentAnswer = null,
+                        previousAnswers = previousAnswers
                     )
                 )
             }
@@ -575,6 +574,8 @@ class SubTestViewModel @Inject constructor(
             timerJob?.cancel()
             timerJob = null
             stopRecordingUseCase()
+            sensorJob?.cancel()
+            sensorJob = null
             passingPrematurely = true
             finishTest()
         }
@@ -628,39 +629,64 @@ class SubTestViewModel @Inject constructor(
     }
 
     private fun calculateCognitiveIndexForMinute(minuteData: MinuteFatigueData): Float {
-        // Используем те же веса, что и в CalculateObjectiveFatigueUseCase
-        return 0.30f * minuteData.cognitive.fatigue +
-                0.25f * minuteData.cognitive.concentration +
-                0.20f * minuteData.cognitive.productivity +
-                0.25f * minuteData.cognitive.cognitiveLoad
+        return FatigueCoefficients.cognitiveFatigue * minuteData.cognitive.fatigue +
+                FatigueCoefficients.cognitiveConcentration * minuteData.cognitive.concentration +
+                FatigueCoefficients.cognitiveProductivity * minuteData.cognitive.productivity +
+                FatigueCoefficients.cognitiveCognitiveLoad * minuteData.cognitive.cognitiveLoad
     }
 
     private fun calculatePhysiologicalIndexForMinute(minuteData: MinuteFatigueData): Float {
-        return 0.35f * minuteData.physiological.fatigue +
-                0.25f * minuteData.physiological.stress +
-                0.20f * minuteData.physiological.relax +
-                0.20f * minuteData.physiological.involvement
+        return FatigueCoefficients.physiologicalFatigue * minuteData.physiological.fatigue +
+                FatigueCoefficients.physiologicalStress * minuteData.physiological.stress +
+                FatigueCoefficients.physiologicalRelax * minuteData.physiological.relax +
+                FatigueCoefficients.physiologicalInvolvement * minuteData.physiological.involvement
     }
 
     private fun calculatePsychologicalIndexForMinute(minuteData: MinuteFatigueData): Float {
-        return 0.30f * minuteData.psychological.cognitiveLoad +
-                0.25f * minuteData.psychological.relaxation +
-                0.25f * minuteData.psychological.selfControl +
-                0.20f * minuteData.psychological.cognitiveControl
+        return FatigueCoefficients.psychologicalCognitiveLoad * minuteData.psychological.cognitiveLoad +
+                FatigueCoefficients.psychologicalRelaxation * minuteData.psychological.relaxation +
+                FatigueCoefficients.psychologicalSelfControl * minuteData.psychological.selfControl +
+                FatigueCoefficients.psychologicalCognitiveControl * minuteData.psychological.cognitiveControl
     }
 
     private fun finishTest() {
         viewModelScope.launch {
             try {
                 stopRecordingUseCase()
+                sensorJob?.cancel()
+                sensorJob = null
+
+                var finalAnswers = _answersList.value
+
+                if (_uiState.value.hasRetaken) {
+                    val session = currentSession
+                    if (session != null) {
+                        try {
+                            val existingAnswers = subjectiveTestRepository.getAnswers(session.sessionId)
+                            finalAnswers = finalAnswers.map { newAnswer ->
+                                val existing = existingAnswers.find { it.questionId == newAnswer.questionId }
+                                if (existing != null) {
+                                    SubjectiveAnswer(
+                                        questionId = newAnswer.questionId,
+                                        value = (newAnswer.value + existing.value) / 2
+                                    )
+                                } else {
+                                    newAnswer
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("SubTestViewModel", "Error loading existing answers for averaging", e)
+                        }
+                    }
+                }
 
                 currentSession?.let { session ->
-                    saveAnswersUseCase(session.sessionId, _answersList.value)
+                    saveAnswersUseCase(session.sessionId, finalAnswers)
                 }
 
                 val subjectiveResult = calculateSubjectiveResultUseCase(
                     questions = _questions.value,
-                    answers = _answersList.value
+                    answers = finalAnswers
                 )
 
                 val objectiveResult = calculateObjectiveResult()
@@ -690,7 +716,6 @@ class SubTestViewModel @Inject constructor(
                     )
                 }
 
-                // Формируем комментарий с номером устройства
                 val deviceName = authRepository.getDeviceName()
                 val baseComment = _uiState.value.comment
                 val finalComment = if (deviceName.isNotBlank()) {
@@ -744,4 +769,21 @@ class SubTestViewModel @Inject constructor(
             }
         }
     }
+}
+
+private object FatigueCoefficients {
+    const val cognitiveFatigue = 0.30f
+    const val cognitiveConcentration = 0.25f
+    const val cognitiveProductivity = 0.20f
+    const val cognitiveCognitiveLoad = 0.25f
+
+    const val physiologicalFatigue = 0.35f
+    const val physiologicalStress = 0.25f
+    const val physiologicalRelax = 0.20f
+    const val physiologicalInvolvement = 0.20f
+
+    const val psychologicalCognitiveLoad = 0.30f
+    const val psychologicalRelaxation = 0.25f
+    const val psychologicalSelfControl = 0.25f
+    const val psychologicalCognitiveControl = 0.20f
 }

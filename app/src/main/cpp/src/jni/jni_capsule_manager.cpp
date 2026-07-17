@@ -140,6 +140,14 @@ private:
 void onConnectionStatusChanged(clCDevice, clCDevice_ConnectionStatus state) noexcept {
     __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "Connection State Changed: %d", state);
 
+    {
+        std::lock_guard<std::mutex> lock(deviceMutex);
+        if (!device) {
+            __android_log_print(ANDROID_LOG_WARN, "CAPSULE", "Device is null during connection callback, skipping");
+            return;
+        }
+    }
+
     JavaCallbackGuard guard;
     if (!guard.isValid()) {
         __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Callback handler is null");
@@ -1282,6 +1290,18 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_neuroproject_neuro_services_CapsuleDeviceManager_00024Companion_nativeDisconnect(
         JNIEnv *env, jobject thiz) {
+
+    __android_log_print(ANDROID_LOG_INFO, "CAPSULE", "nativeDisconnect called");
+
+    std::lock_guard<std::mutex> lock(deviceMutex);
+    if (!device) {
+        __android_log_print(ANDROID_LOG_WARN, "CAPSULE", "Device is null, nothing to disconnect");
+        return;
+    }
+
     clCError error;
     clCDevice_Disconnect(device, &error);
+    if (!error.success) {
+        __android_log_print(ANDROID_LOG_ERROR, "CAPSULE", "Disconnect failed: %s", error.message);
+    }
 }

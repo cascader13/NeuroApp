@@ -24,7 +24,8 @@ sealed class SubTestScreenState {
 
     data class Waiting(
         val timeLeftMillis: Long,
-        val totalDurationMillis: Long
+        val totalDurationMillis: Long,
+        val hasRetaken: Boolean = false
     ) : SubTestScreenState()
 
     data class Result(
@@ -40,5 +41,7 @@ data class SubTestUiState(
     val calibrationProgressPercent: Int = 0,
     val comment: String = "",
     val errorMessage: String? = null,
-    val electrodeStates: ElectrodeStates = ElectrodeStates()
+    val electrodeStates: ElectrodeStates = ElectrodeStates(),
+    val hasRetaken: Boolean = false,
+    val isTimerExpired: Boolean = false
 )

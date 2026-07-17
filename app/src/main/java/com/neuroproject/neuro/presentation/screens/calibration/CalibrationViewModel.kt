@@ -54,6 +54,7 @@ class CalibrationViewModel @Inject constructor(
     val isDeviceDisconnected: StateFlow<Boolean> = _isDeviceDisconnected.asStateFlow()
 
     private var calibrationJob: Job? = null
+    private var isCompleting = false
     private val totalCalibrationTime = 60000L
 
     // Накопленные данные калибровки
@@ -192,6 +193,12 @@ class CalibrationViewModel @Inject constructor(
     fun startCalibration() {
         if (_uiState.value.isCalibrating) return
 
+        if (_isDeviceDisconnected.value) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Устройство не подключено")
+            return
+        }
+
+        isCompleting = false
         _uiState.value = CalibrationUiState(
             isCalibrating = true,
             progress = 0f,
@@ -241,9 +248,11 @@ class CalibrationViewModel @Inject constructor(
     }
 
     private fun completeCalibration() {
+        if (isCompleting) return
+        isCompleting = true
+
         metronomePlayer.stop()
 
-        // Сохраняем данные калибровки в БД
         viewModelScope.launch {
             try {
                 val userId = authRepository.getUserId()
@@ -284,6 +293,7 @@ class CalibrationViewModel @Inject constructor(
     }
 
     fun resetState() {
+        isCompleting = false
         _uiState.value = CalibrationUiState()
     }
 
@@ -292,7 +302,6 @@ class CalibrationViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         calibrationJob?.cancel()
         metronomePlayer.stop()
         viewModelScope.launch {
@@ -302,5 +311,6 @@ class CalibrationViewModel @Inject constructor(
                 Log.e("Calibration", "Error stopping resistance check", e)
             }
         }
+        super.onCleared()
     }
 }

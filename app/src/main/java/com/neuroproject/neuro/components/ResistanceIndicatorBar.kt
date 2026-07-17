@@ -28,9 +28,9 @@ fun ResistanceIndicatorBar(
     modifier: Modifier = Modifier
 ) {
     val indicators = listOf(
+        "T3" to electrodeStates.t3,
         "O1" to electrodeStates.o1,
         "O2" to electrodeStates.o2,
-        "T3" to electrodeStates.t3,
         "T4" to electrodeStates.t4
     )
 

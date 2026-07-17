@@ -1,14 +1,25 @@
 // data/device/CapsuleDeviceAdapter.kt
 package com.neuroproject.neuro.data.device
 
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import com.neuroproject.neuro.domain.model.*
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.DeviceGateway
 import com.neuroproject.neuro.services.CapsuleDeviceManager
 import com.neuroproject.neuro.jni.JniCallbackHandler
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +30,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class CapsuleDeviceAdapter @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val capsuleManager: CapsuleDeviceManager,
     private val sensorAdapter: CapsuleSensorStreamAdapter,
     private val authRepository: AuthRepository
@@ -33,6 +45,19 @@ class CapsuleDeviceAdapter @Inject constructor(
 
     private val _batteryCharge = MutableStateFlow(BatteryData(0f))
     override fun observeBatteryCharge(): Flow<BatteryData> = _batteryCharge.asStateFlow()
+
+    private fun hasBluetoothPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun isBluetoothEnabled(): Boolean {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        return bluetoothManager?.adapter?.isEnabled == true
+    }
 
     init {
         setupStateCallbacks()
@@ -65,82 +90,122 @@ class CapsuleDeviceAdapter @Inject constructor(
     }
 
     override fun searchDevices(): Flow<List<DeviceInfo>> {
+        if (!hasBluetoothPermission()) {
+            throw SecurityException("BLUETOOTH_CONNECT permission not granted")
+        }
+        if (!isBluetoothEnabled()) {
+            throw IllegalStateException("Bluetooth is disabled")
+        }
         capsuleManager.startSearch()
         return sensorAdapter.searchDevices()
     }
 
     override suspend fun connect(deviceId: String) {
-        capsuleManager.connect(deviceId)
+        if (!hasBluetoothPermission()) {
+            throw SecurityException("BLUETOOTH_CONNECT permission not granted")
+        }
+        if (!isBluetoothEnabled()) {
+            throw IllegalStateException("Bluetooth is disabled")
+        }
+        withContext(Dispatchers.IO) {
+            withTimeoutOrNull(30_000L) {
+                capsuleManager.connect(deviceId)
+            } ?: throw IllegalStateException("Connection timed out after 30 seconds")
+        }
         authRepository.saveDeviceName(deviceId)
     }
 
     override suspend fun disconnect() {
-        capsuleManager.disconnect()
+        withContext(Dispatchers.IO) {
+            capsuleManager.disconnect()
+        }
     }
 
     override suspend fun startResistance() {
-        capsuleManager.startResistance()
+        withContext(Dispatchers.IO) {
+            capsuleManager.startResistance()
+        }
     }
 
     override suspend fun stopResistance() {
-        capsuleManager.stopResistance()
+        withContext(Dispatchers.IO) {
+            capsuleManager.stopResistance()
+        }
     }
 
     override suspend fun startSignalAndHR() {
         _calibrationState.value = CalibrationStage.CALIBRATOR_UNKNOWN_STAGE
-        capsuleManager.startSignalAndHR()
+        withContext(Dispatchers.IO) {
+            capsuleManager.startSignalAndHR()
+        }
     }
 
     override suspend fun stopSignalAndHR() {
-        capsuleManager.stopSignalAndHR()
+        withContext(Dispatchers.IO) {
+            capsuleManager.stopSignalAndHR()
+        }
         _calibrationState.value = CalibrationStage.CALIBRATOR_UNKNOWN_STAGE
     }
 
     override suspend fun startSession() {
-        capsuleManager.startSession()
+        withContext(Dispatchers.IO) {
+            capsuleManager.startSession()
+        }
     }
 
     override suspend fun stopSession() {
-        capsuleManager.stopSession()
+        withContext(Dispatchers.IO) {
+            capsuleManager.stopSession()
+        }
     }
 
     override suspend fun startProductivity() {
-        capsuleManager.startProductivity()
+        withContext(Dispatchers.IO) {
+            capsuleManager.startProductivity()
+        }
     }
 
     override suspend fun importCalibration(data: CalibrationSample) {
-        capsuleManager.importCalibration(
-            data.individualFrequency,
-            data.individualPeakFrequency,
-            data.individualPeakFrequencyPower,
-            data.individualPeakFrequencySuppression,
-            data.individualBandwidth,
-            data.individualNormalizedPower,
-            data.lowerFrequency,
-            data.upperFrequency
-        )
+        withContext(Dispatchers.IO) {
+            capsuleManager.importCalibration(
+                data.individualFrequency,
+                data.individualPeakFrequency,
+                data.individualPeakFrequencyPower,
+                data.individualPeakFrequencySuppression,
+                data.individualBandwidth,
+                data.individualNormalizedPower,
+                data.lowerFrequency,
+                data.upperFrequency
+            )
+        }
     }
 
     override suspend fun importProductivityCalibration(
         gravity: Float, productivity: Float, fatigue: Float,
         reverseFatigue: Float, relaxation: Float, concentration: Float
     ) {
-        capsuleManager.importProductivityCalibration(
-            gravity, productivity, fatigue, reverseFatigue, relaxation, concentration
-        )
+        withContext(Dispatchers.IO) {
+            capsuleManager.importProductivityCalibration(
+                gravity, productivity, fatigue, reverseFatigue, relaxation, concentration
+            )
+        }
     }
 
     override suspend fun importPhysiologicalCalibration(
         alpha: Float, beta: Float, alphaGravity: Float,
         betaGravity: Float, concentration: Float
     ) {
-        capsuleManager.importPhysiologicalCalibration(
-            alpha, beta, alphaGravity, betaGravity, concentration
-        )
+        withContext(Dispatchers.IO) {
+            capsuleManager.importPhysiologicalCalibration(
+                alpha, beta, alphaGravity, betaGravity, concentration
+            )
+        }
     }
 
     override suspend fun removeAll() {
-        capsuleManager.removeAllResources()
+        withContext(Dispatchers.IO) {
+            capsuleManager.removeAllResources()
+        }
     }
 
     override fun observeResistance(): Flow<ResistanceData> = callbackFlow {

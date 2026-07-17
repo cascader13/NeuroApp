@@ -48,6 +48,16 @@ open class DeviceSearchScreenViewModel @Inject constructor(
 
     override fun createInitialState(): DeviceSearchScreenState = DeviceSearchScreenState()
 
+    override fun handleError(error: Throwable) {
+        setState {
+            copy(
+                errorMessage = "Ошибка: ${error.message ?: "Неизвестная ошибка"}",
+                isSearching = false
+            )
+        }
+        Log.e("DeviceSearch", "ViewModel error", error)
+    }
+
     /**
      * Наблюдение за состоянием подключения
      */
@@ -119,10 +129,19 @@ open class DeviceSearchScreenViewModel @Inject constructor(
                 searchDevicesUseCase()
                     .catch { error ->
                         Log.e("DeviceSearch", "Search error", error)
+                        val errorMessage = when (error) {
+                            is SecurityException -> "Нет разрешения на Bluetooth. Проверьте настройки приложения."
+                            is IllegalStateException -> if (error.message?.contains("Bluetooth") == true) {
+                                "Bluetooth выключен. Включите Bluetooth."
+                            } else {
+                                "Ошибка поиска: ${error.message}"
+                            }
+                            else -> "Ошибка поиска: ${error.message}"
+                        }
                         setState {
                             copy(
                                 isSearching = false,
-                                errorMessage = "Ошибка поиска: ${error.message}"
+                                errorMessage = errorMessage
                             )
                         }
                     }
@@ -187,6 +206,26 @@ open class DeviceSearchScreenViewModel @Inject constructor(
         safeLaunch {
             try {
                 connectDeviceUseCase(deviceId)
+            } catch (e: SecurityException) {
+                Log.e("DeviceSearch", "Permission error", e)
+                setState {
+                    copy(
+                        connectingDeviceId = null,
+                        errorMessage = "Нет разрешения на Bluetooth. Проверьте настройки приложения."
+                    )
+                }
+            } catch (e: IllegalStateException) {
+                Log.e("DeviceSearch", "State error", e)
+                setState {
+                    copy(
+                        connectingDeviceId = null,
+                        errorMessage = when {
+                            e.message?.contains("Bluetooth") == true -> "Bluetooth выключен. Включите Bluetooth."
+                            e.message?.contains("timed out") == true -> "Превышено время подключения. Попробуйте снова."
+                            else -> "Ошибка: ${e.message}"
+                        }
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("DeviceSearch", "Connection error", e)
                 setState {

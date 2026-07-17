@@ -94,6 +94,7 @@ object SubTestScreenTags {
     const val FinishCommentButton = "subtest_finish_comment_button"
     const val ForceStopButton = "subtest_force_stop_button"
     const val FinishResultButton = "subtest_finish_result_button"
+    const val RetakeTestButton = "subtest_retake_test_button"
 }
 
 @Composable
@@ -152,6 +153,7 @@ fun SubTestScreen(
         calibrationProgress = calibrationProgress,
         showExpeditionDialog = showExpeditionDialog,
         expeditionError = expeditionError,
+        isTimerExpired = uiState.isTimerExpired,
         onUpdateDuration = { viewModel.updateDuration(it) },
         onUpdateCategory = { viewModel.updateCategory(it) },
         onGoToInstruction = { viewModel.goToInstruction() },
@@ -161,6 +163,7 @@ fun SubTestScreen(
         onGoToPreviousQuestion = { viewModel.goToPreviousQuestion() },
         onCommentChanged = { viewModel.onCommentChanged(it) },
         onFinishTestClick = { viewModel.onFinishTestClick() },
+        onRetakeTest = { viewModel.retakeTest() },
         onForceStop = { viewModel.forceStopTest() },
         onSaveExpeditionId = { viewModel.saveExpeditionId(it) },
         onDismissExpeditionDialog = { viewModel.dismissExpeditionDialog() },
@@ -174,6 +177,7 @@ fun SubTestScreenContent(
     calibrationProgress: Int,
     showExpeditionDialog: Boolean,
     expeditionError: String?,
+    isTimerExpired: Boolean = false,
     onUpdateDuration: (Int) -> Unit,
     onUpdateCategory: (SessionCategory) -> Unit,
     onGoToInstruction: () -> Unit,
@@ -183,6 +187,7 @@ fun SubTestScreenContent(
     onGoToPreviousQuestion: () -> Unit,
     onCommentChanged: (String) -> Unit,
     onFinishTestClick: () -> Unit,
+    onRetakeTest: () -> Unit,
     onForceStop: () -> Unit,
     onSaveExpeditionId: (String) -> Unit,
     onDismissExpeditionDialog: () -> Unit,
@@ -240,6 +245,7 @@ fun SubTestScreenContent(
                                 totalCount = screenState.questions.size,
                                 currentAnswer = screenState.currentAnswer,
                                 previousAnswer = previousAnswer,
+                                isTimerExpired = isTimerExpired,
                                 onAnswerSelected = onAnswerSelected,
                                 onSaveClick = onSaveAnswer,
                                 onPreviousClick = onGoToPreviousQuestion
@@ -257,6 +263,8 @@ fun SubTestScreenContent(
                         WaitingContent(
                             timeLeftMillis = screenState.timeLeftMillis,
                             totalDurationMillis = screenState.totalDurationMillis,
+                            hasRetaken = screenState.hasRetaken,
+                            onRetakeTest = onRetakeTest,
                             onForceStop = onForceStop
                         )
                     }
@@ -440,6 +448,7 @@ fun QuestionsContent(
     totalCount: Int,
     currentAnswer: Int?,
     previousAnswer: Int? = null,
+    isTimerExpired: Boolean = false,
     onAnswerSelected: (Int) -> Unit,
     onSaveClick: () -> Unit,
     onPreviousClick: () -> Unit = {}
@@ -454,7 +463,8 @@ fun QuestionsContent(
     var sliderValue by remember { mutableFloatStateOf((currentAnswer ?: 5).toFloat()) }
 
     LaunchedEffect(question.id) {
-        sliderValue = (currentAnswer ?: 5).toFloat()
+        sliderValue = (previousAnswer ?: currentAnswer)?.toFloat() ?: 5f
+        onAnswerSelected(sliderValue.toInt())
     }
 
     Column(
@@ -490,6 +500,24 @@ fun QuestionsContent(
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
+
+        if (isTimerExpired) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            ) {
+                Text(
+                    text = "Время вышло. Завершите текущий вопрос.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(12.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(44.dp))
 
@@ -774,6 +802,8 @@ fun CommentContent(
 fun WaitingContent(
     timeLeftMillis: Long,
     totalDurationMillis: Long,
+    hasRetaken: Boolean,
+    onRetakeTest: () -> Unit,
     onForceStop: () -> Unit
 ) {
     var showStopDialog by remember { mutableStateOf(false) }
@@ -880,18 +910,45 @@ fun WaitingContent(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        Button(
-            onClick = { showStopDialog = true },
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(16.dp)
-                .testTag(SubTestScreenTags.ForceStopButton),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
-            )
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Остановить тест")
+            Button(
+                onClick = onRetakeTest,
+                enabled = !hasRetaken,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .testTag(SubTestScreenTags.RetakeTestButton),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text(
+                    text = if (hasRetaken) "Повторное прохождение использовано" else "Пройти тест снова",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = { showStopDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .testTag(SubTestScreenTags.ForceStopButton),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Остановить тест")
+            }
         }
     }
 

@@ -31,6 +31,7 @@ class SettingsViewModel @Inject constructor(
     private val observeSyncStateUseCase: ObserveSyncStateUseCase,
     private val enablePeriodicSyncUseCase: EnablePeriodicSyncUseCase,
     private val exportDatabaseUseCase: ExportDatabaseUseCase,
+    private val notificationHelper: com.neuroproject.neuro.data.sync.SyncNotificationHelper,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     private val _state = MutableStateFlow(SettingsState())
@@ -45,6 +46,7 @@ class SettingsViewModel @Inject constructor(
         loadSavedExpeditionId()
         loadServerAddress()
         loadStats()
+        loadNotificationsEnabled()
         observeSyncState()
     }
 
@@ -87,6 +89,17 @@ class SettingsViewModel @Inject constructor(
                 // Логируем ошибку
             }
         }
+    }
+
+    private fun loadNotificationsEnabled() {
+        val enabled = sharedPreferences.getBoolean("sync_notifications_enabled", true)
+        _state.update { it.copy(notificationsEnabled = enabled) }
+    }
+
+    fun toggleNotifications() {
+        val newValue = !_state.value.notificationsEnabled
+        sharedPreferences.edit().putBoolean("sync_notifications_enabled", newValue).apply()
+        _state.update { it.copy(notificationsEnabled = newValue) }
     }
 
     private fun observeSyncState() {
@@ -294,7 +307,8 @@ class SettingsViewModel @Inject constructor(
             }
 
             is BatchUploadProgress.PartialSuccess -> {
-                loadStats() // Обновляем статистику
+                loadStats()
+                notificationHelper.showSyncResult(progress)
 
                 _state.update {
                     it.copy(
@@ -313,7 +327,8 @@ class SettingsViewModel @Inject constructor(
             }
 
             is BatchUploadProgress.Completed -> {
-                loadStats() // Обновляем статистику
+                loadStats()
+                notificationHelper.showSyncResult(progress)
 
                 _state.update {
                     it.copy(
@@ -333,6 +348,7 @@ class SettingsViewModel @Inject constructor(
 
             is BatchUploadProgress.Stopped -> {
                 loadStats()
+                notificationHelper.showSyncResult(progress)
 
                 _state.update {
                     it.copy(
@@ -350,6 +366,8 @@ class SettingsViewModel @Inject constructor(
             }
 
             BatchUploadProgress.NoData -> {
+                notificationHelper.showSyncResult(progress)
+
                 _state.update {
                     it.copy(
                         isUploading = false,
@@ -361,6 +379,8 @@ class SettingsViewModel @Inject constructor(
             }
 
             is BatchUploadProgress.Error -> {
+                notificationHelper.showSyncResult(progress)
+
                 _state.update {
                     it.copy(
                         isUploading = false,
@@ -542,7 +562,8 @@ data class SettingsState(
     val uploadStatus: UploadStatus = UploadStatus.Idle,
     val isSyncRunning: Boolean = false,
     val isExporting: Boolean = false,
-    val exportMessage: String? = null
+    val exportMessage: String? = null,
+    val notificationsEnabled: Boolean = true
 )
 
 enum class UploadStatus {
