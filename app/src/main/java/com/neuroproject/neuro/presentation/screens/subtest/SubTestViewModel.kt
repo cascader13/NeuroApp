@@ -39,6 +39,12 @@ import java.util.Calendar
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
+/**
+ * ViewModel экрана субъективного теста.
+ *
+ * Управляет прохождением теста: загрузкой вопросов, записью ответов,
+ * таймером, сбором данных датчиков и расчётом результатов усталости.
+ */
 @HiltViewModel
 class SubTestViewModel @Inject constructor(
     private val loadQuestionsUseCase: LoadQuestionsUseCase,
@@ -525,10 +531,20 @@ class SubTestViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Обновляет текст комментария к сессии.
+     *
+     * @param newComment новый текст комментария
+     */
     fun onCommentChanged(newComment: String) {
         _uiState.update { it.copy(comment = newComment) }
     }
 
+    /**
+     * Обрабатывает нажатие кнопки завершения теста.
+     * Если таймер ещё работает — показывает экран ожидания с оставшимся временем.
+     * Если таймер истёк — сразу завершает тест.
+     */
     fun onFinishTestClick() {
         if (_timeLeftMillis.value <= 0 || isTimerExpired) {
             finishTest()
@@ -545,6 +561,11 @@ class SubTestViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Начинает повторное прохождение теста.
+     * Очищает ответы, загружает предыдущие ответы для отображения
+     * и возвращает к первому вопросу.
+     */
     fun retakeTest() {
         isTimerExpired = false
         _uiState.update { it.copy(hasRetaken = true, isTimerExpired = false) }
@@ -568,6 +589,11 @@ class SubTestViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Принудительно останавливает тест.
+     * Отменяет таймер, останавливает запись данных и помечает сессию
+     * как завершённую досрочно.
+     */
     fun forceStopTest() {
         viewModelScope.launch {
             isTimerRunning = false

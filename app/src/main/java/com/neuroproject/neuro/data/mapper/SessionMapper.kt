@@ -5,6 +5,9 @@ import com.neuroproject.neuro.domain.model.SessionCategory
 import com.neuroproject.neuro.data.session.SessionEntity
 import com.neuroproject.neuro.domain.model.*
 
+/**
+ * Маппер между доменной моделью Session и Room-сущностью SessionEntity.
+ */
 object SessionMapper {
 
     fun toDomain(entity: SessionEntity): Session {

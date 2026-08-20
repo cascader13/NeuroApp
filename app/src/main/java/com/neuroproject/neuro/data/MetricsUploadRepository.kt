@@ -16,6 +16,22 @@ import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Репозиторий для пакетной отправки метрик на сервер.
+ *
+ * Управляет подготовкой, разбиением на пакеты и отправкой данных.
+ * Поддерживает повторные попытки и контроль прогресса.
+ *
+ * Основные возможности:
+ * - Пакетная отправка с настраиваемым размером пакета
+ * - Повторные попытки при ошибках сети
+ * - Пометка успешно отправленных данных (isMarked)
+ * - Сохранение неудачных запросов для отладки
+ * - Получение статистики по данным
+ *
+ * @see BatchUploadProgress
+ * @see MetricBatch
+ */
 @Singleton
 class MetricsUploadRepository @Inject constructor(
     @ApplicationContext private val context: Context,

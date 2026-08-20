@@ -6,6 +6,12 @@ import com.neuroproject.neuro.domain.repository.MetricsRepository
 import com.neuroproject.neuro.domain.repository.SessionRepository
 import javax.inject.Inject
 
+/**
+ * Удаляет сессию и связанные с ней метрики.
+ *
+ * @param sessionId идентификатор сессии для удаления
+ * @return [Result.Success] при успешном удалении, [Result.Error] при ошибке
+ */
 class DeleteSessionUseCase @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val metricsRepository: MetricsRepository

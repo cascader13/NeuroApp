@@ -2,6 +2,9 @@ package com.neuroproject.neuro.domain.model
 
 import java.util.Date
 
+/**
+ * Агрегированные данные одного замера (пробы) — ЭЭГ, физиология и кардио.
+ */
 data class ResultProbeData(var HR: Float,
                            var AlphaBaseline: Float,
                            val Relax: Float,

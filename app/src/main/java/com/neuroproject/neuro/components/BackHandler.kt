@@ -11,6 +11,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
+/**
+ * Обработчик нажатия кнопки «Назад» для Compose-экранов.
+ */
 @Composable
 fun BackHandler(enabled: Boolean = true, onBack: () -> Unit) {
     // Safely update the current `onBack` lambda when a new one is provided

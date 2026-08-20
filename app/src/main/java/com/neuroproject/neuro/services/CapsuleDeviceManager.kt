@@ -6,6 +6,12 @@ import javax.inject.Singleton
 
 // services/CapsuleDeviceManager.kt
 // ВАЖНО: этот класс находится в legacy package, который ожидает native-библиотека.
+/**
+ * Менеджер взаимодействия с нейро-гарнитурой через JNI.
+ *
+ * Предоставляет публичные обёртки над нативными функциями для управления
+ * капсулой: поиск, подключение, запись данных и калибровка.
+ */
 @Singleton
 class CapsuleDeviceManager @Inject constructor() {
 

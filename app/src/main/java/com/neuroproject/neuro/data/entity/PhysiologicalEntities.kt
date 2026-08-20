@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Сущность физиологических метрик.
+ */
 @Entity(tableName = "physiological_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class PhysiologicalMetricEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -22,6 +25,9 @@ data class PhysiologicalMetricEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность сжатых физиологических метрик.
+ */
 @Entity(tableName = "physiological_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class PhysiologicalMetricCompressedEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -40,6 +46,9 @@ data class PhysiologicalMetricCompressedEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность базовых физиологических значений.
+ */
 @Entity(tableName = "physiological_baselines", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class PhysiologicalBaselinesEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,

@@ -4,6 +4,12 @@ import com.neuroproject.neuro.domain.model.ExpeditionResult
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import javax.inject.Inject
 
+/**
+ * Проверяет наличие идентификатора экспедиции у текущего пользователя.
+ *
+ * @return [ExpeditionResult.Success] с ID экспедиции, [ExpeditionResult.NotSet] если не задан,
+ *         [ExpeditionResult.Error] при ошибке
+ */
 class CheckExpeditionIdUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {

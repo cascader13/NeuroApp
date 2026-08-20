@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeState
 import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeStates
 
+/**
+ * Индикатор сопротивления электродов ЭЭГ (T3, O1, O2, T4).
+ */
 @Composable
 fun ResistanceIndicatorBar(
     electrodeStates: ElectrodeStates,

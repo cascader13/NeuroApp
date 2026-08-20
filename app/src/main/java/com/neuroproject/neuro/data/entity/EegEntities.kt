@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Сущность сырых данных ЭЭГ.
+ */
 @Entity(tableName = "EEG_Raw_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGRawMetricEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -16,6 +19,9 @@ data class EEGRawMetricEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность сжатых сырых данных ЭЭГ.
+ */
 @Entity(tableName = "EEG_Raw_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGRawMetricCompressedEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -28,6 +34,9 @@ data class EEGRawMetricCompressedEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность обработанных данных ЭЭГ.
+ */
 @Entity(tableName = "EEG_Proceed_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGProceedMetricEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -40,6 +49,9 @@ data class EEGProceedMetricEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность сжатых обработанных данных ЭЭГ.
+ */
 @Entity(tableName = "EEG_Proceed_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGProceedMetricCompressedEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -52,6 +64,9 @@ data class EEGProceedMetricCompressedEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность данных об артефактах ЭЭГ.
+ */
 @Entity(tableName = "EEG_Artifacts_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGArtifactsMetricEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -66,6 +81,9 @@ data class EEGArtifactsMetricEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность сжатых данных об артефактах ЭЭГ.
+ */
 @Entity(tableName = "EEG_Artifacts_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class EEGArtifactsMetricCompressedEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,

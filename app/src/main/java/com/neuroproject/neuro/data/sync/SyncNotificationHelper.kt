@@ -14,10 +14,27 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Помощник для отображения уведомлений о синхронизации.
+ *
+ * Создаёт канал уведомлений и показывает результаты фоновой синхронизации:
+ * - Успешное завершение
+ * - Частичное завершение (некоторые пакеты не отправлены)
+ * - Нет данных для отправки
+ * - Ошибка синхронизации
+ * - Остановка синхронизации
+ *
+ * Уведомления отображаются только если:
+ * - Пользователь не отключил их в настройках
+ * - Приложение имеет разрешение POST_NOTIFICATIONS (Android 13+)
+ *
+ * @see BatchUploadProgress
+ */
 @Singleton
 class SyncNotificationHelper @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    /** NotificationManager для отправки уведомлений */
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -25,6 +42,7 @@ class SyncNotificationHelper @Inject constructor(
         createNotificationChannel()
     }
 
+    /** Создать канал уведомлений для синхронизации */
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -37,6 +55,11 @@ class SyncNotificationHelper @Inject constructor(
         Log.d(TAG, "Notification channel created")
     }
 
+    /**
+     * Показать уведомление о результате синхронизации.
+     *
+     * @param progress Прогресс синхронизации
+     */
     fun showSyncResult(progress: BatchUploadProgress) {
         Log.d(TAG, "showSyncResult called with: ${progress::class.simpleName}")
 
@@ -62,6 +85,7 @@ class SyncNotificationHelper @Inject constructor(
         }
     }
 
+    /** Показать уведомление об успешном завершении */
     private fun showSuccessNotification(progress: BatchUploadProgress.Completed) {
         Log.d(TAG, "Showing success: ${progress.sentCount} records")
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -79,6 +103,7 @@ class SyncNotificationHelper @Inject constructor(
         notificationManager.notify(NOTIFICATION_ID_SUCCESS, notification)
     }
 
+    /** Показать уведомление о частичном успехе */
     private fun showPartialSuccessNotification(progress: BatchUploadProgress.PartialSuccess) {
         Log.d(TAG, "Showing partial success")
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -100,6 +125,7 @@ class SyncNotificationHelper @Inject constructor(
         notificationManager.notify(NOTIFICATION_ID_PARTIAL, notification)
     }
 
+    /** Показать уведомление об отсутствии данных */
     private fun showNoDataNotification() {
         Log.d(TAG, "Showing no data")
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -113,6 +139,7 @@ class SyncNotificationHelper @Inject constructor(
         notificationManager.notify(NOTIFICATION_ID_NO_DATA, notification)
     }
 
+    /** Показать уведомление об ошибке */
     private fun showErrorNotification(error: String) {
         Log.d(TAG, "Showing error: $error")
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -127,6 +154,7 @@ class SyncNotificationHelper @Inject constructor(
         notificationManager.notify(NOTIFICATION_ID_ERROR, notification)
     }
 
+    /** Показать уведомление об остановке синхронизации */
     private fun showStoppedNotification(reason: String) {
         Log.d(TAG, "Showing stopped: $reason")
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -140,11 +168,13 @@ class SyncNotificationHelper @Inject constructor(
         notificationManager.notify(NOTIFICATION_ID_STOPPED, notification)
     }
 
+    /** Проверить, включены ли уведомления в настройках */
     private fun isNotificationsEnabled(): Boolean {
         val prefs = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE)
         return prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
     }
 
+    /** Проверить наличие разрешения на уведомления (Android 13+) */
     private fun hasNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             return ContextCompat.checkSelfPermission(

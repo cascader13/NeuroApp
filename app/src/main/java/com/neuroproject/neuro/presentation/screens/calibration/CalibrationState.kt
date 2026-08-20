@@ -4,6 +4,9 @@ package com.neuroproject.neuro.presentation.screens.calibration
 import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeStates
 
 
+/**
+ * UI-состояние экрана калибровки.
+ */
 data class CalibrationUiState(
     val isCalibrating: Boolean = false,
     val isComplete: Boolean = false,

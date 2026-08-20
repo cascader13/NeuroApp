@@ -4,6 +4,12 @@ import com.neuroproject.neuro.domain.model.ExpeditionResult
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import javax.inject.Inject
 
+/**
+ * Сохраняет идентификатор экспедиции для текущего пользователя.
+ *
+ * @param expeditionId идентификатор экспедиции (не может быть пустым)
+ * @return [ExpeditionResult.Success] с сохранённым ID, [ExpeditionResult.Error] при ошибке
+ */
 class SaveExpeditionIdUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {

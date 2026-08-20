@@ -30,6 +30,11 @@ data class DeviceSearchScreenState(
     val errorMessage: String? = null
 )
 
+/**
+ * ViewModel экрана поиска устройств.
+ *
+ * Управляет поиском, подключением и отключением Bluetooth-устройств.
+ */
 @HiltViewModel
 open class DeviceSearchScreenViewModel @Inject constructor(
     private val initDeviceUseCase: InitDeviceUseCase,

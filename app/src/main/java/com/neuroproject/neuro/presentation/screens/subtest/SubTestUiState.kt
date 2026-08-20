@@ -3,6 +3,9 @@ package com.neuroproject.neuro.presentation.screens.subtest
 import com.neuroproject.neuro.domain.model.*
 import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeStates
 
+/**
+ * Состояния экрана теста, определяющие текущий этап прохождения.
+ */
 sealed class SubTestScreenState {
     data class SessionSettings(
         val durationMinutes: Int = 10,
@@ -33,6 +36,9 @@ sealed class SubTestScreenState {
     ) : SubTestScreenState()
 }
 
+/**
+ * UI-состояние экрана прохождения теста субъективной оценки утомления.
+ */
 data class SubTestUiState(
     val screenState: SubTestScreenState = SubTestScreenState.SessionSettings(),
     val selectedDurationMinutes: Int = 10,

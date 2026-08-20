@@ -10,6 +10,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * Реализация репозитория объективных метрик усталости для сессий.
+ */
 class ObjectiveMetricsRepositoryImpl @Inject constructor(
     private val metricsDao: MetricsDao,
     private val fatigueDao: FatigueDao

@@ -15,6 +15,9 @@ import com.neuroproject.neuro.domain.model.SessionFatigueResult
 
 
 @Singleton
+/**
+ * Репозиторий агрегации метрик усталости по минутам сессии.
+ */
 class MetricsAggregationRepository @Inject constructor(
     private val metricsDao: MetricsDao,
     private val fatigueDao: FatigueDao

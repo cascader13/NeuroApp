@@ -51,6 +51,9 @@ import com.neuroproject.neuro.ui.theme.ThemeMode
 // REAL SCREEN (с Hilt)
 // ============================================================
 
+/**
+ * Экран поиска и подключения к Bluetooth-устройству.
+ */
 @Composable
 fun DeviceSearchScreen(
     modifier: Modifier = Modifier,

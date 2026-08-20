@@ -6,6 +6,9 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.neuroproject.neuro.data.entity.*
 
+/**
+ * DAO для доступа к данным калибровки пользователя.
+ */
 @Dao
 interface CalibrationDao {
 

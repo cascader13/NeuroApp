@@ -20,6 +20,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
+/**
+ * Модуль Hilt для предоставления базы данных, DAO и связанных зависимостей.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {

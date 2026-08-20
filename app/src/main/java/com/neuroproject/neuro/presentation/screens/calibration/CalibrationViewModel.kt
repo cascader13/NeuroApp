@@ -31,6 +31,12 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel экрана калибровки.
+ *
+ * Управляет процессом калибровки устройства: проверкой предыдущей калибровки,
+ * записью данных и сохранением результатов.
+ */
 @HiltViewModel
 class CalibrationViewModel @Inject constructor(
     private val checkPreviousCalibrationUseCase: CheckPreviousCalibrationUseCase,

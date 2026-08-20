@@ -6,6 +6,11 @@ import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.SessionRepository
 import javax.inject.Inject
 
+/**
+ * Получает список сессий текущего пользователя.
+ *
+ * @return [Result.Success] со списком сессий, [Result.Error] при ошибке или неавторизованном доступе
+ */
 class GetSessionsUseCase @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val authRepository: AuthRepository

@@ -6,6 +6,14 @@ import com.neuroproject.neuro.domain.model.Session
 import com.neuroproject.neuro.domain.repository.SessionRepository
 import javax.inject.Inject
 
+/**
+ * Завершает сессию, сохраняя результаты и комментарий.
+ *
+ * @param session завершаемая сессия
+ * @param fatigueSummary сводка показателей утомления
+ * @param comment комментарий пользователя (может быть null)
+ * @param passedPrematurely пройдена ли сессия досрочно
+ */
 class FinishSessionUseCase @Inject constructor(
     private val sessionRepository: SessionRepository
 ) {

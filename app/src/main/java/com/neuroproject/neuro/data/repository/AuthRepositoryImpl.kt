@@ -6,6 +6,9 @@ import com.neuroproject.neuro.domain.repository.AuthRepository
 import javax.inject.Inject
 
 
+/**
+ * Реализация репозитория авторизации на основе локального хранилища.
+ */
 class AuthRepositoryImpl @Inject constructor(
     private val localDataSource: LocalAuthDataSource
 ) : AuthRepository {

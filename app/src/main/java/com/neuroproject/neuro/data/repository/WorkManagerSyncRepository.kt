@@ -9,6 +9,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * Репозиторий синхронизации данных через WorkManager.
+ */
 class WorkManagerSyncRepository @Inject constructor(
     private val syncScheduler: MetricsSyncScheduler
 ) : SyncRepository {

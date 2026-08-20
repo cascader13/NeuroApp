@@ -12,6 +12,9 @@ val AppShapes = Shapes(
     extraLarge = RoundedCornerShape(56.dp)
 )
 
+/**
+ * Константы скругления углов для элементов интерфейса.
+ */
 object AppRadii {
     val button = 40.dp
     val chip = 15.dp

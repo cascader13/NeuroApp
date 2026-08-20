@@ -44,6 +44,9 @@ object LoginScreenTags {
     const val ClearSavedDataButton = "clear_saved_data_button"
 }
 
+/**
+ * Экран входа в приложение по ID пользователя.
+ */
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,

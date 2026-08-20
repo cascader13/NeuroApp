@@ -14,6 +14,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * Реализация репозитория субъективного тестирования на основе Room.
+ */
 class RoomSubjectiveTestRepository @Inject constructor(
     private val questionDao: SubjectiveQuestionDao,
     private val answerDao: SubjectiveAnswerDao

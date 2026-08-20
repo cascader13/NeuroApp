@@ -6,6 +6,9 @@ import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
+/**
+ * Локальный источник данных авторизации на основе SharedPreferences.
+ */
 class LocalAuthDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) {

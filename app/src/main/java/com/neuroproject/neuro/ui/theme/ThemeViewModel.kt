@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel для управления текущей темой оформления.
+ */
 @HiltViewModel
 class ThemeViewModel @Inject constructor(
     private val themePreferences: ThemePreferences

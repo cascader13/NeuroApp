@@ -2,6 +2,14 @@ package com.neuroproject.neuro.domain.usecase
 
 import javax.inject.Inject
 
+/**
+ * Валидирует идентификатор пользователя.
+ *
+ * Проверяет на пустоту, минимальную длину и допустимые символы.
+ *
+ * @param userId идентификатор для валидации
+ * @return [ValidationResult.Success] если ID корректен, [ValidationResult.Error] с описанием ошибки
+ */
 class ValidateUserIdUseCase @Inject constructor() {
 
     operator fun invoke(userId: String): ValidationResult {

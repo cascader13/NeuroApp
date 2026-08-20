@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import com.neuroproject.neuro.domain.model.Result
 import com.neuroproject.neuro.domain.repository.DatabaseExportRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,6 +17,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * Репозиторий экспорта базы данных Room в папку загрузок устройства.
+ */
 class RoomDatabaseExportRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) : DatabaseExportRepository {
@@ -45,6 +49,7 @@ class RoomDatabaseExportRepository @Inject constructor(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun exportWithMediaStore(dbFile: File, fileName: String): String {
         val contentValues = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)

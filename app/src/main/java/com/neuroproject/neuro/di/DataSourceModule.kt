@@ -9,6 +9,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Модуль Hilt для предоставления источников данных.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DataSourceModule {

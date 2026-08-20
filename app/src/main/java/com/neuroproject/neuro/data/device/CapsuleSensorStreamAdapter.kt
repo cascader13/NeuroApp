@@ -12,6 +12,23 @@ import kotlinx.coroutines.channels.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Адаптер потоков данных сенсоров нейро-гарнитуры.
+ *
+ * Реализует интерфейс [SensorStreamGateway] из Domain слоя.
+ * Преобразует JNI callback'и в потоки (Flow) доменных моделей.
+ *
+ * Поддерживает наблюдение за:
+ * - Основными данными: NFB, ЧСС, физиологические, MEMS, продуктивность, эмоции, ЭЭГ
+ * - Калибровочными данными: базовые значения, индексы продуктивности
+ *
+ * Каждый тип данных имеет свой SharedFlow с буфером.
+ * При переполнении буфера старые данные удаляются (DROP_OLDEST).
+ *
+ * @see CapsuleCallbackMapper
+ * @see JniCallbackHandler
+ * @see SessionIdProvider
+ */
 @Singleton
 class CapsuleSensorStreamAdapter @Inject constructor(
     private val mapper: CapsuleCallbackMapper,
@@ -22,14 +39,17 @@ class CapsuleSensorStreamAdapter @Inject constructor(
     // ОСНОВНЫЕ ПОТОКИ ДАННЫХ
     // ============================================================
 
+    /** Поток NFB данных (спектральные характеристики ЭЭГ) */
     private val _nfbFlow = MutableSharedFlow<NFBSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток кардио данных (ЧСС, вариабельность ритма) */
     private val _cardioFlow = MutableSharedFlow<CardioSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток физиологических данных (расслабление, утомление, концентрация) */
     private val _physiologicalFlow = MutableSharedFlow<PhysiologicalSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
@@ -38,22 +58,27 @@ class CapsuleSensorStreamAdapter @Inject constructor(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток данных продуктивности */
     private val _productivityFlow = MutableSharedFlow<ProductivitySample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток эмоциональных данных (внимание, самоконтроль) */
     private val _emotionalFlow = MutableSharedFlow<EmotionalSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток сырых данных ЭЭГ */
     private val _eegRawFlow = MutableSharedFlow<EEGRawSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток обработанных данных ЭЭГ */
     private val _eegProcessedFlow = MutableSharedFlow<EEGProcessedSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток данных об артефактах ЭЭГ */
     private val _eegArtifactFlow = MutableSharedFlow<EEGArtifactSample>(
         replay = 0, extraBufferCapacity = 100, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
@@ -62,22 +87,27 @@ class CapsuleSensorStreamAdapter @Inject constructor(
     // КАЛИБРОВОЧНЫЕ ПОТОКИ ДАННЫХ
     // ============================================================
 
+    /** Поток базовых значений продуктивности (калибровка) */
     private val _productivityBaselineFlow = MutableSharedFlow<ProductivityBaselineSample>(
         replay = 0, extraBufferCapacity = 50, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток индексов продуктивности */
     private val _productivityIndexesFlow = MutableSharedFlow<ProductivityIndexSample>(
         replay = 0, extraBufferCapacity = 50, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток базовых физиологических значений (калибровка) */
     private val _physiologicalBaselineFlow = MutableSharedFlow<PhysiologicalBaselineSample>(
         replay = 0, extraBufferCapacity = 50, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток оценки продуктивности */
     private val _productivityScoreFlow = MutableSharedFlow<ProductivityScoreSample>(
         replay = 0, extraBufferCapacity = 50, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    /** Поток результатов калибровки ЭЭГ */
     private val _calibrationFlow = MutableSharedFlow<CalibrationSample>(
         replay = 1, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
@@ -86,6 +116,10 @@ class CapsuleSensorStreamAdapter @Inject constructor(
         setupCallbacks()
     }
 
+    /**
+     * Настроить JNI callback'и для получения данных с датчиков.
+     * Каждый callback преобразует данные через mapper и отправляет в соответствующий Flow.
+     */
     private fun setupCallbacks() {
         // ============================================================
         // ОСНОВНЫЕ КОЛБЭКИ
@@ -261,24 +295,52 @@ class CapsuleSensorStreamAdapter @Inject constructor(
     // РЕАЛИЗАЦИЯ ИНТЕРФЕЙСА
     // ============================================================
 
+    /** Поток NFB данных */
     override fun observeNFB(): Flow<NFBSample> = _nfbFlow.asSharedFlow()
+
+    /** Поток кардио данных */
     override fun observeHR(): Flow<CardioSample> = _cardioFlow.asSharedFlow()
+
+    /** Поток физиологических данных */
     override fun observePhysiological(): Flow<PhysiologicalSample> = _physiologicalFlow.asSharedFlow()
+
+    /** Поток MEMS данных */
     override fun observeMEMS(): Flow<MEMSSample> = _memsFlow.asSharedFlow()
+
+    /** Поток данных продуктивности */
     override fun observeProductivity(): Flow<ProductivitySample> = _productivityFlow.asSharedFlow()
+
+    /** Поток эмоциональных данных */
     override fun observeEmotional(): Flow<EmotionalSample> = _emotionalFlow.asSharedFlow()
+
+    /** Поток сырых данных ЭЭГ */
     override fun observeEEGRaw(): Flow<EEGRawSample> = _eegRawFlow.asSharedFlow()
+
+    /** Поток обработанных данных ЭЭГ */
     override fun observeEEGProcessed(): Flow<EEGProcessedSample> = _eegProcessedFlow.asSharedFlow()
+
+    /** Поток данных об артефактах ЭЭГ */
     override fun observeEEGArtifacts(): Flow<EEGArtifactSample> = _eegArtifactFlow.asSharedFlow()
 
+    /** Поток базовых значений продуктивности */
     override fun observeProductivityBaseline(): Flow<ProductivityBaselineSample> = _productivityBaselineFlow.asSharedFlow()
+
+    /** Поток индексов продуктивности */
     override fun observeProductivityIndexes(): Flow<ProductivityIndexSample> = _productivityIndexesFlow.asSharedFlow()
+
+    /** Поток базовых физиологических значений */
     override fun observePhysiologicalBaseline(): Flow<PhysiologicalBaselineSample> = _physiologicalBaselineFlow.asSharedFlow()
+
+    /** Поток оценки продуктивности */
     override fun observeProductivityScore(): Flow<ProductivityScoreSample> = _productivityScoreFlow.asSharedFlow()
 
     /** Наблюдает за результатом калибровки (параметры ЭЭГ). */
     fun observeCalibrationResult(): Flow<CalibrationSample> = _calibrationFlow.asSharedFlow()
 
+    /**
+     * Объединённый поток всех событий сенсоров.
+     * Используется для записи всех данных в сессию.
+     */
     override fun observeAll(): Flow<SensorEvent> = merge(
         observeNFB().map { SensorEvent.NFB(it) },
         observeHR().map { SensorEvent.HR(it) },
@@ -299,6 +361,11 @@ class CapsuleSensorStreamAdapter @Inject constructor(
     // ПОИСК УСТРОЙСТВ
     // ============================================================
 
+    /**
+     * Начать поиск доступных Bluetooth устройств.
+     *
+     * @return Flow со списком найденных устройств
+     */
     fun searchDevices(): Flow<List<DeviceInfo>> = callbackFlow {
         val devices = mutableMapOf<String, DeviceInfo>()
 
@@ -319,14 +386,30 @@ class CapsuleSensorStreamAdapter @Inject constructor(
     }
 }
 
+/**
+ * Провайдер текущего ID сессии.
+ *
+ * Используется для привязки данных с датчиков к конкретной сессии записи.
+ * Обновляется при начале/завершении сессии.
+ */
 @Singleton
 class SessionIdProvider @Inject constructor() {
     private val _currentSessionId = MutableStateFlow("")
     val currentSessionId: StateFlow<String> = _currentSessionId.asStateFlow()
 
+    /**
+     * Установить текущий ID сессии.
+     *
+     * @param sessionId ID сессии (timestamp начала)
+     */
     fun setSessionId(sessionId: String) {
         _currentSessionId.value = sessionId
     }
 
+    /**
+     * Получить текущий ID сессии.
+     *
+     * @return ID текущей сессии или пустая строка
+     */
     fun getCurrentSessionId(): String = _currentSessionId.value
 }

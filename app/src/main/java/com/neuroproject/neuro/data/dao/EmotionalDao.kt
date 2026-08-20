@@ -7,6 +7,9 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.neuroproject.neuro.data.entity.*
 
+/**
+ * DAO для доступа к эмоциональным метрикам пользователя.
+ */
 @Dao
 interface EmotionalDao {
 

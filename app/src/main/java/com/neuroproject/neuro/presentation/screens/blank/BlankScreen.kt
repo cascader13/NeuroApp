@@ -8,6 +8,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 
+/**
+ * Заглушка экрана для отладки навигации.
+ */
 @Composable
 fun BlankScreen(
     modifier: Modifier = Modifier,

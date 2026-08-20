@@ -1,5 +1,8 @@
 package com.neuroproject.neuro.domain.model
 
+/**
+ * Результат выполнения экспедиции (сессии измерений).
+ */
 sealed class ExpeditionResult {
     data class Success(val expeditionId: String) : ExpeditionResult()
     object NotSet : ExpeditionResult()

@@ -3,6 +3,9 @@ package com.neuroproject.neuro.domain.usecase.recording
 import com.neuroproject.neuro.domain.repository.DeviceGateway
 import javax.inject.Inject
 
+/**
+ * Останавливает текущую запись сессии.
+ */
 class StopRecordingUseCase @Inject constructor(
     private val deviceGateway: DeviceGateway
 ) {

@@ -7,6 +7,13 @@ import com.neuroproject.neuro.domain.repository.SessionRepository
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import javax.inject.Inject
 
+/**
+ * Создаёт новую сессию тренировки.
+ *
+ * @param durationMinutes длительность сессии в минутах
+ * @param category категория сессии
+ * @return созданная сессия с присвоенным идентификатором
+ */
 class CreateSessionUseCase @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val authRepository: AuthRepository

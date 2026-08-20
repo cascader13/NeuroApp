@@ -60,6 +60,9 @@ import com.neuroproject.neuro.domain.model.TotalFatigueResult
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import kotlinx.coroutines.launch
 
+/**
+ * Экран истории пройденных сессий с возможностью просмотра и удаления.
+ */
 @Composable
 fun HistoryScreen(
     onBackClick: () -> Unit,

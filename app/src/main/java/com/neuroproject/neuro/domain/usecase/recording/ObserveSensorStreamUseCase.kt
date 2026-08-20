@@ -6,6 +6,11 @@ import com.neuroproject.neuro.domain.repository.SensorStreamGateway
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
+/**
+ * Наблюдает за потоком данных со всех сенсоров устройства.
+ *
+ * @return [Flow] с событиями сенсоров
+ */
 class ObserveSensorStreamUseCase @Inject constructor(
     private val sensorStreamGateway: SensorStreamGateway
 ) {

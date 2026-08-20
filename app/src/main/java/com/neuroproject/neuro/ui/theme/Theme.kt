@@ -243,6 +243,9 @@ private val highContrastDarkColorScheme = darkColorScheme(
     surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
 )
 
+/**
+ * Пара взаимосвязанных цветов для темы оформления.
+ */
 @Immutable
 data class ColorFamily(
     val color: Color,
@@ -255,6 +258,11 @@ val unspecified_scheme = ColorFamily(
     Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified
 )
 
+/**
+ * Основная тема приложения NeuroApp.
+ *
+ * Поддерживает светлый, тёмный и системный режимы, а также динамические цвета (Android 12+).
+ */
 @Composable
 fun NeuroApplicationTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,

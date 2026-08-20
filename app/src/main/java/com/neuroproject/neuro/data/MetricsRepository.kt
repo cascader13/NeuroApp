@@ -11,56 +11,104 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Singleton
 
+/**
+ * Репозиторий для сохранения всех типов метрик в Room Database.
+ *
+ * Предоставляет методы для сохранения данных от нейро-гарнитуры.
+ * Автоматически создаёт сжатые версии данных каждую минуту.
+ *
+ * Основные возможности:
+ * - Сохранение всех типов метрик (NFB, ЭЭГ, MEMS, кардио и др.)
+ * - Создание сжатых метрик (медиана за минуту)
+ * - Очистка данных по сессиям
+ * - Фильтрация некорректных данных (NaN, Infinity)
+ *
+ * Архитектура буферизации:
+ * - Каждый тип метрик имеет свой буфер
+ * - При накоплении минуты данных буфер сбрасывается в compressed таблицу
+ * - Для булевых полей используется функция majority()
+ *
+ * @see MetricsDao
+ * @see SensorArtifactProcessor
+ */
 @Singleton
 class MetricsRepository(
     private val metricsDao: MetricsDao,
     @ApplicationScope private val appScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val COMPRESSED_TIME = 60000L
+    private val COMPRESSED_TIME = 60000L // 1 минута в миллисекундах
 
     private fun normalizeTimestamp(timestamp: Long): Long =
         if (timestamp > 0L) timestamp else System.currentTimeMillis()
+
+    /**
+     * Буфер для NFB метрик с указанием времени первого элемента.
+     */
     private data class NfbBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<NFBMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для сырых данных ЭЭГ.
+     */
     private data class EEGRAWBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EEGRawMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для обработанных данных ЭЭГ.
+     */
     private data class EEGPROCEEDBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EEGProceedMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для данных артефактов ЭЭГ.
+     */
     private data class EEGArtifactBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EEGArtifactsMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для физиологических метрик.
+     */
     private data class PhysiologicalBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<PhysiologicalMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для эмоциональных метрик.
+     */
     private data class EmotionalBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EmotionalMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для метрик продуктивности.
+     */
     private data class ProductivityBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<ProductivityMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для кардио метрик.
+     */
     private data class CardioBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<CardioMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для MEMS данных.
+     */
     private data class MEMSBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<MEMSMetricEntity> = mutableListOf()
@@ -76,11 +124,26 @@ class MetricsRepository(
     private val cardioBuffer = CardioBuffer()
     private val memsBuffer = MEMSBuffer()
 
-
+    /** Мьютекс для синхронизации доступа к буферам */
     private val mutex = Mutex()
+
+    /** Процессор артефактов для фильтрации некорректных данных */
     private val artifactProcessor = SensorArtifactProcessor()
 
 
+    /**
+     * Сохранить метрику нейрофидбека (NFB).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param alpha Уровень альфа-ритма
+     * @param beta Уровень бета-ритма
+     * @param theta Уровень тета-ритма
+     * @param delta Уровень дельта-ритма
+     * @param smr Уровень SMR
+     */
     fun saveNFBMetric(
         time: Long,
         id: String,
@@ -127,6 +190,16 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить сырые данные ЭЭГ.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param channel1 Значение первого канала
+     * @param channel2 Значение второго канала
+     */
     fun saveEEGRAWMetric(
         time: Long,
         id: String,
@@ -166,6 +239,16 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить обработанные данные ЭЭГ.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param channel1 Значение первого канала
+     * @param channel2 Значение второго канала
+     */
     fun saveEEGPROCEEDMetric(
         time: Long,
         id: String,
@@ -206,6 +289,18 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить данные об артефактах ЭЭГ.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param artifactsChannel1 Наличие артефактов на первом канале
+     * @param artifactsChannel2 Наличие артефактов на втором канале
+     * @param qualityChannel1 Качество сигнала первого канала
+     * @param qualityChannel2 Качество сигнала второго канала
+     */
     fun saveEEGArtifactMetric(
         time: Long,
         id: String,
@@ -249,6 +344,22 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить физиологические метрики.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param relax Уровень расслабления
+     * @param fatigue Уровень утомления
+     * @param none Нейтральное состояние
+     * @param concentration Уровень концентрации
+     * @param involvement Уровень вовлечённости
+     * @param stress Уровень стресса
+     * @param nfbArtifacts Наличие артефактов NFB
+     * @param cardioArtifacts Наличие кардио артефактов
+     */
     fun savePhysiologicalMetric(
         time: Long,
         id: String,
@@ -298,6 +409,20 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить MEMS данные (акселерометр и гироскоп).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param accX Ускорение по оси X
+     * @param accY Ускорение по оси Y
+     * @param accZ Ускорение по оси Z
+     * @param gyroX Угловая скорость по оси X
+     * @param gyroY Угловая скорость по оси Y
+     * @param gyroZ Угловая скорость по оси Z
+     */
     fun saveMEMSMetric(
         time: Long,
         id: String,
@@ -345,6 +470,20 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить метрики продуктивности.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param gravity Гравитационная составляющая
+     * @param productivity Уровень продуктивности
+     * @param fatigue Уровень утомления
+     * @param reverseFatigue Обратный уровень утомления
+     * @param relaxation Уровень расслабления
+     * @param concentration Уровень концентрации
+     */
     fun saveProductivityMetric(
         time: Long,
         id: String,
@@ -395,6 +534,23 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить индексы продуктивности.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param expedition_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param relaxation Текстовая рекомендация по расслаблению
+     * @param stress Текстовый уровень стресса
+     * @param gravityBaseline Базовый уровень гравитации
+     * @param productivityBaseline Базовый уровень продуктивности
+     * @param fatiqueBaseline Базовый уровень утомления
+     * @param reverseFatiqueBaseline Обратный базовый уровень утомления
+     * @param relaxationBaselines Базовый уровень расслабления
+     * @param concentrationBaselines Базовый уровень концентрации
+     * @param hasArtifacts Наличие артефактов
+     */
     fun saveProductivityIndexes(
         time: Long,
         id: String,
@@ -437,6 +593,17 @@ class MetricsRepository(
 
     }
 
+    /**
+     * Сохранить калибровочные данные продуктивности.
+     *
+     * @param userId ID пользователя
+     * @param gravityBaseline Базовый уровень гравитации
+     * @param productivityBaseline Базовый уровень продуктивности
+     * @param fatiqueBaseline Базовый уровень утомления
+     * @param reverseFatiqueBaseline Обратный базовый уровень утомления
+     * @param relaxationBaselines Базовый уровень расслабления
+     * @param concentrationBaselines Базовый уровень концентрации
+     */
     fun saveProductivityCalibration(
         userId: String,
         gravityBaseline: Float,
@@ -456,6 +623,20 @@ class MetricsRepository(
 
     }
 
+    /**
+     * Сохранить базовые значения продуктивности (калибровка).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param expedition_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param gravity Гравитационная составляющая
+     * @param productivity Уровень продуктивности
+     * @param fatigue Уровень утомления
+     * @param reverseFatigue Обратный уровень утомления
+     * @param relaxation Уровень расслабления
+     * @param concentration Уровень концентрации
+     */
     fun saveProductivityBaselines(
         time: Long,
         id: String,
@@ -492,6 +673,19 @@ class MetricsRepository(
 
     }
 
+    /**
+     * Сохранить физиологические базовые значения (калибровка).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param expedition_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param alpha Уровень альфа-ритма
+     * @param beta Уровень бета-ритма
+     * @param alphaGravity Гравитационная составляющая альфа-ритма
+     * @param betaGravity Гравитационная составляющая бета-ритма
+     * @param concentration Уровень концентрации
+     */
     fun savePhysiologicalBaselines(
         time: Long,
         id: String,
@@ -525,6 +719,16 @@ class MetricsRepository(
 
 
     }
+    /**
+     * Сохранить физиологические калибровочные данные.
+     *
+     * @param userId ID пользователя
+     * @param alpha Уровень альфа-ритма
+     * @param beta Уровень бета-ритма
+     * @param alphaGravity Гравитационная составляющая альфа-ритма
+     * @param betaGravity Гравитационная составляющая бета-ритма
+     * @param concentration Уровень концентрации
+     */
     fun savePhysiologicalCalibration(
         userId: String,
         alpha: Float,
@@ -543,6 +747,19 @@ class MetricsRepository(
 
     }
 
+    /**
+     * Сохранить эмоциональные метрики.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param attention Уровень внимания
+     * @param relaxation Уровень расслабления
+     * @param cognitiveLoad Когнитивная нагрузка
+     * @param cognitiveControl Когнитивный контроль
+     * @param selfControl Самоконтроль
+     */
     fun saveEmotionalMetric(
         time: Long,
         id: String,
@@ -590,6 +807,21 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сохранить кардио метрики.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param heartRate Частота сердечных сокращений
+     * @param hasArtifacts Наличие артефактов
+     * @param kaplanIndex Индекс Каплана
+     * @param metricsAvailable Доступность метрик
+     * @param motionAtrifacts Артефакты движения
+     * @param skinContact Качество контакта с кожей
+     * @param stressIndex Уровень стресса
+     */
     fun saveCardioMetric(
         time: Long,
         id: String,
@@ -641,6 +873,11 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Удалить все метрики для указанной сессии.
+     *
+     * @param sessionId ID сессии
+     */
     fun clearAllMetricsBySessionId(sessionId: Long){
         appScope.launch(ioDispatcher) {
             try{
@@ -672,6 +909,7 @@ class MetricsRepository(
         }
     }
 
+    /** Удалить все метрики из базы данных */
     fun clearAllMetrics() {
         appScope.launch(ioDispatcher) {
             try {
@@ -688,6 +926,7 @@ class MetricsRepository(
         }
     }
 
+    /** Сбросить все буферы и создать сжатые метрики */
     suspend fun flushAllBuffers() {
         mutex.withLock {
             flushNfbBuffer()
@@ -702,6 +941,9 @@ class MetricsRepository(
         }
     }
 
+    /**
+     * Сбросить буфер NFB и создать сжатую метрику (медиана за минуту).
+     */
     private suspend fun flushNfbBuffer() {
         if (nfbBuffer.values.isEmpty()) return
 
@@ -725,6 +967,9 @@ class MetricsRepository(
         nfbBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер сырых данных ЭЭГ и создать сжатую метрику.
+     */
     private suspend fun flushEEGRAWBuffer() {
         if (eegRawBuffer.values.isEmpty()) return
 
@@ -745,6 +990,9 @@ class MetricsRepository(
         eegRawBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер обработанных данных ЭЭГ и создать сжатую метрику.
+     */
     private suspend fun flushEEGPROCEEDBuffer() {
         if (eegProceedBuffer.values.isEmpty()) return
 
@@ -765,6 +1013,10 @@ class MetricsRepository(
         eegProceedBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер артефактов ЭЭГ и создать сжатую метрику.
+     * Для булевых полей используется функция majority().
+     */
     private suspend fun flushEEGArtifactBuffer() {
         if (eegArtifactBuffer.values.isEmpty()) return
 
@@ -787,6 +1039,9 @@ class MetricsRepository(
         eegArtifactBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер физиологических метрик и создать сжатую метрику.
+     */
     private suspend fun flushPhysiologicalBuffer() {
         if (physiologicalBuffer.values.isEmpty()) return
 
@@ -813,6 +1068,9 @@ class MetricsRepository(
         physiologicalBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер эмоциональных метрик и создать сжатую метрику.
+     */
     private suspend fun flushEmotionalBuffer() {
         if (emotionalBuffer.values.isEmpty()) return
 
@@ -836,6 +1094,9 @@ class MetricsRepository(
         emotionalBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер метрик продуктивности и создать сжатую метрику.
+     */
     private suspend fun flushProductivityBuffer() {
         if (productivityBuffer.values.isEmpty()) return
 
@@ -860,6 +1121,9 @@ class MetricsRepository(
         productivityBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер MEMS данных и создать сжатую метрику.
+     */
     suspend fun flushMEMSBuffer() {
         if (memsBuffer.values.isEmpty()) return
 
@@ -884,6 +1148,9 @@ class MetricsRepository(
         memsBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер кардио метрик и создать сжатую метрику.
+     */
     private suspend fun flushCardioBuffer() {
         if (cardioBuffer.values.isEmpty()) return
 
@@ -910,6 +1177,9 @@ class MetricsRepository(
     }
 
 
+    /**
+     * Вычислить медиану списка значений.
+     */
     private fun List<Float>.median(): Float {
         if (isEmpty()) return 0f
         val sorted = sorted()
@@ -917,6 +1187,10 @@ class MetricsRepository(
         return if (size % 2 == 0) (sorted[size / 2 - 1] + sorted[size / 2]) / 2 else sorted[size / 2]
     }
 
+    /**
+     * Определить большинство значений в списке булевых.
+     * Возвращает true, если больше половины true.
+     */
     private fun List<Boolean>.majority(): Boolean {
         if (isEmpty()) return false
         return count { it } > size / 2

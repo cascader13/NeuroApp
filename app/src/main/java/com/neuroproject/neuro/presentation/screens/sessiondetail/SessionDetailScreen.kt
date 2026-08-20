@@ -21,6 +21,9 @@ import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Экран детальной информации о выбранной сессии.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionDetailScreen(

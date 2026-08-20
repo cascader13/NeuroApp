@@ -25,6 +25,12 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+/**
+ * ViewModel экрана настроек.
+ *
+ * Управляет настройками приложения: идентификаторами, адресом сервера,
+ * синхронизацией и экспортом данных.
+ */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val uploadRepository: MetricsUploadRepository,

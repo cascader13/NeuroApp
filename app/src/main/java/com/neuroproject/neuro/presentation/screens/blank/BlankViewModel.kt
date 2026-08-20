@@ -8,6 +8,9 @@ import javax.inject.Inject
 import com.neuroproject.neuro.services.CapsuleDeviceManager
 
 
+/**
+ * ViewModel пустого экрана-заглушки.
+ */
 @HiltViewModel
 class BlankViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

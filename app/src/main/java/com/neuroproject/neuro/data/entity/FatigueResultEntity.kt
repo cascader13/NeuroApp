@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Сущность результата оценки усталости по минутам сессии.
+ */
 @Entity(
     tableName = "fatigue_results",
     indices = [Index(value = ["sessionId"])]

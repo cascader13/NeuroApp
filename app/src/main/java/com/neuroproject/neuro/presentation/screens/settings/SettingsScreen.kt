@@ -58,6 +58,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.ui.theme.ThemeMode
 import com.neuroproject.neuro.ui.theme.ThemeViewModel
 
+/**
+ * Экран настроек приложения: профиль, выгрузка данных, тема оформления.
+ */
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,

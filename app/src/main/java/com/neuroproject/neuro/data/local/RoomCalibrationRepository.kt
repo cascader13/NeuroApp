@@ -12,6 +12,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * Реализация репозитория калибровки на основе Room.
+ */
 class RoomCalibrationRepository @Inject constructor(
     private val metricsDao: MetricsDao,
     private val calibrationDao: CalibrationDao

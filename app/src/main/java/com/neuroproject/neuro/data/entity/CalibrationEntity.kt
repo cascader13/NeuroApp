@@ -5,6 +5,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.neuroproject.neuro.domain.model.CalibrationSample
 
+/**
+ * Сущность истории калибровки пользователя.
+ */
 @Entity(
     tableName = "Calibration_History",
     indices = [Index(value = ["user_id"])]

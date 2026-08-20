@@ -97,6 +97,9 @@ object SubTestScreenTags {
     const val RetakeTestButton = "subtest_retake_test_button"
 }
 
+/**
+ * Экран прохождения теста субъективной оценки утомления.
+ */
 @Composable
 fun SubTestScreen(
     modifier: Modifier = Modifier,

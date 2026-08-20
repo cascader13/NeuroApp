@@ -6,6 +6,12 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Сборщик данных с датчиков нейро-гарнитуры.
+ *
+ * Предоставляет доступ к потокам данных (Flow) различных типов:
+ * NFB, ЧСС, физиологические, MEMS, продуктивность, эмоции, ЭЭГ.
+ */
 @Singleton
 class SensorDataCollector @Inject constructor(
     private val sensorStreamGateway: SensorStreamGateway

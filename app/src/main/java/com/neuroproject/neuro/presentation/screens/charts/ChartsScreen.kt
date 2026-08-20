@@ -13,6 +13,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.components.LineChart
 import com.neuroproject.neuro.domain.model.Session
 
+/**
+ * Экран графиков динамики показателей по сессиям.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartsScreen(

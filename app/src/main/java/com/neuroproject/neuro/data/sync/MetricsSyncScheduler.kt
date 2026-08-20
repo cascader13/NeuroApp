@@ -19,13 +19,35 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Планировщик фоновой синхронизации метрик через WorkManager.
+ *
+ * Управляет одноразовой и периодической синхронизацией данных с сервером.
+ * Гарантирует выполнение только при наличии сети и достаточном заряде батареи.
+ *
+ * Основные возможности:
+ * - Одноразовая синхронизация (ручной запуск)
+ * - Периодическая синхронизация (автоматический запуск)
+ * - Наблюдение за состоянием синхронизации
+ * - Отмена запланированных задач
+ *
+ * @see MetricsSyncWorker
+ * @see SyncState
+ */
 @Singleton
 class MetricsSyncScheduler @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    /** WorkManager для управления фоновыми задачами */
     private val workManager: WorkManager
         get() = WorkManager.getInstance(context)
 
+    /**
+     * Запустить одноразовую фоновую синхронизацию.
+     *
+     * @param batchSize Размер пакета для отправки
+     * @param replaceExisting Заменить ли существующую задачу
+     */
     fun enqueueManualBackgroundSync(
         batchSize: Int = DEFAULT_BATCH_SIZE,
         replaceExisting: Boolean = true
@@ -48,6 +70,12 @@ class MetricsSyncScheduler @Inject constructor(
         )
     }
 
+    /**
+     * Включить периодическую синхронизацию.
+     *
+     * @param repeatIntervalMinutes Интервал повторения (мин), минимум 15
+     * @param batchSize Размер пакета для отправки
+     */
     fun enablePeriodicSync(
         repeatIntervalMinutes: Long = DEFAULT_REPEAT_MINUTES,
         batchSize: Int = DEFAULT_BATCH_SIZE
@@ -72,14 +100,21 @@ class MetricsSyncScheduler @Inject constructor(
         )
     }
 
+    /** Отключить периодическую синхронизацию */
     fun disablePeriodicSync() {
         workManager.cancelUniqueWork(MetricsSyncWorker.UNIQUE_PERIODIC_WORK_NAME)
     }
 
+    /** Отменить одноразовую синхронизацию */
     fun cancelManualBackgroundSync() {
         workManager.cancelUniqueWork(MetricsSyncWorker.UNIQUE_ONE_TIME_WORK_NAME)
     }
 
+    /**
+     * Наблюдать за состоянием синхронизации.
+     *
+     * @return Flow с текущим состоянием (Idle, Enqueued, Running)
+     */
     fun observeSyncState(): Flow<SyncState> {
         val periodicWork = workManager.getWorkInfosForUniqueWorkFlow(
             MetricsSyncWorker.UNIQUE_PERIODIC_WORK_NAME
@@ -102,6 +137,10 @@ class MetricsSyncScheduler @Inject constructor(
         }
     }
 
+    /**
+     * Создать ограничения для синхронизации.
+     * Требуется подключение к сети и достаточный заряд батареи.
+     */
     private fun syncConstraints(): Constraints {
         return Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -117,8 +156,14 @@ class MetricsSyncScheduler @Inject constructor(
     }
 }
 
+/**
+ * Состояние синхронизации.
+ */
 enum class SyncState {
+    /** Синхронизация не выполняется */
     Idle,
+    /** Синхронизация в очереди на выполнение */
     Enqueued,
+    /** Синхронизация выполняется */
     Running
 }

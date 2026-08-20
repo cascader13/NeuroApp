@@ -7,6 +7,9 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.neuroproject.neuro.data.entity.*
 
+/**
+ * DAO для доступа к кардиометрическим данным.
+ */
 @Dao
 interface CardioDao {
 

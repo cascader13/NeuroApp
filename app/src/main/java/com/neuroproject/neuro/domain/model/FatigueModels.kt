@@ -1,5 +1,13 @@
 package com.neuroproject.neuro.domain.model
 
+/**
+ * Данные утомления за одну минуту сессии.
+ *
+ * @property minuteIndex номер минуты
+ * @property cognitiveMetrics когнитивные метрики
+ * @property physiologicalMetrics физиологические метрики
+ * @property psychologicalMetrics психологические метрики
+ */
 data class FatigueMinuteData(
     val minuteIndex: Int,
     val cognitiveMetrics: CognitiveFatigueMetrics,
@@ -7,6 +15,9 @@ data class FatigueMinuteData(
     val psychologicalMetrics: PsychologicalFatigueMetrics
 )
 
+/**
+ * Когнитивные метрики утомления (продуктивность, концентрация, нагрузка).
+ */
 data class CognitiveFatigueMetrics(
     val fatigue: Float, // из productivity_metrics
     val concentration: Float,  // из productivity_metrics
@@ -14,6 +25,9 @@ data class CognitiveFatigueMetrics(
     val cognitiveLoad: Float   // из emotional_metrics
 )
 
+/**
+ * Физиологические метрики утомления (стресс, расслабление, вовлечённость).
+ */
 data class PhysiologicalFatigueMetrics(
     val fatigue: Float,   // из physiological_metrics
     val stress: Float,    // из physiological_metrics
@@ -21,6 +35,9 @@ data class PhysiologicalFatigueMetrics(
     val involvement: Float // из physiological_metrics
 )
 
+/**
+ * Психологические метрики утомления (когнитивная нагрузка, контроль, расслабление).
+ */
 data class PsychologicalFatigueMetrics(
     val cognitiveLoad: Float,  // из emotional_metrics
     val relaxation: Float,     // из emotional_metrics
@@ -28,6 +45,9 @@ data class PsychologicalFatigueMetrics(
     val cognitiveControl: Float // из emotional_metrics
 )
 
+/**
+ * Результат расчёта уtomления за минуту (0-100 по каждому типу).
+ */
 data class FatigueResult(
     val minuteIndex: Int,
     val cognitive: Float,      // 0-100
@@ -36,6 +56,9 @@ data class FatigueResult(
     val sessionId: Long
 )
 
+/**
+ * Сводные результаты утомления за всю сессию.
+ */
 data class SessionFatigueResult(
     val sessionId: Long,
     val results: List<FatigueResult>,

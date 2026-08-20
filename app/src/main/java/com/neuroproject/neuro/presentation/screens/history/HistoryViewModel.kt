@@ -14,6 +14,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel экрана истории сессий.
+ *
+ * Управляет загрузкой, отображением и удалением записей сессий.
+ */
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val getSessions: GetSessionsUseCase,

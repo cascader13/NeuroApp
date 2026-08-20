@@ -11,6 +11,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Модуль Hilt для предоставления use-кейсов синхронизации.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object SyncModule {

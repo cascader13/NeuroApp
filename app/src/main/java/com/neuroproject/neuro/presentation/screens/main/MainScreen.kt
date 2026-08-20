@@ -44,6 +44,9 @@ object MainScreenTags {
     const val ResultsButton = "main_results_button"
 }
 
+/**
+ * Главный экран приложения с основным меню навигации.
+ */
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,

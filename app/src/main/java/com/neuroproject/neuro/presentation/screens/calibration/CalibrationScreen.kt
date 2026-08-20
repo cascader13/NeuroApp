@@ -47,6 +47,9 @@ import com.neuroproject.neuro.components.ResistanceIndicatorBar
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import com.neuroproject.neuro.ui.theme.ThemeMode
 
+/**
+ * Экран калибровки датчиков перед записью сессии.
+ */
 @Composable
 fun CalibrationScreen(
     modifier: Modifier = Modifier,

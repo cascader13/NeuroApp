@@ -21,6 +21,12 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel экрана проверки датчиков.
+ *
+ * Управляет проверкой сопротивления электродов, уровнем заряда батареи
+ * и состоянием подключения устройства.
+ */
 @HiltViewModel
 class SensorCheckingViewModel @Inject constructor(
     private val observeResistanceUseCase: ObserveResistanceUseCase,

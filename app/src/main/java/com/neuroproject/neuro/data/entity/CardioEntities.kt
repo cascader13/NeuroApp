@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Сущность кардиометрических данных.
+ */
 @Entity(tableName = "cardio_metrics", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class CardioMetricEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
@@ -21,6 +24,9 @@ data class CardioMetricEntity(
     val isMarked: Boolean
 )
 
+/**
+ * Сущность сжатых кардиометрических данных.
+ */
 @Entity(tableName = "cardio_metrics_compressed", indices = [Index(value = ["sessionId", "timestamp"]), Index(value = ["timestamp"])])
 data class CardioMetricCompressedEntity(
     @PrimaryKey(autoGenerate = true) val rowId: Long = 0,

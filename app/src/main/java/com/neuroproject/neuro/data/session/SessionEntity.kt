@@ -4,6 +4,12 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Сущность сессии записи данных с нейро-гарнитуры.
+ *
+ * Хранит объективные и субъективные оценки, метаданные и результаты
+ * когнитивного тестирования для каждой сессии.
+ */
 @Entity(
     tableName = "sessions",
     indices = [

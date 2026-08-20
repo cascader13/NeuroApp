@@ -8,6 +8,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Модуль Hilt для привязки ObjectiveMetricsRepository.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class ObjectiveModule {

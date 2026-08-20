@@ -12,6 +12,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel экрана деталей сессии.
+ *
+ * Загружает и отображает информацию о конкретной сессии по её идентификатору.
+ */
 @HiltViewModel
 class SessionDetailViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,

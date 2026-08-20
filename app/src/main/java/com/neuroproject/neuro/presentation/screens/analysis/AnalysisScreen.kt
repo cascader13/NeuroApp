@@ -43,6 +43,9 @@ import com.neuroproject.neuro.domain.model.DeviceConnectionState
 import com.neuroproject.neuro.domain.model.NFBSample
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 
+/**
+ * Экран мониторинга нейроактивности в реальном времени с графиками волн мозга.
+ */
 @Composable
 fun AnalysisScreen(
     modifier: Modifier = Modifier,

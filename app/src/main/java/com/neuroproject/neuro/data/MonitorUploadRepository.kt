@@ -11,6 +11,15 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Репозиторий для отправки строковых сообщений на сервер мониторинга.
+ *
+ * Используется для отправки отдельных показателей в реальном времени.
+ * Данный функционал не будет присутствовать в релизной версии.
+ *
+ * @see DynamicServerManager
+ * @see MonitorApiService
+ */
 @Singleton
 class MonitorUploadRepository @Inject constructor(
     private val dynamicServerManager: DynamicServerManager

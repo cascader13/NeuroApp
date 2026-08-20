@@ -1,5 +1,11 @@
 package com.neuroproject.neuro.domain.model
 
+/**
+ * Результаты калибровки устройства.
+ *
+ * Содержит индивидуальные параметры частотных диапазонов ЭЭГ,
+ * а также эталонные значения продуктивности и физиологии.
+ */
 data class CalibrationSample(
     val individualFrequency: Float = 10f,
     val individualPeakFrequency: Float = 10f,

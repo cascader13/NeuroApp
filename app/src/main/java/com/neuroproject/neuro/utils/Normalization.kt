@@ -2,6 +2,12 @@ package com.neuroproject.neuro.utils
 
 import kotlin.math.exp
 
+/**
+ * Утилита нормализации значений датчиков.
+ *
+ * Предоставляет методы приведения сырых данных к диапазону [0, 1]
+ * с учётом базовых значений и инверсии для обратных шкал.
+ */
 object Normalization {
 
     fun minMaxClamped(value: Float, min: Float = 0f, max: Float = 100f) : Float{

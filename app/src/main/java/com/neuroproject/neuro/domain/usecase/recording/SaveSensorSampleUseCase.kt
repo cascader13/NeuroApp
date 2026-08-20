@@ -5,6 +5,13 @@ import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.MetricsRepository
 import javax.inject.Inject
 
+/**
+ * Сохраняет пример сенсорных данных в репозиторий метрик.
+ *
+ * Автоматически заполняет userId и expeditionId из текущей сессии.
+ *
+ * @param sample данные сенсора любого поддерживаемого типа
+ */
 class SaveSensorSampleUseCase @Inject constructor(
     private val metricsRepository: MetricsRepository,
     private val authRepository: AuthRepository

@@ -49,6 +49,9 @@ import com.neuroproject.neuro.components.BackHandler
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import com.neuroproject.neuro.ui.theme.ThemeMode
 
+/**
+ * Экран проверки качества контакта датчиков с кожей головы.
+ */
 @Composable
 fun SensorCheckingScreen(
     modifier: Modifier = Modifier,
