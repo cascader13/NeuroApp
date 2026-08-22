@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">NeuroApp</string>
+    <string name="app_name">НейроСтат</string>
+    <string name="instruction_text">Вам будет предложено ответить на несколько вопросов о вашем состоянии. Используйте шкалу от 1 до 10. Затем оставьте комментарий и подождите окончания записи.</string>
+
 </resources>

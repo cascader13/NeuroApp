@@ -1,506 +1,84 @@
 package com.neuroproject.neuro.services
 
-import android.content.Context
-import android.util.Log
-import com.neuroproject.neuro.data.CalibrationHistoryEntity
-import com.neuroproject.neuro.data.MetricsDao
-import com.neuroproject.neuro.models.BaselineValues
-import com.neuroproject.neuro.models.CapsuleInitializedState
-import com.neuroproject.neuro.models.DeviceInfo
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import com.neuroproject.neuro.jni.JniCallbackHandler
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.concurrent.thread
-import kotlin.coroutines.EmptyCoroutineContext
 
-enum class CapsuleStages(val value: Int) {
-    CALIBRATOR_UNKNOWN_STAGE(-2),
-    CALIBRATOR_READY_STAGE(-1),
-    CALIBRATOR_STAGE1(0),
-    CALIBRATOR_STAGE2(1),
-    CALIBRATOR_STAGE3(2),
-    CALIBRATOR_STAGE4(3),
-    PHYSIO_INIT_STAGE(4),
-    PHYSIO_BASELINE_STAGE(5),
-    CALIBRATOR_ERROR_STAGE(6);
-
-    companion object {
-        fun fromInt(value: Int) =
-            CapsuleStages.entries.firstOrNull { it.value == value } ?: CALIBRATOR_UNKNOWN_STAGE
-    }
-}
-
-enum class DeviceConnectionState {
-    connection, // 0
-    connected, // 1
-    disconnection, // 2
-    disconnected, // 3
-    error // 4
-}
-
-data class PhysiologicalData(
-    val timeStampMilli: Long = 0,
-    val relax: Float = 0f,
-    val fatigue: Float = 0f,
-    val none: Float = 0f,
-    val concentration: Float = 0f,
-    val involvement: Float = 0f,
-    val stress: Float = 0f,
-    val nfbArtifacts: Boolean = true,
-    val cardioArtifacts: Boolean = true
-)
-
-data class NFBData(
-    val timeStampMilli: Long = 0,
-    val alpha: Float = 0f,
-    val beta: Float = 0f,
-    val theta: Float = 0f,
-    val delta: Float = 0f,
-    val smr: Float = 0f
-)
-
-data class MEMSdata(
-    val timeStampMilli: Long = 0,
-    val accelerometer_x: Float = 0f,
-    val accelerometer_y: Float = 0f,
-    val accelerometer_z: Float = 0f,
-    val gyroscope_x: Float = 0f,
-    val gyroscope_y: Float = 0f,
-    val gyroscope_z: Float = 0f
-)
-
-data class Productivitydata(
-    val timeStampMilli: Long = 0,
-    val timestamp_prod: Double = 0.0,
-    val gravity: Float = 0f,
-    val productivity: Float = 0f,
-    val fatigue: Float = 0f,
-    val reverse_fatique: Float = 0f,
-    val relaxation: Float = 0f,
-    val concentration: Float = 0f
-)
-
-data class Emotionaldata(
-    val timeStampMilli: Long = 0,
-    val attention: Float = 0f,
-    val relaxation: Float = 0f,
-    val cognitive_load: Float = 0f,
-    val cognitive_control: Float = 0f,
-    val self_control: Float = 0f
-)
-
-data class Cardiodata(
-    val timeStampMilli: Long = 0,
-    val heartRate: Float = 0f,
-    val hasArtifacts: Boolean = false,
-    val kaplanIndex: Float = 0f,
-    val metricsAvailable: Boolean = false,
-    val motionArtifacts: Boolean = false,
-    val skinContact: Boolean = false,
-    val stress: Float = 0f
-)
-
-
-data class EEGRawSample(
-    val timeStampMilli: Long = 0,
-    val channel1: Float = 0f,
-    val channel2: Float = 0f
-)
-
-data class EEGProcessedSample(
-    val timeStampMilli: Long = 0,
-    val channel1: Float = 0f,
-    val channel2: Float = 0f
-)
-
-data class EEGArtifactsSample(
-    val timeStampMilli: Long = 0,
-    val artifactsChannel1: Boolean = false,
-    val artifactsChannel2: Boolean = false,
-    val qualityChannel1: Float = 0f,
-    val qualityChannel2: Float = 0f
-)
-
-data class ProductivityIndexes(
-    val time: Long = 0,
-    val relaxation: String = "NoRecommendation",
-    val stress: String = "NoStress",
-    val gravityBaseline: Float = 1f,
-    val productivityBaseline: Float = 1f,
-    val fatigueBaseline: Float = 1f,
-    val reverseFatiqueBaseline: Float = 1f,
-    val relaxationBaseline: Float = 1f,
-    val concentrationBaseline: Float = 1f,
-    val hasArtifacts: Boolean = false
-)
-
-data class ProductivityBaseline(
-    val time: Long = 0,
-    val gravity:Float = 1f,
-    val productivity: Float = 1f,
-    val fatigue: Float = 1f,
-    val reverse_fatique: Float = 1f,
-    val relaxation: Float = 1f,
-    val concentration: Float = 1f
-)
-
-data class PhysiologicalBaseline(
-    val time: Long = 0,
-    val alpha: Float = 1f,
-    val beta: Float = 1f,
-    val alphaGravity: Float = 1f,
-    val betaGravity: Float = 1f,
-    val concentration: Float = 1f
-)
-
+// services/CapsuleDeviceManager.kt
+// ВАЖНО: этот класс находится в legacy package, который ожидает native-библиотека.
+/**
+ * Менеджер взаимодействия с нейро-гарнитурой через JNI.
+ *
+ * Предоставляет публичные обёртки над нативными функциями для управления
+ * капсулой: поиск, подключение, запись данных и калибровка.
+ */
 @Singleton
-class CapsuleDeviceManager @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val metricsDao: MetricsDao
-) {
+class CapsuleDeviceManager @Inject constructor() {
 
-    private var _instance = this
-
-    init {
-        _instance = this
-        Log.d("CapsuleDeviceManager", "init")
-    }
-
-    var scope = CoroutineScope(EmptyCoroutineContext)
-
-    var devicesFound: (Array<DeviceInfo>) -> Unit = {}
-
-    private var _connectionState = MutableStateFlow(DeviceConnectionState.disconnected)
-    private var _calibrationState = MutableStateFlow(
-        CapsuleStages.CALIBRATOR_UNKNOWN_STAGE
-        )
-    private var _hrData = MutableStateFlow(Cardiodata(0, 0f, false, 0f, false, false, false, 0f))
-    private var _physiologicalData = MutableStateFlow(PhysiologicalData())
-    private var _nfbData = MutableStateFlow(NFBData())
-    private var _baseLineData = MutableStateFlow(BaselineValues(0f, 0f, 0f, 0f))
-    private var _memsData = MutableStateFlow(MEMSdata(0, 0f, 0f, 0f, 0f, 0f, 0f))
-    private var _productivityData = MutableStateFlow(Productivitydata(0, 0.0, 0f, 0f, 0f, 0f, 0f, 0f))
-    private var _emotionalData = MutableStateFlow(Emotionaldata(0, 0f, 0f, 0f, 0f, 0f))
-    private var _productivityIndexData = MutableStateFlow(ProductivityIndexes())
-    private var _productivityBaselineData = MutableStateFlow(ProductivityBaseline())
-    private var _physiologicalBaselineData = MutableStateFlow(PhysiologicalBaseline())
-
-    // НОВЫЕ ПОТОКИ ДЛЯ EEG ДАННЫХ
-    private var _eegRawData = MutableStateFlow(EEGRawSample())
-    private var _eegProcessedData = MutableStateFlow(EEGProcessedSample())
-    private var _eegArtifacts = MutableStateFlow(EEGArtifactsSample())
-
-    var calibrationStage = _calibrationState.asStateFlow()
-    var hrData = _hrData.asStateFlow()
-    var physiologicalData = _physiologicalData.asStateFlow()
-    var physiologicalBaselineData = _physiologicalBaselineData.asStateFlow()
-    var memsData = _memsData.asStateFlow()
-    var productivityData = _productivityData.asStateFlow()
-    var emotionalData = _emotionalData.asStateFlow()
-    var nfbData = _nfbData.asStateFlow()
-    var baseLineData = _baseLineData.asStateFlow()
-    var productivityIndexData = _productivityIndexData.asStateFlow()
-    var productivityBaselineData = _productivityBaselineData.asStateFlow()
-    var eegRawData = _eegRawData.asStateFlow()
-    var eegProcessedData = _eegProcessedData.asStateFlow()
-    var eegArtifacts = _eegArtifacts.asStateFlow()
-    var connectionState = _connectionState.asStateFlow()
-    var calibrationState = _calibrationState.asStateFlow()
-
-    var batteryChanged: (Int) -> Unit = {}
-
-    var resistanceReceived: (o1: Double, o2: Double, t3: Double, t4: Double) -> Unit =
-        { o1: Double, o2: Double, t3: Double, t4: Double -> }
-
-    var nfbReceived: (time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) -> Unit =
-        { time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float -> }
-
-    var stageCalibrationProgress: (stage: Int) -> Unit = {}
-    var initializeStateChanged: (state: CapsuleInitializedState) -> Unit = {}
-
-    fun onCapsuleStateChanged(state: Int) {
-        initializeStateChanged(CapsuleInitializedState.entries[state])
-    }
-
-    fun initCapsule() {
-        scope.launch {
-            removeAll()
-            delay(1000)
-            thread {
-                nativeInitCapsule(_instance)
-                Log.d("CAPSULE", "end thread")
-            }
-        }
-    }
-
-    fun getConnectionState(): DeviceConnectionState {
-        return _connectionState.value
-    }
-
-    fun calibrationStateChanged(stageNum: Int) {
-        val stage = CapsuleStages.fromInt(stageNum)
-        Log.d("JCAPSULE", "StateChanged $stageNum")
-        MainScope().launch {
-            _calibrationState.emit(stage)
-        }
-    }
-
-    fun startSearch() {
-        nativeStartSearch()
-    }
-
-    fun connect(id: String) {
-        nativeConnect(id)
-    }
-
-    fun startResistance() {
-        nativeStartResistance()
-    }
-
-    fun stopResistance() {
-        nativeStopResistance()
-    }
-
-    fun startSignalAndHR() {
-        MainScope().launch {
-            _calibrationState.emit(
-                    CapsuleStages.CALIBRATOR_UNKNOWN_STAGE)
-        }
-        nativeStartSignalAndHR()
-    }
-
-    fun stopSignalAndHR() {
-        nativeStopSignalAndHR()
-    }
-
-    fun startSession() {
-        nativeStartSession()
-    }
-
-    fun stopSession() {
-        nativeStopSession()
-    }
-
-    fun locatorEvent(devices: Array<DeviceInfo>) {
-        devicesFound(devices)
-        Log.d("JCAPSULE", "locatorEvent")
-    }
-
-    fun deviceConnectionState(state: Int) {
-        scope.launch {
-            _connectionState.emit(DeviceConnectionState.entries[state])
-        }
-        Log.d("JCAPSULE", "deviceConnectionState")
-    }
-
-    fun onProductivityIndexesReceived(time: Long, relaxation: Float, stress: Float, gravityBaseline: Float, productivityBaseline: Float, fatigueBaseline: Float, reverseFatiqueBaseline: Float, relaxationBaseline: Float, concentrationBaseline: Float, hasArtifacts: Boolean ){
-        Log.d("JCAPSULE", "OnProductivityIndexesReceived: smth")
-        var relaxation_string = "NoRecommendation"
-        when (relaxation){
-            -1f -> relaxation_string = "NoRecommendation"
-            0f -> relaxation_string = "Involvement"
-            1f -> relaxation_string = "Relaxation"
-            2f -> relaxation_string = "SlightFatigue"
-            3f -> relaxation_string = "SevereFatigue"
-            4f -> relaxation_string = "ChronicFatigue"
-        }
-        var stress_string = "NoStress"
-        when (stress){
-            0f -> stress_string = "NoStress"
-            1f -> stress_string = "Anxiety"
-            2f -> stress_string = "Stress"
-        }
-        scope.launch {
-
-            _productivityIndexData.emit(ProductivityIndexes(time, relaxation_string, stress_string, gravityBaseline, productivityBaseline, fatigueBaseline, reverseFatiqueBaseline, relaxationBaseline, concentrationBaseline, hasArtifacts))
-        }
-    }
-
-    fun onProductivityBaselineReceived(time: Long, gravity:Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float){
-        Log.d("JCAPSULE", "onProductivityBaseline: smth")
-        scope.launch {
-            _productivityBaselineData.emit(ProductivityBaseline(time, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration ))
-        }
-
-    }
-
-    fun onPhysiologicalBaselineReceived(time: Long, alpha: Float, beta: Float, alphaGravity: Float, betaGravity: Float, concentration: Float){
-        Log.d("JCAPSULE", "onPhysiologicalReceived: smth")
-        scope.launch {
-            _physiologicalBaselineData.emit(PhysiologicalBaseline(time, alpha, beta, alphaGravity, betaGravity, concentration))
-        }
-    }
-
-    fun onMEMSReceived(time: Long, accx: Float, accy: Float, accz: Float, hyrx: Float, hyry: Float, hyrz: Float) {
-        Log.d("JCAPSULE", "onMEMSReceived: smth")
-        scope.launch {
-            _memsData.emit(MEMSdata(time, accx, accy, accz, hyrx, hyry, hyrz))
-        }
-    }
-
-    fun onEmotionReceived(time: Long, attention: Float, relaxation: Float, cognitive_load: Float, cognitive_control: Float, self_control: Float) {
-        Log.d("JCAPSULE", "onEmotionReceived: smth")
-        scope.launch {
-            _emotionalData.emit(Emotionaldata(time, attention, relaxation, cognitive_load, cognitive_control, self_control))
-        }
-    }
-
-    fun onProductivityReceived(time: Long, timestamp_prod: Double, gravity: Float, productivity: Float, fatigue: Float, reverse_fatique: Float, relaxation: Float, concentration: Float) {
-        Log.d("JCAPSULE", "onProductivityReceived: smth")
-        scope.launch {
-            _productivityData.emit(Productivitydata(time, timestamp_prod, gravity, productivity, fatigue, reverse_fatique, relaxation, concentration))
-        }
-    }
-
-    fun onResistanceReceived(o1: Double, o2: Double, t3: Double, t4: Double) {
-        Log.d("JCAPSULE", "onResistanceReceived: smth")
-        resistanceReceived(o1 / 10e3, o2 / 10e3, t3 / 10e3, t4 / 10e3)
-    }
-
-
-    fun onCalibrationReceived(indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float, indPeakFrequencySuppression : Float, indBandwidth : Float,indNormalizedPower: Float, lowerFrequency: Float, upperFrequency: Float){
-        val sharedPreferences = context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE);
-
-        scope.launch {
-            try {
-                val prob: CalibrationHistoryEntity = CalibrationHistoryEntity(user_id = sharedPreferences.getString("saved_user_id", "").toString(),
-                    individualFrequency = indFrequency,
-                    individualPeakFrequency = indPeakFrequency,
-                    individualPeakFrequencyPower = indPeakFrequencyPower,
-                    individualPeakFrequencySuppression = indPeakFrequencySuppression,
-                    individualBandwidth = indBandwidth,
-                    individualNormalizedPower = indNormalizedPower,
-                    lowerFrequency = lowerFrequency,
-                    upperFrequency = upperFrequency)
-                metricsDao.insertCalibrationData(prob)
-            } catch (e: Exception) {
-                Log.e("MetricsRepository", "Error saving Calibration data", e)
-            }
-        }
-
-    }
-
-    fun onEEGCalibrationReceived(stage: Int) {
-        stageCalibrationProgress(stage)
-    }
-
-    fun onBaselineReceived(alpha: Float, alphaGravity: Float, beta: Float, betaGravity: Float) {
-        scope.launch {
-            _baseLineData.emit(BaselineValues(alpha, alphaGravity, beta, betaGravity))
-        }
-        Log.d("JCAPSULE", "onCalibrationReceived")
-    }
-
-    fun onNFBReceived(time: Long, alpha: Float, beta: Float, theta: Float, delta: Float, smr: Float) {
-        scope.launch {
-            _nfbData.emit(NFBData(time, alpha, beta, theta, delta, smr))
-        }
-        nfbReceived(time, alpha, beta, theta, delta, smr)
-        Log.d("JCAPSULE", "alpha = " + alpha + ", beta = " + beta + ", theta = " + theta)
-    }
-
-    fun onCardioReceived(time: Long, heartRate: Float, hasArtifacts: Boolean, kaplanIndex: Float, metricsAvailable: Boolean, motionArtifacts: Boolean, skinContact: Boolean, stress: Float) {
-        scope.launch {
-            _hrData.emit(Cardiodata(time, heartRate, hasArtifacts, kaplanIndex, metricsAvailable, motionArtifacts, skinContact, stress))
-        }
-        Log.d("JCAPSULE", "HR = " + heartRate)
-    }
-
-    fun onPhysiologicalReceived(
-        time: Long,
-        relax: Float,
-        fatigue: Float,
-        none: Float,
-        concentration: Float,
-        involvement: Float,
-        stress: Float,
-        nfbArtifacts: Boolean,
-        cardioArtifacts: Boolean
-    ) {
-        scope.launch {
-            _physiologicalData.emit(
-                PhysiologicalData(
-                    time,
-                    relax,
-                    fatigue,
-                    none,
-                    concentration,
-                    involvement,
-                    stress,
-                    nfbArtifacts,
-                    cardioArtifacts
-                )
-            )
-        }
-        Log.d(
-            "JCAPSULE", "r = " + relax +
-                    ", f = " + fatigue + ", n = " + none
-                    + ", c = " + concentration + ", i = " + involvement + ", na = " + nfbArtifacts + ", ca = " + cardioArtifacts
-        )
-    }
-
-    fun onEEGRawDataReceived(
-        timeStampMilli: Long,
-        channel1: Float,
-        channel2: Float
-    ) {
-        Log.d("JCAPSULE", "onEEGRawDataReceived: time=$timeStampMilli")
-        scope.launch {
-            _eegRawData.emit(EEGRawSample(timeStampMilli, channel1, channel2))
-        }
-    }
-
-    fun onEEGProcessedDataReceived(
-        timeStampMilli: Long,
-        channel1: Float,
-        channel2: Float
-    ) {
-        Log.d("JCAPSULE", "onEEGProcessedDataReceived: time=$timeStampMilli")
-        scope.launch {
-            _eegProcessedData.emit(EEGProcessedSample(timeStampMilli, channel1, channel2))
-        }
-    }
-
-    fun onEEGArtifactsReceived(
-        timeStampMilli: Long,
-        artifacts1: Boolean,
-        artifacts2: Boolean,
-        quality1: Float,
-        quality2: Float
-    ) {
-        Log.d("JCAPSULE", "onEEGArtifactsReceived: time=$timeStampMilli")
-        scope.launch {
-            _eegArtifacts.emit(
-                EEGArtifactsSample(
-                    timeStampMilli,
-                    artifacts1, artifacts2,
-                    quality1, quality2
-                )
-            )
-        }
-    }
-
-    companion object {
+    // Приватные external функции
+    private companion object {
         init {
             System.loadLibrary("native-lib")
         }
 
-        external fun nativeInitCapsule(impl: CapsuleDeviceManager)
-        external fun nativeStartSearch()
-        external fun nativeConnect(id: String)
-        external fun nativeStartResistance()
-        external fun nativeStopResistance()
-        external fun nativeStartSignalAndHR()
-        external fun nativeStopSignalAndHR()
-        external fun nativeStartSession()
-        external fun nativeStopSession()
-        external fun nativeImportCalibration(indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float, indPeakFrequencySuppression : Float, indBandwidth : Float,indNormalizedPower: Float, lowerFrequency: Float, upperFrequency: Float)
-        external fun removeAll()
+        private external fun nativeInitCapsule()
+        private external fun nativeStartSearch()
+        private external fun nativeConnect(id: String)
+        private external fun nativeDisconnect()
+        private external fun nativeStartResistance()
+        private external fun nativeStopResistance()
+        private external fun nativeStartSignalAndHR()
+        private external fun nativeStopSignalAndHR()
+        private external fun nativeStartSession()
+        private external fun nativeStopSession()
+        private external fun nativeStartProductivity()
+        private external fun nativeImportCalibration(
+            indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float,
+            indPeakFrequencySuppression: Float, indBandwidth: Float, indNormalizedPower: Float,
+            lowerFrequency: Float, upperFrequency: Float
+        )
+        private external fun nativeImportProductivityCalibration(
+            gravity: Float, b_productivity: Float, fatigue: Float,
+            reverseFatigue: Float, relaxation: Float, concentration: Float
+        )
+        private external fun nativeImportPhysiologicalCalibration(
+            alpha: Float, beta: Float, alphaGravity: Float,
+            betaGravity: Float, concentration: Float
+        )
+        private external fun removeAll()
     }
+
+    // Публичные обёртки
+    fun initCapsule() = nativeInitCapsule()
+    fun startSearch() = nativeStartSearch()
+    fun connect(id: String) = nativeConnect(id)
+    fun disconnect() = nativeDisconnect()
+    fun startResistance() = nativeStartResistance()
+    fun stopResistance() = nativeStopResistance()
+    fun startSignalAndHR() = nativeStartSignalAndHR()
+    fun stopSignalAndHR() = nativeStopSignalAndHR()
+    fun startSession() = nativeStartSession()
+    fun stopSession() = nativeStopSession()
+    fun startProductivity() = nativeStartProductivity()
+
+    fun importCalibration(
+        indFrequency: Float, indPeakFrequency: Float, indPeakFrequencyPower: Float,
+        indPeakFrequencySuppression: Float, indBandwidth: Float, indNormalizedPower: Float,
+        lowerFrequency: Float, upperFrequency: Float
+    ) = nativeImportCalibration(indFrequency, indPeakFrequency, indPeakFrequencyPower,
+        indPeakFrequencySuppression, indBandwidth, indNormalizedPower,
+        lowerFrequency, upperFrequency)
+
+    fun importProductivityCalibration(
+        gravity: Float, b_productivity: Float, fatigue: Float,
+        reverseFatigue: Float, relaxation: Float, concentration: Float
+    ) = nativeImportProductivityCalibration(gravity, b_productivity, fatigue,
+        reverseFatigue, relaxation, concentration)
+
+    fun importPhysiologicalCalibration(
+        alpha: Float, beta: Float, alphaGravity: Float,
+        betaGravity: Float, concentration: Float
+    ) = nativeImportPhysiologicalCalibration(alpha, beta, alphaGravity, betaGravity, concentration)
+
+    fun removeAllResources() = removeAll()
 }

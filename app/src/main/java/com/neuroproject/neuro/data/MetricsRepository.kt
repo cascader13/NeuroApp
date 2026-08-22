@@ -1,79 +1,149 @@
 package com.neuroproject.neuro.data
 
 import android.util.Log
+import com.neuroproject.neuro.ApplicationScope
+import com.neuroproject.neuro.IoDispatcher
+import com.neuroproject.neuro.data.entity.*
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Репозиторий для сохранения всех типов метрик в Room Database.
+ *
+ * Предоставляет методы для сохранения данных от нейро-гарнитуры.
+ * Автоматически создаёт сжатые версии данных каждую минуту.
+ *
+ * Основные возможности:
+ * - Сохранение всех типов метрик (NFB, ЭЭГ, MEMS, кардио и др.)
+ * - Создание сжатых метрик (медиана за минуту)
+ * - Очистка данных по сессиям
+ * - Фильтрация некорректных данных (NaN, Infinity)
+ *
+ * Архитектура буферизации:
+ * - Каждый тип метрик имеет свой буфер
+ * - При накоплении минуты данных буфер сбрасывается в compressed таблицу
+ * - Для булевых полей используется функция majority()
+ *
+ * @see MetricsDao
+ * @see SensorArtifactProcessor
+ */
 @Singleton
-class MetricsRepository @Inject constructor(
-    private val metricsDao: MetricsDao
+class MetricsRepository(
+    private val metricsDao: MetricsDao,
+    @ApplicationScope private val appScope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val COMPRESSED_TIME = 60000L // 1 минута в миллисекундах
 
+    private fun normalizeTimestamp(timestamp: Long): Long =
+        if (timestamp > 0L) timestamp else System.currentTimeMillis()
+
+    /**
+     * Буфер для NFB метрик с указанием времени первого элемента.
+     */
     private data class NfbBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<NFBMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для сырых данных ЭЭГ.
+     */
     private data class EEGRAWBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EEGRawMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для обработанных данных ЭЭГ.
+     */
     private data class EEGPROCEEDBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EEGProceedMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для данных артефактов ЭЭГ.
+     */
     private data class EEGArtifactBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EEGArtifactsMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для физиологических метрик.
+     */
     private data class PhysiologicalBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<PhysiologicalMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для эмоциональных метрик.
+     */
     private data class EmotionalBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<EmotionalMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для метрик продуктивности.
+     */
     private data class ProductivityBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<ProductivityMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для кардио метрик.
+     */
     private data class CardioBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<CardioMetricEntity> = mutableListOf()
     )
 
+    /**
+     * Буфер для MEMS данных.
+     */
     private data class MEMSBuffer(
         var firstTimestamp: Long? = null,
         val values: MutableList<MEMSMetricEntity> = mutableListOf()
     )
 
     private val nfbBuffer = NfbBuffer()
-    private val EEGRAWBuffer = EEGRAWBuffer()
-    private val EEGPROCEEDBuffer = EEGPROCEEDBuffer()
-    private val EEGArtifactBuffer = EEGArtifactBuffer()
-    private val PhysiologicalBuffer = PhysiologicalBuffer()
-    private val ProductivityBuffer = ProductivityBuffer()
-    private val EmotionalBuffer = EmotionalBuffer()
-    private val CardioBuffer = CardioBuffer()
-    private val MEMSBuffer = MEMSBuffer()
+    private val eegRawBuffer = EEGRAWBuffer()
+    private val eegProceedBuffer = EEGPROCEEDBuffer()
+    private val eegArtifactBuffer = EEGArtifactBuffer()
+    private val physiologicalBuffer = PhysiologicalBuffer()
+    private val productivityBuffer = ProductivityBuffer()
+    private val emotionalBuffer = EmotionalBuffer()
+    private val cardioBuffer = CardioBuffer()
+    private val memsBuffer = MEMSBuffer()
 
-
+    /** Мьютекс для синхронизации доступа к буферам */
     private val mutex = Mutex()
 
+    /** Процессор артефактов для фильтрации некорректных данных */
+    private val artifactProcessor = SensorArtifactProcessor()
 
+
+    /**
+     * Сохранить метрику нейрофидбека (NFB).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param alpha Уровень альфа-ритма
+     * @param beta Уровень бета-ритма
+     * @param theta Уровень тета-ритма
+     * @param delta Уровень дельта-ритма
+     * @param smr Уровень SMR
+     */
     fun saveNFBMetric(
         time: Long,
         id: String,
@@ -85,13 +155,14 @@ class MetricsRepository @Inject constructor(
         delta: Float,
         smr: Float
     ) {
-        if (alpha > 1.0) { // артефакты будут отсеиваться(пока только для nfb)
+        if (!artifactProcessor.shouldStoreNfb(alpha, beta, theta, delta, smr)) {
+            Log.w("MetricsRepository", "NFB sample skipped: non-finite value")
             return
         }
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = NFBMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -105,11 +176,11 @@ class MetricsRepository @Inject constructor(
                 metricsDao.insertNFBMetric(metric)
                 mutex.withLock {
                     if (nfbBuffer.firstTimestamp == null) {
-                        nfbBuffer.firstTimestamp = time
+                        nfbBuffer.firstTimestamp = metric.timestamp
                     }
                     nfbBuffer.values.add(metric)
 
-                    if (time - nfbBuffer.firstTimestamp!! >= 10_000) {
+                    if (metric.timestamp - nfbBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushNfbBuffer()
                     }
                 }
@@ -119,6 +190,16 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить сырые данные ЭЭГ.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param channel1 Значение первого канала
+     * @param channel2 Значение второго канала
+     */
     fun saveEEGRAWMetric(
         time: Long,
         id: String,
@@ -127,10 +208,14 @@ class MetricsRepository @Inject constructor(
         channel1: Float,
         channel2: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreEeg(channel1, channel2)) {
+            Log.w("MetricsRepository", "EEG RAW sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EEGRawMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -140,11 +225,11 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertEEGRAWMetric(metric)
                 mutex.withLock {
-                    if (EEGRAWBuffer.firstTimestamp == null) {
-                        EEGRAWBuffer.firstTimestamp = time
+                    if (eegRawBuffer.firstTimestamp == null) {
+                        eegRawBuffer.firstTimestamp = metric.timestamp
                     }
-                    EEGRAWBuffer.values.add(metric)
-                    if (time - EEGRAWBuffer.firstTimestamp!! >= 10_000) {
+                    eegRawBuffer.values.add(metric)
+                    if (metric.timestamp - eegRawBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGRAWBuffer()
                     }
                 }
@@ -154,6 +239,16 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить обработанные данные ЭЭГ.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param channel1 Значение первого канала
+     * @param channel2 Значение второго канала
+     */
     fun saveEEGPROCEEDMetric(
         time: Long,
         id: String,
@@ -162,10 +257,14 @@ class MetricsRepository @Inject constructor(
         channel1: Float,
         channel2: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreEeg(channel1, channel2)) {
+            Log.w("MetricsRepository", "EEG processed sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EEGProceedMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -175,12 +274,12 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertEEGPROCEEDMetric(metric)
                 mutex.withLock {
-                    if (EEGPROCEEDBuffer.firstTimestamp == null) {
-                        EEGPROCEEDBuffer.firstTimestamp = time
+                    if (eegProceedBuffer.firstTimestamp == null) {
+                        eegProceedBuffer.firstTimestamp = metric.timestamp
                     }
-                    EEGPROCEEDBuffer.values.add(metric)
+                    eegProceedBuffer.values.add(metric)
 
-                    if (time - EEGPROCEEDBuffer.firstTimestamp!! >= 10_000) {
+                    if (metric.timestamp - eegProceedBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGPROCEEDBuffer()
                     }
                 }
@@ -190,6 +289,18 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить данные об артефактах ЭЭГ.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param artifactsChannel1 Наличие артефактов на первом канале
+     * @param artifactsChannel2 Наличие артефактов на втором канале
+     * @param qualityChannel1 Качество сигнала первого канала
+     * @param qualityChannel2 Качество сигнала второго канала
+     */
     fun saveEEGArtifactMetric(
         time: Long,
         id: String,
@@ -200,10 +311,14 @@ class MetricsRepository @Inject constructor(
         qualityChannel1: Float,
         qualityChannel2: Float,
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreArtifacts(artifactsChannel1, artifactsChannel2, qualityChannel1, qualityChannel2)) {
+            Log.w("MetricsRepository", "EEG artifact sample skipped: non-finite quality")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EEGArtifactsMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -215,11 +330,11 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertEEGArtifactsMetric(metric)
                 mutex.withLock {
-                    if (EEGArtifactBuffer.firstTimestamp == null) {
-                        EEGArtifactBuffer.firstTimestamp = time
+                    if (eegArtifactBuffer.firstTimestamp == null) {
+                        eegArtifactBuffer.firstTimestamp = metric.timestamp
                     }
-                    EEGArtifactBuffer.values.add(metric)
-                    if (time - EEGArtifactBuffer.firstTimestamp!! >= 10_000) {
+                    eegArtifactBuffer.values.add(metric)
+                    if (metric.timestamp - eegArtifactBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEEGArtifactBuffer()
                     }
                 }
@@ -229,6 +344,22 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить физиологические метрики.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param relax Уровень расслабления
+     * @param fatigue Уровень утомления
+     * @param none Нейтральное состояние
+     * @param concentration Уровень концентрации
+     * @param involvement Уровень вовлечённости
+     * @param stress Уровень стресса
+     * @param nfbArtifacts Наличие артефактов NFB
+     * @param cardioArtifacts Наличие кардио артефактов
+     */
     fun savePhysiologicalMetric(
         time: Long,
         id: String,
@@ -243,10 +374,14 @@ class MetricsRepository @Inject constructor(
         nfbArtifacts: Boolean,
         cardioArtifacts: Boolean
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStorePhysiological(listOf(relax, fatigue, none, concentration, involvement, stress))) {
+            Log.w("MetricsRepository", "Physiological sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = PhysiologicalMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -262,13 +397,11 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertPhysiologicalMetric(metric)
                 mutex.withLock {
-                    if (PhysiologicalBuffer.firstTimestamp == null) {
-                        PhysiologicalBuffer.firstTimestamp = time
+                    if (physiologicalBuffer.firstTimestamp == null) {
+                        physiologicalBuffer.firstTimestamp = metric.timestamp
                     }
-                    PhysiologicalBuffer.values.add(metric)
-                    if (time - PhysiologicalBuffer.firstTimestamp!! >= 10_000) {
-                        flushPhysiologicalBuffer()
-                    }
+                    physiologicalBuffer.values.add(metric)
+                    flushPhysiologicalBuffer()
                 }
             } catch (e: Exception) {
                 Log.e("MetricsRepository", "Error saving physiological metric", e)
@@ -276,6 +409,20 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить MEMS данные (акселерометр и гироскоп).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param accX Ускорение по оси X
+     * @param accY Ускорение по оси Y
+     * @param accZ Ускорение по оси Z
+     * @param gyroX Угловая скорость по оси X
+     * @param gyroY Угловая скорость по оси Y
+     * @param gyroZ Угловая скорость по оси Z
+     */
     fun saveMEMSMetric(
         time: Long,
         id: String,
@@ -288,10 +435,14 @@ class MetricsRepository @Inject constructor(
         gyroY: Float,
         gyroZ: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreMems(listOf(accX, accY, accZ, gyroX, gyroY, gyroZ))) {
+            Log.w("MetricsRepository", "MEMS sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = MEMSMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -305,11 +456,11 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertMEMSMetric(metric)
                 mutex.withLock {
-                    if (MEMSBuffer.firstTimestamp == null) {
-                        MEMSBuffer.firstTimestamp = time
+                    if (memsBuffer.firstTimestamp == null) {
+                        memsBuffer.firstTimestamp = metric.timestamp
                     }
-                    MEMSBuffer.values.add(metric)
-                    if (time - MEMSBuffer.firstTimestamp!! >= 10_000) {
+                    memsBuffer.values.add(metric)
+                    if (metric.timestamp - memsBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushMEMSBuffer()
                     }
                 }
@@ -319,6 +470,20 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить метрики продуктивности.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param gravity Гравитационная составляющая
+     * @param productivity Уровень продуктивности
+     * @param fatigue Уровень утомления
+     * @param reverseFatigue Обратный уровень утомления
+     * @param relaxation Уровень расслабления
+     * @param concentration Уровень концентрации
+     */
     fun saveProductivityMetric(
         time: Long,
         id: String,
@@ -331,10 +496,14 @@ class MetricsRepository @Inject constructor(
         relaxation: Float,
         concentration: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreProductivity(listOf(gravity, productivity, fatigue, reverseFatigue, relaxation, concentration))) {
+            Log.w("MetricsRepository", "Productivity sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = ProductivityMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -347,14 +516,15 @@ class MetricsRepository @Inject constructor(
                     isMarked = false
                 )
                 metricsDao.insertProductivityMetric(metric)
+                Log.d("MetricsRepository", "Productivity metric saved: time=$time, productivity=$productivity")
                 mutex.withLock {
-                    if (ProductivityBuffer.firstTimestamp == null) {
-                        ProductivityBuffer.firstTimestamp = time
+                    if (productivityBuffer.firstTimestamp == null) {
+                        productivityBuffer.firstTimestamp = metric.timestamp
                     }
 
-                    ProductivityBuffer.values.add(metric)
+                    productivityBuffer.values.add(metric)
 
-                    if (time - ProductivityBuffer.firstTimestamp!! >= 10_000) {
+                    if (metric.timestamp - productivityBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushProductivityBuffer()
                     }
                 }
@@ -364,6 +534,23 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить индексы продуктивности.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param expedition_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param relaxation Текстовая рекомендация по расслаблению
+     * @param stress Текстовый уровень стресса
+     * @param gravityBaseline Базовый уровень гравитации
+     * @param productivityBaseline Базовый уровень продуктивности
+     * @param fatiqueBaseline Базовый уровень утомления
+     * @param reverseFatiqueBaseline Обратный базовый уровень утомления
+     * @param relaxationBaselines Базовый уровень расслабления
+     * @param concentrationBaselines Базовый уровень концентрации
+     * @param hasArtifacts Наличие артефактов
+     */
     fun saveProductivityIndexes(
         time: Long,
         id: String,
@@ -379,10 +566,10 @@ class MetricsRepository @Inject constructor(
         concentrationBaselines: Float,
         hasArtifacts: Boolean
     ) {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val index = ProductivityIndexesEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = expedition_id,
                     sessionId = sessionId,
@@ -406,6 +593,50 @@ class MetricsRepository @Inject constructor(
 
     }
 
+    /**
+     * Сохранить калибровочные данные продуктивности.
+     *
+     * @param userId ID пользователя
+     * @param gravityBaseline Базовый уровень гравитации
+     * @param productivityBaseline Базовый уровень продуктивности
+     * @param fatiqueBaseline Базовый уровень утомления
+     * @param reverseFatiqueBaseline Обратный базовый уровень утомления
+     * @param relaxationBaselines Базовый уровень расслабления
+     * @param concentrationBaselines Базовый уровень концентрации
+     */
+    fun saveProductivityCalibration(
+        userId: String,
+        gravityBaseline: Float,
+        productivityBaseline: Float,
+        fatiqueBaseline: Float,
+        reverseFatiqueBaseline: Float,
+        relaxationBaselines: Float,
+        concentrationBaselines: Float,
+    ){
+        appScope.launch{
+            try {
+                metricsDao.insertProductivityCalibration(userId, gravityBaseline, productivityBaseline, fatiqueBaseline, reverseFatiqueBaseline, relaxationBaselines, concentrationBaselines)
+            }catch (e: Exception){
+                Log.e("MetricsRepository", "Error saving productivity calibration")
+            }
+        }
+
+    }
+
+    /**
+     * Сохранить базовые значения продуктивности (калибровка).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param expedition_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param gravity Гравитационная составляющая
+     * @param productivity Уровень продуктивности
+     * @param fatigue Уровень утомления
+     * @param reverseFatigue Обратный уровень утомления
+     * @param relaxation Уровень расслабления
+     * @param concentration Уровень концентрации
+     */
     fun saveProductivityBaselines(
         time: Long,
         id: String,
@@ -418,10 +649,10 @@ class MetricsRepository @Inject constructor(
         relaxation: Float,
         concentration: Float
     ) {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val index = ProductivityBaselinesEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = expedition_id,
                     sessionId = sessionId,
@@ -442,6 +673,19 @@ class MetricsRepository @Inject constructor(
 
     }
 
+    /**
+     * Сохранить физиологические базовые значения (калибровка).
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param expedition_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param alpha Уровень альфа-ритма
+     * @param beta Уровень бета-ритма
+     * @param alphaGravity Гравитационная составляющая альфа-ритма
+     * @param betaGravity Гравитационная составляющая бета-ритма
+     * @param concentration Уровень концентрации
+     */
     fun savePhysiologicalBaselines(
         time: Long,
         id: String,
@@ -453,10 +697,10 @@ class MetricsRepository @Inject constructor(
         betaGravity: Float,
         concentration: Float
     ) {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 val index = PhysiologicalBaselinesEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = expedition_id,
                     sessionId = sessionId,
@@ -475,7 +719,47 @@ class MetricsRepository @Inject constructor(
 
 
     }
+    /**
+     * Сохранить физиологические калибровочные данные.
+     *
+     * @param userId ID пользователя
+     * @param alpha Уровень альфа-ритма
+     * @param beta Уровень бета-ритма
+     * @param alphaGravity Гравитационная составляющая альфа-ритма
+     * @param betaGravity Гравитационная составляющая бета-ритма
+     * @param concentration Уровень концентрации
+     */
+    fun savePhysiologicalCalibration(
+        userId: String,
+        alpha: Float,
+        beta: Float,
+        alphaGravity: Float,
+        betaGravity: Float,
+        concentration: Float
+    ){
+        appScope.launch{
+            try {
+                metricsDao.insertPhysiologicalCalibration(userId, alpha, beta, alphaGravity, betaGravity, concentration)
+            }catch (e: Exception){
+                Log.e("MetricsRepository", "Error saving physiological calibration")
+            }
+        }
 
+    }
+
+    /**
+     * Сохранить эмоциональные метрики.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param attention Уровень внимания
+     * @param relaxation Уровень расслабления
+     * @param cognitiveLoad Когнитивная нагрузка
+     * @param cognitiveControl Когнитивный контроль
+     * @param selfControl Самоконтроль
+     */
     fun saveEmotionalMetric(
         time: Long,
         id: String,
@@ -487,10 +771,14 @@ class MetricsRepository @Inject constructor(
         cognitiveControl: Float,
         selfControl: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreEmotional(listOf(attention, relaxation, cognitiveLoad, cognitiveControl, selfControl))) {
+            Log.w("MetricsRepository", "Emotional sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = EmotionalMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -503,13 +791,13 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertEmotionalMetric(metric)
                 mutex.withLock {
-                    if (EmotionalBuffer.firstTimestamp == null) {
-                        EmotionalBuffer.firstTimestamp = time
+                    if (emotionalBuffer.firstTimestamp == null) {
+                        emotionalBuffer.firstTimestamp = metric.timestamp
                     }
 
-                    EmotionalBuffer.values.add(metric)
+                    emotionalBuffer.values.add(metric)
 
-                    if (time - EmotionalBuffer.firstTimestamp!! >= 10_000) {
+                    if (metric.timestamp - emotionalBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushEmotionalBuffer()
                     }
                 }
@@ -519,6 +807,21 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сохранить кардио метрики.
+     *
+     * @param time Временная метка (мс)
+     * @param id ID пользователя
+     * @param exp_id ID экспедиции
+     * @param sessionId ID сессии
+     * @param heartRate Частота сердечных сокращений
+     * @param hasArtifacts Наличие артефактов
+     * @param kaplanIndex Индекс Каплана
+     * @param metricsAvailable Доступность метрик
+     * @param motionAtrifacts Артефакты движения
+     * @param skinContact Качество контакта с кожей
+     * @param stressIndex Уровень стресса
+     */
     fun saveCardioMetric(
         time: Long,
         id: String,
@@ -532,10 +835,14 @@ class MetricsRepository @Inject constructor(
         skinContact: Boolean,
         stressIndex: Float
     ) {
-        scope.launch {
+        if (!artifactProcessor.shouldStoreCardio(listOf(heartRate, kaplanIndex, stressIndex))) {
+            Log.w("MetricsRepository", "Cardio sample skipped: non-finite value")
+            return
+        }
+        appScope.launch(ioDispatcher) {
             try {
                 val metric = CardioMetricEntity(
-                    timestamp = time,
+                    timestamp = normalizeTimestamp(time),
                     id = id,
                     expedition_id = exp_id,
                     sessionId = sessionId,
@@ -550,13 +857,13 @@ class MetricsRepository @Inject constructor(
                 )
                 metricsDao.insertCardioMetric(metric)
                 mutex.withLock {
-                    if (CardioBuffer.firstTimestamp == null) {
-                        CardioBuffer.firstTimestamp = time
+                    if (cardioBuffer.firstTimestamp == null) {
+                        cardioBuffer.firstTimestamp = metric.timestamp
                     }
 
-                    CardioBuffer.values.add(metric)
+                    cardioBuffer.values.add(metric)
 
-                    if (time - CardioBuffer.firstTimestamp!! >= 10_000) {
+                    if (metric.timestamp - cardioBuffer.firstTimestamp!! >= COMPRESSED_TIME) {
                         flushCardioBuffer()
                     }
                 }
@@ -566,8 +873,45 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Удалить все метрики для указанной сессии.
+     *
+     * @param sessionId ID сессии
+     */
+    fun clearAllMetricsBySessionId(sessionId: Long){
+        appScope.launch(ioDispatcher) {
+            try{
+                metricsDao.clearNFBMetricsBySessionId(sessionId)
+                metricsDao.clearNFBMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearCardioMetricsBySessionId(sessionId)
+                metricsDao.clearCardioMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearMEMSMetricsBySessionId(sessionId)
+                metricsDao.clearMEMSMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearProductivityMetricsBySessionId(sessionId)
+                metricsDao.clearProductivityMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearProductivityIndexesBySessionId(sessionId)
+                metricsDao.clearProductivityBaselinesBySessionId(sessionId)
+                metricsDao.clearPhysiologicalMetricsBySessionId(sessionId)
+                metricsDao.clearPhysiologicalMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearPhysiologicalBaselinesBySessionId(sessionId)
+                metricsDao.clearEmotionalMetricsBySessionId(sessionId)
+                metricsDao.clearEmotionalMetricsCompressedBySessionId(sessionId)
+                metricsDao.clearEEGRAWBySessionId(sessionId)
+                metricsDao.clearEEGRAWCompressedBySessionId(sessionId)
+                metricsDao.clearEEGPROCEEDBySessionId(sessionId)
+                metricsDao.clearEEGPROCEEDCompressedBySessionId(sessionId)
+                metricsDao.clearEEGArtifactsBySessionId(sessionId)
+                metricsDao.clearEEGArtifactsCompressedBySessionId(sessionId)
+                Log.d("MetricsRepository", "All metrics cleared by sessionId ${sessionId}")
+            } catch (e: Exception){
+                Log.e("MetricsRepository", "Error clearing metrics", e)
+            }
+        }
+    }
+
+    /** Удалить все метрики из базы данных */
     fun clearAllMetrics() {
-        scope.launch {
+        appScope.launch(ioDispatcher) {
             try {
                 metricsDao.clearNFBMetrics()
                 metricsDao.clearPhysiologicalMetrics()
@@ -582,6 +926,7 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /** Сбросить все буферы и создать сжатые метрики */
     suspend fun flushAllBuffers() {
         mutex.withLock {
             flushNfbBuffer()
@@ -596,6 +941,9 @@ class MetricsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Сбросить буфер NFB и создать сжатую метрику (медиана за минуту).
+     */
     private suspend fun flushNfbBuffer() {
         if (nfbBuffer.values.isEmpty()) return
 
@@ -619,191 +967,219 @@ class MetricsRepository @Inject constructor(
         nfbBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер сырых данных ЭЭГ и создать сжатую метрику.
+     */
     private suspend fun flushEEGRAWBuffer() {
-        if (EEGRAWBuffer.values.isEmpty()) return
+        if (eegRawBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = EEGRawMetricCompressedEntity(
-            timestamp = EEGRAWBuffer.firstTimestamp!!, // начало минутного интервала
-            id = EEGRAWBuffer.values.first().id,
-            expedition_id = EEGRAWBuffer.values.first().expedition_id,
-            sessionId = EEGRAWBuffer.values.first().sessionId,
-            channel1 = EEGRAWBuffer.values.map { it.channel1 }.median(),
-            channel2 = EEGRAWBuffer.values.map { it.channel2 }.median(),
+            timestamp = eegRawBuffer.firstTimestamp!!, // начало минутного интервала
+            id = eegRawBuffer.values.first().id,
+            expedition_id = eegRawBuffer.values.first().expedition_id,
+            sessionId = eegRawBuffer.values.first().sessionId,
+            channel1 = eegRawBuffer.values.map { it.channel1 }.median(),
+            channel2 = eegRawBuffer.values.map { it.channel2 }.median(),
             isMarked = false
         )
         metricsDao.insertEEGRAWCompressedMetric(compressed)
 
         // Очищаем буфер
-        EEGRAWBuffer.values.clear()
-        EEGRAWBuffer.firstTimestamp = null
+        eegRawBuffer.values.clear()
+        eegRawBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер обработанных данных ЭЭГ и создать сжатую метрику.
+     */
     private suspend fun flushEEGPROCEEDBuffer() {
-        if (EEGPROCEEDBuffer.values.isEmpty()) return
+        if (eegProceedBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = EEGProceedMetricCompressedEntity(
-            timestamp = EEGPROCEEDBuffer.firstTimestamp!!, // начало минутного интервала
-            id = EEGPROCEEDBuffer.values.first().id,
-            expedition_id = EEGPROCEEDBuffer.values.first().expedition_id,
-            sessionId = EEGPROCEEDBuffer.values.first().sessionId,
-            channel1 = EEGPROCEEDBuffer.values.map { it.channel1 }.median(),
-            channel2 = EEGPROCEEDBuffer.values.map { it.channel2 }.median(),
+            timestamp = eegProceedBuffer.firstTimestamp!!, // начало минутного интервала
+            id = eegProceedBuffer.values.first().id,
+            expedition_id = eegProceedBuffer.values.first().expedition_id,
+            sessionId = eegProceedBuffer.values.first().sessionId,
+            channel1 = eegProceedBuffer.values.map { it.channel1 }.median(),
+            channel2 = eegProceedBuffer.values.map { it.channel2 }.median(),
             isMarked = false
         )
         metricsDao.insertEEGPROCEEDCompressedMetric(compressed)
 
         // Очищаем буфер
-        EEGPROCEEDBuffer.values.clear()
-        EEGPROCEEDBuffer.firstTimestamp = null
+        eegProceedBuffer.values.clear()
+        eegProceedBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер артефактов ЭЭГ и создать сжатую метрику.
+     * Для булевых полей используется функция majority().
+     */
     private suspend fun flushEEGArtifactBuffer() {
-        if (EEGArtifactBuffer.values.isEmpty()) return
+        if (eegArtifactBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = EEGArtifactsMetricCompressedEntity(
-            timestamp = EEGArtifactBuffer.firstTimestamp!!, // начало минутного интервала
-            id = EEGArtifactBuffer.values.first().id,
-            expedition_id = EEGArtifactBuffer.values.first().expedition_id,
-            sessionId = EEGArtifactBuffer.values.first().sessionId,
-            artifactsChannel1 = EEGArtifactBuffer.values.map { it.artifactsChannel1 }.majority(),
-            artifactsChannel2 = EEGArtifactBuffer.values.map { it.artifactsChannel2 }.majority(),
-            qualityChannel1 = EEGArtifactBuffer.values.map { it.qualityChannel1 }.median(),
-            qualityChannel2 = EEGArtifactBuffer.values.map { it.qualityChannel2 }.median(),
+            timestamp = eegArtifactBuffer.firstTimestamp!!, // начало минутного интервала
+            id = eegArtifactBuffer.values.first().id,
+            expedition_id = eegArtifactBuffer.values.first().expedition_id,
+            sessionId = eegArtifactBuffer.values.first().sessionId,
+            artifactsChannel1 = eegArtifactBuffer.values.map { it.artifactsChannel1 }.majority(),
+            artifactsChannel2 = eegArtifactBuffer.values.map { it.artifactsChannel2 }.majority(),
+            qualityChannel1 = eegArtifactBuffer.values.map { it.qualityChannel1 }.median(),
+            qualityChannel2 = eegArtifactBuffer.values.map { it.qualityChannel2 }.median(),
             isMarked = false
         )
         metricsDao.insertEEGArtifactsCompressedMetric(compressed)
 
         // Очищаем буфер
-        EEGArtifactBuffer.values.clear()
-        EEGArtifactBuffer.firstTimestamp = null
+        eegArtifactBuffer.values.clear()
+        eegArtifactBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер физиологических метрик и создать сжатую метрику.
+     */
     private suspend fun flushPhysiologicalBuffer() {
-        if (PhysiologicalBuffer.values.isEmpty()) return
+        if (physiologicalBuffer.values.isEmpty()) return
 
-        // Вычисляем медиану для каждого поля
         val compressed = PhysiologicalMetricCompressedEntity(
-            timestamp = PhysiologicalBuffer.firstTimestamp!!, // начало минутного интервала
-            id = PhysiologicalBuffer.values.first().id,
-            expedition_id = PhysiologicalBuffer.values.first().expedition_id,
-            sessionId = PhysiologicalBuffer.values.first().sessionId,
-            relax = PhysiologicalBuffer.values.map { it.relax }.median(),
-            fatigue = PhysiologicalBuffer.values.map { it.fatigue }.median(),
-            none = PhysiologicalBuffer.values.map { it.none }.median(),
-            concentration = PhysiologicalBuffer.values.map { it.concentration }.median(),
-            involvement = PhysiologicalBuffer.values.map { it.involvement }.median(),
-            stress = PhysiologicalBuffer.values.map { it.stress }.median(),
-            nfbArtifacts = PhysiologicalBuffer.values.map { it.nfbArtifacts }.majority(),
-            cardioArtifacts = PhysiologicalBuffer.values.map { it.cardioArtifacts }.majority(),
+            timestamp = physiologicalBuffer.firstTimestamp!!,
+            id = physiologicalBuffer.values.first().id,
+            expedition_id = physiologicalBuffer.values.first().expedition_id,
+            sessionId = physiologicalBuffer.values.first().sessionId,
+            relax = physiologicalBuffer.values.map { it.relax }.median(),
+            fatigue = physiologicalBuffer.values.map { it.fatigue }.median(),
+            none = physiologicalBuffer.values.map { it.none }.median(),
+            concentration = physiologicalBuffer.values.map { it.concentration }.median(),
+            involvement = physiologicalBuffer.values.map { it.involvement }.median(),
+            stress = physiologicalBuffer.values.map { it.stress }.median(),
+            nfbArtifacts = physiologicalBuffer.values.map { it.nfbArtifacts }.majority(),
+            cardioArtifacts = physiologicalBuffer.values.map { it.cardioArtifacts }.majority(),
             isMarked = false
         )
+
         metricsDao.insertPhysiologicalCompressedMetric(compressed)
 
         // Очищаем буфер
-        PhysiologicalBuffer.values.clear()
-        PhysiologicalBuffer.firstTimestamp = null
+        physiologicalBuffer.values.clear()
+        physiologicalBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер эмоциональных метрик и создать сжатую метрику.
+     */
     private suspend fun flushEmotionalBuffer() {
-        if (EmotionalBuffer.values.isEmpty()) return
+        if (emotionalBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = EmotionalMetricCompressedEntity(
-            timestamp = EmotionalBuffer.firstTimestamp!!, // начало минутного интервала
-            id = EmotionalBuffer.values.first().id,
-            expedition_id = EmotionalBuffer.values.first().expedition_id,
-            sessionId = EmotionalBuffer.values.first().sessionId,
-            attention = EmotionalBuffer.values.map { it.attention }.median(),
-            relaxation = EmotionalBuffer.values.map { it.relaxation }.median(),
-            cognitiveLoad = EmotionalBuffer.values.map { it.cognitiveLoad }.median(),
-            cognitiveControl = EmotionalBuffer.values.map { it.cognitiveControl }.median(),
-            selfControl = EmotionalBuffer.values.map { it.selfControl }.median(),
+            timestamp = emotionalBuffer.firstTimestamp!!, // начало минутного интервала
+            id = emotionalBuffer.values.first().id,
+            expedition_id = emotionalBuffer.values.first().expedition_id,
+            sessionId = emotionalBuffer.values.first().sessionId,
+            attention = emotionalBuffer.values.map { it.attention }.median(),
+            relaxation = emotionalBuffer.values.map { it.relaxation }.median(),
+            cognitiveLoad = emotionalBuffer.values.map { it.cognitiveLoad }.median(),
+            cognitiveControl = emotionalBuffer.values.map { it.cognitiveControl }.median(),
+            selfControl = emotionalBuffer.values.map { it.selfControl }.median(),
             isMarked = false
         )
         metricsDao.insertEmotionalCompressedMetric(compressed)
 
         // Очищаем буфер
-        EmotionalBuffer.values.clear()
-        EmotionalBuffer.firstTimestamp = null
+        emotionalBuffer.values.clear()
+        emotionalBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер метрик продуктивности и создать сжатую метрику.
+     */
     private suspend fun flushProductivityBuffer() {
-        if (ProductivityBuffer.values.isEmpty()) return
+        if (productivityBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = ProductivityMetricCompressedEntity(
-            timestamp = ProductivityBuffer.firstTimestamp!!, // начало минутного интервала
-            id = ProductivityBuffer.values.first().id,
-            expedition_id = ProductivityBuffer.values.first().id,
-            sessionId = ProductivityBuffer.values.first().sessionId,
-            gravity = ProductivityBuffer.values.map { it.gravity }.median(),
-            productivity = ProductivityBuffer.values.map { it.productivity }.median(),
-            fatigue = ProductivityBuffer.values.map { it.fatigue }.median(),
-            reverseFatigue = ProductivityBuffer.values.map { it.reverseFatigue }.median(),
-            relaxation = ProductivityBuffer.values.map { it.relaxation }.median(),
-            concentration = ProductivityBuffer.values.map { it.concentration }.median(),
+            timestamp = productivityBuffer.firstTimestamp!!, // начало минутного интервала
+            id = productivityBuffer.values.first().id,
+            expedition_id = productivityBuffer.values.first().expedition_id,
+            sessionId = productivityBuffer.values.first().sessionId,
+            gravity = productivityBuffer.values.map { it.gravity }.median(),
+            productivity = productivityBuffer.values.map { it.productivity }.median(),
+            fatigue = productivityBuffer.values.map { it.fatigue }.median(),
+            reverseFatigue = productivityBuffer.values.map { it.reverseFatigue }.median(),
+            relaxation = productivityBuffer.values.map { it.relaxation }.median(),
+            concentration = productivityBuffer.values.map { it.concentration }.median(),
             isMarked = false
         )
         metricsDao.insertProductivityCompressedMetric(compressed)
 
         // Очищаем буфер
-        ProductivityBuffer.values.clear()
-        ProductivityBuffer.firstTimestamp = null
+        productivityBuffer.values.clear()
+        productivityBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер MEMS данных и создать сжатую метрику.
+     */
     suspend fun flushMEMSBuffer() {
-        if (MEMSBuffer.values.isEmpty()) return
+        if (memsBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = MEMSMetricCompressedEntity(
-            timestamp = MEMSBuffer.firstTimestamp!!, // начало минутного интервала
-            id = MEMSBuffer.values.first().id,
-            expedition_id = MEMSBuffer.values.first().id,
-            sessionId = MEMSBuffer.values.first().sessionId,
-            accelerometerX = MEMSBuffer.values.map { it.accelerometerX }.median(),
-            accelerometerY = MEMSBuffer.values.map { it.accelerometerY }.median(),
-            accelerometerZ = MEMSBuffer.values.map { it.accelerometerZ }.median(),
-            gyroscopeX = MEMSBuffer.values.map { it.gyroscopeX }.median(),
-            gyroscopeY = MEMSBuffer.values.map { it.gyroscopeY }.median(),
-            gyroscopeZ = MEMSBuffer.values.map { it.gyroscopeZ }.median(),
+            timestamp = memsBuffer.firstTimestamp!!, // начало минутного интервала
+            id = memsBuffer.values.first().id,
+            expedition_id = memsBuffer.values.first().expedition_id,
+            sessionId = memsBuffer.values.first().sessionId,
+            accelerometerX = memsBuffer.values.map { it.accelerometerX }.median(),
+            accelerometerY = memsBuffer.values.map { it.accelerometerY }.median(),
+            accelerometerZ = memsBuffer.values.map { it.accelerometerZ }.median(),
+            gyroscopeX = memsBuffer.values.map { it.gyroscopeX }.median(),
+            gyroscopeY = memsBuffer.values.map { it.gyroscopeY }.median(),
+            gyroscopeZ = memsBuffer.values.map { it.gyroscopeZ }.median(),
             isMarked = false
         )
         metricsDao.insertMEMSCompressedMetric(compressed)
 
         // Очищаем буфер
-        MEMSBuffer.values.clear()
-        MEMSBuffer.firstTimestamp = null
+        memsBuffer.values.clear()
+        memsBuffer.firstTimestamp = null
     }
 
+    /**
+     * Сбросить буфер кардио метрик и создать сжатую метрику.
+     */
     private suspend fun flushCardioBuffer() {
-        if (CardioBuffer.values.isEmpty()) return
+        if (cardioBuffer.values.isEmpty()) return
 
         // Вычисляем медиану для каждого поля
         val compressed = CardioMetricCompressedEntity(
-            timestamp = CardioBuffer.firstTimestamp!!, // начало минутного интервала
-            id = CardioBuffer.values.first().id,
-            expedition_id = CardioBuffer.values.first().expedition_id,
-            sessionId = CardioBuffer.values.first().sessionId,
-            heartRate = CardioBuffer.values.map { it.heartRate }.median(),
-            hasArtifacts = CardioBuffer.values.map { it.hasArtifacts }.majority(),
-            kaplanIndex = CardioBuffer.values.map { it.kaplanIndex }.median(),
-            metricsAvailable = CardioBuffer.values.map { it.metricsAvailable }.majority(),
-            motionArtifacts = CardioBuffer.values.map { it.motionArtifacts }.majority(),
-            skinContact = CardioBuffer.values.map { it.skinContact }.majority(),
-            stressIndex = CardioBuffer.values.map { it.stressIndex }.median(),
+            timestamp = cardioBuffer.firstTimestamp!!, // начало минутного интервала
+            id = cardioBuffer.values.first().id,
+            expedition_id = cardioBuffer.values.first().expedition_id,
+            sessionId = cardioBuffer.values.first().sessionId,
+            heartRate = cardioBuffer.values.map { it.heartRate }.median(),
+            hasArtifacts = cardioBuffer.values.map { it.hasArtifacts }.majority(),
+            kaplanIndex = cardioBuffer.values.map { it.kaplanIndex }.median(),
+            metricsAvailable = cardioBuffer.values.map { it.metricsAvailable }.majority(),
+            motionArtifacts = cardioBuffer.values.map { it.motionArtifacts }.majority(),
+            skinContact = cardioBuffer.values.map { it.skinContact }.majority(),
+            stressIndex = cardioBuffer.values.map { it.stressIndex }.median(),
             isMarked = false
         )
         metricsDao.insertCardioCompressedMetric(compressed)
 
         // Очищаем буфер
-        CardioBuffer.values.clear()
-        CardioBuffer.firstTimestamp = null
+        cardioBuffer.values.clear()
+        cardioBuffer.firstTimestamp = null
     }
 
 
+    /**
+     * Вычислить медиану списка значений.
+     */
     private fun List<Float>.median(): Float {
         if (isEmpty()) return 0f
         val sorted = sorted()
@@ -811,6 +1187,10 @@ class MetricsRepository @Inject constructor(
         return if (size % 2 == 0) (sorted[size / 2 - 1] + sorted[size / 2]) / 2 else sorted[size / 2]
     }
 
+    /**
+     * Определить большинство значений в списке булевых.
+     * Возвращает true, если больше половины true.
+     */
     private fun List<Boolean>.majority(): Boolean {
         if (isEmpty()) return false
         return count { it } > size / 2

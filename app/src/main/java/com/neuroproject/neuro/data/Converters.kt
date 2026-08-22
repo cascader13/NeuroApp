@@ -1,14 +1,15 @@
-// [file name]: Converters.kt
 package com.neuroproject.neuro.data
 
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.neuroproject.neuro.data.session.SessionCategory
 import com.neuroproject.neuro.data.subtest.BlockType
 import java.lang.reflect.Type
-import java.sql.Timestamp
-import java.util.Date
 
+/**
+ * Конвертеры типов для Room, обеспечивающие преобразование сложных типов в примитивные.
+ */
 class Converters {
 
     @TypeConverter
@@ -21,36 +22,26 @@ class Converters {
         return BlockType.valueOf(value)
     }
 
-    // 1. Функции для java.util.Date
     @TypeConverter
-    fun fromTimestamp(value: Long?): Date? {
-        return value?.let { Date(it) }
+    fun fromSessionCategory(category: SessionCategory?): String? {
+        return category?.name
     }
 
     @TypeConverter
-    fun dateToTimestamp(date: Date?): Long? {
-        return date?.time
-    }
-
-    // 2. Функции для java.sql.Timestamp с РАЗНЫМИ именами
-    @TypeConverter
-    fun fromLongToSqlTimestamp(value: Long?): Timestamp? {
-        return value?.let { Timestamp(it) }
-    }
-
-    @TypeConverter
-    fun sqlTimestampToLong(timestamp: Timestamp?): Long? {
-        return timestamp?.time
+    fun toSessionCategory(category: String?): SessionCategory? {
+        return category?.let { SessionCategory.valueOf(it) }
     }
 
     private val gson = Gson()
 
+    /** Преобразование JSON строки в Map<Int, Int> */
     @TypeConverter
     fun fromStringToMap(value: String?): Map<Int, Int> {
         val type: Type = object : TypeToken<Map<Int, Int>>() {}.type
         return gson.fromJson(value ?: "", type) ?: emptyMap()
     }
 
+    /** Преобразование Map<Int, Int> в JSON строку */
     @TypeConverter
     fun fromMapToString(map: Map<Int, Int>?): String {
         return gson.toJson(map ?: mapOf<Int, Int>())

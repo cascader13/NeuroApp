@@ -1,32 +1,49 @@
 package com.neuroproject.neuro.data
 
-import com.neuroproject.neuro.data.remote.CardioMetricCompressedDto
-import com.neuroproject.neuro.data.remote.CardioMetricDto
-import com.neuroproject.neuro.data.remote.EEGArtifactMetricCompressedDto
-import com.neuroproject.neuro.data.remote.EEGArtifactMetricDto
-import com.neuroproject.neuro.data.remote.EEGProceedMetricCompressedDto
-import com.neuroproject.neuro.data.remote.EEGProceedMetricDto
-import com.neuroproject.neuro.data.remote.EEGRawMetricCompressedDto
-import com.neuroproject.neuro.data.remote.EEGRawMetricDto
-import com.neuroproject.neuro.data.remote.EmotionalMetricCompressedDto
-import com.neuroproject.neuro.data.remote.EmotionalMetricDto
-import com.neuroproject.neuro.data.remote.MemsMetricCompressedDto
-import com.neuroproject.neuro.data.remote.MemsMetricDto
-import com.neuroproject.neuro.data.remote.NfbMetricCompressedDto
-import com.neuroproject.neuro.data.remote.NfbMetricDto
-import com.neuroproject.neuro.data.remote.PhysiologicalBaselineDto
-import com.neuroproject.neuro.data.remote.PhysiologicalMetricCompressedDto
-import com.neuroproject.neuro.data.remote.PhysiologicalMetricDto
-import com.neuroproject.neuro.data.remote.ProductivityBaselineDto
-import com.neuroproject.neuro.data.remote.ProductivityIndexDto
-import com.neuroproject.neuro.data.remote.ProductivityMetricCompressedDto
-import com.neuroproject.neuro.data.remote.ProductivityMetricDto
+import com.neuroproject.neuro.data.entity.*
+import com.neuroproject.neuro.data.remote.*
+import com.neuroproject.neuro.data.session.SessionEntity
 
+/**
+ * Преобразование сущностей Room в DTO для отправки на сервер
+ *
+ * Содержит функции расширения для преобразования всех типов метрик из
+ * внутреннего формата (Room Entity) в формат для передачи по сети (DTO).
+ *
+ * ## Типы преобразований:
+ * - **Uncompressed** - обычные метрики с полной точностью
+ * - **Compressed** - сжатые метрики для уменьшения объема данных
+ * - **Baseline** - базовые значения, полученные при калибровке
+ * - **Indexes** - индексы продуктивности с текстовыми рекомендациями
+ *
+ * ## Принцип работы:
+ * Каждой сущности Room соответствует функция .toServerDto(), которая
+ * создает DTO объект для отправки на сервер.
+ *
+ * ## Важные преобразования:
+ * - **sessionId** → преобразуется в Int (секунды) с помощью [toSecondsInt]
+ * - **Boolean** → преобразуется в Int (0/1) для JSON сериализации
+ * - **Float** → преобразуется в Double для единообразия на сервере
+ *
+ */
 
-// Для преобразования sessionId к инту
+/**
+ * Преобразование Long timestamp в секунды (Int)
+ *
+ * Используется для преобразования sessionId из миллисекунд в секунды
+ * для соответствия формату API.
+ *
+ * @return Количество секунд от начала эпохи
+ */
 fun Long.toSecondsInt(): Int = (this / 1000).toInt()
 
-// Существующие функции расширения для uncompressed entities
+// ==================== UNCOMPRESSED METRICS ====================
+
+/**
+ * Преобразование NFB метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun NFBMetricEntity.toServerDto(): NfbMetricDto {
     return NfbMetricDto(
         individualNumber = this.id,
@@ -37,10 +54,16 @@ fun NFBMetricEntity.toServerDto(): NfbMetricDto {
         beta = this.beta.toDouble(),
         theta = this.theta.toDouble(),
         delta = this.delta.toDouble(),
-        smr = this.smr.toDouble()
-    )
+        smr = this.smr.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование физиологической метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
     return PhysiologicalMetricDto(
         individualNumber = this.id,
@@ -54,10 +77,16 @@ fun PhysiologicalMetricEntity.toServerDto(): PhysiologicalMetricDto {
         involvement = this.involvement.toDouble(),
         stress = this.stress.toDouble(),
         nfbArtifacts = if (this.nfbArtifacts) 1 else 0,
-        cardioArtifacts = if (this.cardioArtifacts) 1 else 0
-    )
+        cardioArtifacts = if (this.cardioArtifacts) 1 else 0,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование сырых данных ЭЭГ в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto {
     return EEGRawMetricDto(
         individualNumber = this.id,
@@ -65,10 +94,16 @@ fun EEGRawMetricEntity.toServerDto(): EEGRawMetricDto {
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование обработанных данных ЭЭГ в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto {
     return EEGProceedMetricDto(
         individualNumber = this.id,
@@ -76,10 +111,16 @@ fun EEGProceedMetricEntity.toServerDto(): EEGProceedMetricDto {
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование артефактов ЭЭГ в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto {
     return EEGArtifactMetricDto(
         individualNumber = this.id,
@@ -89,10 +130,16 @@ fun EEGArtifactsMetricEntity.toServerDto(): EEGArtifactMetricDto {
         artifactsChannel1 = this.artifactsChannel1,
         artifactsChannel2 = this.artifactsChannel2,
         qualityChannel1 = this.qualityChannel1,
-        qualityChannel2 = this.qualityChannel2
-    )
+        qualityChannel2 = this.qualityChannel2,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование MEMS метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
     return MemsMetricDto(
         individualNumber = this.id,
@@ -104,10 +151,16 @@ fun MEMSMetricEntity.toServerDto(): MemsMetricDto {
         accelerometerZ = this.accelerometerZ.toDouble(),
         gyroscopeX = this.gyroscopeX.toDouble(),
         gyroscopeY = this.gyroscopeY.toDouble(),
-        gyroscopeZ = this.gyroscopeZ.toDouble()
-    )
+        gyroscopeZ = this.gyroscopeZ.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование метрики продуктивности в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun ProductivityMetricEntity.toServerDto(): ProductivityMetricDto {
     return ProductivityMetricDto(
         individualNumber = this.id,
@@ -119,10 +172,16 @@ fun ProductivityMetricEntity.toServerDto(): ProductivityMetricDto {
         fatigue = this.fatigue.toDouble(),
         reverseFatigue = this.reverseFatigue.toDouble(),
         relaxation = this.relaxation.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование эмоциональной метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EmotionalMetricEntity.toServerDto(): EmotionalMetricDto {
     return EmotionalMetricDto(
         individualNumber = this.id,
@@ -133,10 +192,16 @@ fun EmotionalMetricEntity.toServerDto(): EmotionalMetricDto {
         relaxation = this.relaxation.toDouble(),
         cognitiveLoad = this.cognitiveLoad.toDouble(),
         cognitiveControl = this.cognitiveControl.toDouble(),
-        selfControl = this.selfControl.toDouble()
-    )
+        selfControl = this.selfControl.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование кардио метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun CardioMetricEntity.toServerDto(): CardioMetricDto {
     return CardioMetricDto(
         individualNumber = this.id,
@@ -149,11 +214,18 @@ fun CardioMetricEntity.toServerDto(): CardioMetricDto {
         metricsAvailable = if (this.metricsAvailable) 1 else 0,
         motionArtifacts = if (this.motionArtifacts) 1 else 0,
         skinContact = if (this.skinContact) 1 else 0,
-        stressIndex = this.stressIndex.toDouble()
-    )
+        stressIndex = this.stressIndex.toDouble(),
+        rowId = this.rowId
+)
 }
 
-// Функции расширения для compressed entities
+// ==================== COMPRESSED METRICS ====================
+
+/**
+ * Преобразование NFB Compressed метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun NFBMetricCompressedEntity.toServerDto(): NfbMetricCompressedDto {
     return NfbMetricCompressedDto(
         individualNumber = this.id,
@@ -164,10 +236,16 @@ fun NFBMetricCompressedEntity.toServerDto(): NfbMetricCompressedDto {
         beta = this.beta.toDouble(),
         theta = this.theta.toDouble(),
         delta = this.delta.toDouble(),
-        smr = this.smr.toDouble()
-    )
+        smr = this.smr.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование физиологической Compressed метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun PhysiologicalMetricCompressedEntity.toServerDto(): PhysiologicalMetricCompressedDto {
     return PhysiologicalMetricCompressedDto(
         individualNumber = this.id,
@@ -181,10 +259,16 @@ fun PhysiologicalMetricCompressedEntity.toServerDto(): PhysiologicalMetricCompre
         involvement = this.involvement.toDouble(),
         stress = this.stress.toDouble(),
         nfbArtifacts = if (this.nfbArtifacts) 1 else 0,
-        cardioArtifacts = if (this.cardioArtifacts) 1 else 0
-    )
+        cardioArtifacts = if (this.cardioArtifacts) 1 else 0,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование Compressed сырых данных ЭЭГ в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EEGRawMetricCompressedEntity.toServerDto(): EEGRawMetricCompressedDto {
     return EEGRawMetricCompressedDto(
         individualNumber = this.id,
@@ -192,10 +276,16 @@ fun EEGRawMetricCompressedEntity.toServerDto(): EEGRawMetricCompressedDto {
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование Compressed обработанных данных ЭЭГ в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EEGProceedMetricCompressedEntity.toServerDto(): EEGProceedMetricCompressedDto {
     return EEGProceedMetricCompressedDto(
         individualNumber = this.id,
@@ -203,10 +293,16 @@ fun EEGProceedMetricCompressedEntity.toServerDto(): EEGProceedMetricCompressedDt
         timestamp = this.timestamp,
         session = this.sessionId.toSecondsInt(),
         channel1 = this.channel1,
-        channel2 = this.channel2
-    )
+        channel2 = this.channel2,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование Compressed артефактов ЭЭГ в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EEGArtifactsMetricCompressedEntity.toServerDto(): EEGArtifactMetricCompressedDto {
     return EEGArtifactMetricCompressedDto(
         individualNumber = this.id,
@@ -216,10 +312,16 @@ fun EEGArtifactsMetricCompressedEntity.toServerDto(): EEGArtifactMetricCompresse
         artifactsChannel1 = this.artifactsChannel1,
         artifactsChannel2 = this.artifactsChannel2,
         qualityChannel1 = this.qualityChannel1,
-        qualityChannel2 = this.qualityChannel2
-    )
+        qualityChannel2 = this.qualityChannel2,
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование Compressed MEMS метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun MEMSMetricCompressedEntity.toServerDto(): MemsMetricCompressedDto {
     return MemsMetricCompressedDto(
         individualNumber = this.id,
@@ -231,10 +333,16 @@ fun MEMSMetricCompressedEntity.toServerDto(): MemsMetricCompressedDto {
         accelerometerZ = this.accelerometerZ.toDouble(),
         gyroscopeX = this.gyroscopeX.toDouble(),
         gyroscopeY = this.gyroscopeY.toDouble(),
-        gyroscopeZ = this.gyroscopeZ.toDouble()
-    )
+        gyroscopeZ = this.gyroscopeZ.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование Compressed метрики продуктивности в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun ProductivityMetricCompressedEntity.toServerDto(): ProductivityMetricCompressedDto {
     return ProductivityMetricCompressedDto(
         individualNumber = this.id,
@@ -246,10 +354,16 @@ fun ProductivityMetricCompressedEntity.toServerDto(): ProductivityMetricCompress
         fatigue = this.fatigue.toDouble(),
         reverseFatigue = this.reverseFatigue.toDouble(),
         relaxation = this.relaxation.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование Compressed эмоциональной метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun EmotionalMetricCompressedEntity.toServerDto(): EmotionalMetricCompressedDto {
     return EmotionalMetricCompressedDto(
         individualNumber = this.id,
@@ -260,10 +374,16 @@ fun EmotionalMetricCompressedEntity.toServerDto(): EmotionalMetricCompressedDto 
         relaxation = this.relaxation.toDouble(),
         cognitiveLoad = this.cognitiveLoad.toDouble(),
         cognitiveControl = this.cognitiveControl.toDouble(),
-        selfControl = this.selfControl.toDouble()
-    )
+        selfControl = this.selfControl.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование кардио метрики в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun CardioMetricCompressedEntity.toServerDto(): CardioMetricCompressedDto {
     return CardioMetricCompressedDto(
         individualNumber = this.id,
@@ -276,11 +396,18 @@ fun CardioMetricCompressedEntity.toServerDto(): CardioMetricCompressedDto {
         metricsAvailable = if (this.metricsAvailable) 1 else 0,
         motionArtifacts = if (this.motionArtifacts) 1 else 0,
         skinContact = if (this.skinContact) 1 else 0,
-        stressIndex = this.stressIndex.toDouble()
-    )
+        stressIndex = this.stressIndex.toDouble(),
+        rowId = this.rowId
+)
 }
 
-// Функции расширения для baseline и index entities
+// ==================== BASELINE AND INDEXES ====================
+
+/**
+ * Преобразование физиологических базовых значений в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun PhysiologicalBaselinesEntity.toServerDto(): PhysiologicalBaselineDto {
     return PhysiologicalBaselineDto(
         individualNumber = this.id,
@@ -291,10 +418,16 @@ fun PhysiologicalBaselinesEntity.toServerDto(): PhysiologicalBaselineDto {
         beta = this.beta.toDouble(),
         alphaGravity = this.alphaGravity.toDouble(),
         betaGravity = this.betaGravity.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование базовых значений продуктивности в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun ProductivityBaselinesEntity.toServerDto(): ProductivityBaselineDto {
     return ProductivityBaselineDto(
         individualNumber = this.id,
@@ -306,10 +439,16 @@ fun ProductivityBaselinesEntity.toServerDto(): ProductivityBaselineDto {
         fatigue = this.fatigue.toDouble(),
         reverseFatigue = this.reverseFatigue.toDouble(),
         relaxation = this.relaxation.toDouble(),
-        concentration = this.concentration.toDouble()
-    )
+        concentration = this.concentration.toDouble(),
+        rowId = this.rowId
+)
 }
 
+/**
+ * Преобразование индексов продуктивности в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
 fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
     return ProductivityIndexDto(
         individualNumber = this.id,
@@ -324,6 +463,40 @@ fun ProductivityIndexesEntity.toServerDto(): ProductivityIndexDto {
         reverseFatigueBaseline = this.reverseFatigueBaseline.toDouble(),
         relaxationBaseline = this.relaxationBaseline.toDouble(),
         concentrationBaseline = this.concentrationBaseline.toDouble(),
-        hasArtifacts = this.hasArtifacts
-    )
+        hasArtifacts = this.hasArtifacts,
+        rowId = this.rowId
+)
+}
+
+/**
+ * Преобразование данных о сессии в DTO
+ *
+ * @return DTO для отправки на сервер
+ */
+fun SessionEntity.toServerDto(): SessionDto {
+    return SessionDto(
+        session = sessionId.toSecondsInt(),
+        expeditionId = expedition_id,
+        individualNumber = id,
+        objectiveCognitive = objectiveCognitive,
+        objectivePsychological = objectivePsychological,
+        objectivePhysiological = objectivePhysiological,
+        subjectiveCognitive = subjectiveCognitive,
+        subjectivePsychological = subjectivePsychological,
+        subjectivePhysiological = subjectivePhysiological,
+        totalIndex = totalIndex,
+        averageObjective = averageObjective,
+        averageSubjective = averageSubjective,
+        totalCognitive = totalCognitive,
+        totalPsychological = totalPsychological,
+        totalPhysiological =  totalPhysiological,
+        durationMinutes = durationMinutes,
+        endTime = endTime?.toSecondsInt(),
+        sessionCategory = sessionCategory,
+        comment = comment,
+        objectiveFatigue = objectiveFatigue,
+        objectiveStress = objectiveStress,
+        passingPrematurely = passingPrematurely,
+        localSessionId = sessionId
+)
 }
