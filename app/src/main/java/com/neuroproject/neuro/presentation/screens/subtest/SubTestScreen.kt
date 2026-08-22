@@ -283,7 +283,6 @@ fun SubTestScreenContent(
     }
 }
 
-// ==================== СТАРЫЕ UI КОМПОНЕНТЫ (СОХРАНЯЕМ ВИЗУАЛ) ====================
 
 @Composable
 fun SessionSettingsContent(
@@ -323,43 +322,13 @@ fun SessionSettingsContent(
             )
         )
         Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Категория",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth()
-        )
         Spacer(modifier = Modifier.height(8.dp))
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SessionCategory.values().forEach { category ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCategoryChange(category) }
-                        .padding(vertical = 8.dp)
-                ) {
-                    RadioButton(
-                        selected = selectedCategory == category,
-                        onClick = { onCategoryChange(category) },
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = category.titleRu(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
+        EnumSlider(
+            enumClass = SessionCategory::class.java,
+            selectedValue = selectedCategory,
+            onValueChange = onCategoryChange,
+            getDisplayText = {getSessionTime(it)}
+        )
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -442,7 +411,6 @@ fun InstructionContent(onStartClick: () -> Unit) {
     }
 }
 
-// presentation/screens/subtest/SubTestScreen.kt
 
 @Composable
 fun QuestionsContent(
@@ -1269,6 +1237,45 @@ private fun ResultDetailRow(label: String, value: Int) {
     }
 }
 
+// Slider для работы с перечислениями(Enum)
+@Composable
+inline fun <reified T : Enum<T>> EnumSlider(
+    enumClass: Class<T>,
+    selectedValue: T,
+    crossinline onValueChange: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    getDisplayText: (T) -> String = { it.name }
+) {
+    val enumValues = enumClass.enumConstants ?: emptyArray()
+    require(enumValues.isNotEmpty()) { "Enum must have at least one value" }
+
+    val index = enumValues.indexOf(selectedValue)
+    val maxIndex = enumValues.size - 1
+
+    Column(modifier = modifier) {
+
+        // Текущее значение
+        Text(
+            text = "Время: ${getDisplayText(selectedValue)}",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Slider(
+            value = index.toFloat(),
+            onValueChange = { newIndex ->
+                val roundedIndex = newIndex.roundToInt().coerceIn(0, maxIndex)
+                onValueChange(enumValues[roundedIndex])
+            },
+            valueRange = 0f..maxIndex.toFloat(),
+            steps = maxIndex - 1
+        )
+
+
+    }
+}
+
 
 
 
@@ -1354,11 +1361,30 @@ private fun getFatigueLevelText(index: Int): String {
         else -> "Высокий уровень утомления"
     }
 }
-private fun SessionCategory.titleRu(): String = when (this) {
-    SessionCategory.MORNING -> "Утро"
-    SessionCategory.DAY -> "День"
-    SessionCategory.EVENING -> "Вечер"
+private fun SessionCategory.titleRu(): String = when (this) { // !!!! ЗАМЕНИТЬ
+    SessionCategory.H24_3 -> "0-3"
+    SessionCategory.H3_6 -> "3-6"
+    SessionCategory.H6_9 -> "6-9"
+    SessionCategory.H9_12 -> "9-12"
+    SessionCategory.H12_15 -> "12-15"
+    SessionCategory.H15_18 -> "15-18"
+    SessionCategory.H18_21 -> "18-21"
+    SessionCategory.H21_24 -> "21-24"
     SessionCategory.TECHNICAL -> "Техническая"
+}
+
+private fun getSessionTime(category: SessionCategory): String{
+    return when (category) {
+        SessionCategory.H24_3 -> "0-3"
+        SessionCategory.H3_6 -> "3-6"
+        SessionCategory.H6_9 -> "6-9"
+        SessionCategory.H9_12 -> "9-12"
+        SessionCategory.H12_15 -> "12-15"
+        SessionCategory.H15_18 -> "15-18"
+        SessionCategory.H18_21 -> "18-21"
+        SessionCategory.H21_24 -> "21-24"
+        SessionCategory.TECHNICAL -> "Техническая"
+    }
 }
 
 // ==================== PREVIEW ====================
@@ -1369,7 +1395,7 @@ fun PreviewSessionSettingsLight() {
     NeuroApplicationTheme(themeMode = ThemeMode.LIGHT, dynamicColor = false) {
         SessionSettingsContent(
             durationMinutes = 10,
-            selectedCategory = SessionCategory.MORNING,
+            selectedCategory = SessionCategory.H6_9,
             isCalibrationReady = true,
             calibrationProgressPercent = 100,
             onDurationChange = {},

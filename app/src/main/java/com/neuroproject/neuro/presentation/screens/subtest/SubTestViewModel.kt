@@ -110,12 +110,12 @@ class SubTestViewModel @Inject constructor(
     private var sensorJob: Job? = null
 
     // Timer state
-    private val _timeLeftMillis = MutableStateFlow(10 * 60 * 1000L)
+    private val _timeLeftMillis = MutableStateFlow(_uiState.value.selectedDurationMinutes * 60 * 1000L)
     private var isTimerRunning = false
     private var isTimerExpired = false
     val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
 
-    private fun getDefaultSessionCategory(): SessionCategory {
+    /*private fun getDefaultSessionCategory(): SessionCategory {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         return when (hour) {
             in 5..11 -> SessionCategory.MORNING
@@ -123,7 +123,7 @@ class SubTestViewModel @Inject constructor(
             in 18..23 -> SessionCategory.EVENING
             else -> SessionCategory.TECHNICAL
         }
-    }
+    }*/
 
     init {
         loadQuestions()
@@ -158,6 +158,18 @@ class SubTestViewModel @Inject constructor(
 
     private fun createSession() {
         viewModelScope.launch {
+            // Убедимся, что значения синхронизированы
+            val currentState = _uiState.value.screenState
+            if (currentState is SubTestScreenState.SessionSettings) {
+                // Синхронизируем selected значения с screenState
+                _uiState.update {
+                    it.copy(
+                        selectedDurationMinutes = currentState.durationMinutes,
+                        selectedCategory = currentState.category
+                    )
+                }
+            }
+
             currentSession = createSessionUseCase(
                 durationMinutes = getCurrentDurationMinutes(),
                 category = getCurrentCategory()
@@ -313,7 +325,8 @@ class SubTestViewModel @Inject constructor(
                 it.copy(
                     screenState = currentState.copy(
                         durationMinutes = durationMinutes
-                    )
+                    ),
+                    selectedDurationMinutes = durationMinutes
                 )
             }
         }
@@ -326,7 +339,8 @@ class SubTestViewModel @Inject constructor(
                 it.copy(
                     screenState = currentState.copy(
                         category = category
-                    )
+                    ),
+                    selectedCategory = category
                 )
             }
         }
@@ -381,12 +395,7 @@ class SubTestViewModel @Inject constructor(
     }
 
     private fun currentSettings(): Pair<Int, SessionCategory> {
-        val state = _uiState.value.screenState
-        return if (state is SubTestScreenState.SessionSettings) {
-            state.durationMinutes to state.category
-        } else {
-            _uiState.value.selectedDurationMinutes to _uiState.value.selectedCategory
-        }
+        return _uiState.value.selectedDurationMinutes to _uiState.value.selectedCategory
     }
 
     private fun getCurrentDurationMinutes(): Int = currentSettings().first

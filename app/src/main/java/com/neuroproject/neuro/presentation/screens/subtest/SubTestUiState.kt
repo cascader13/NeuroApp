@@ -9,7 +9,7 @@ import com.neuroproject.neuro.presentation.screens.sensorchecking.ElectrodeState
 sealed class SubTestScreenState {
     data class SessionSettings(
         val durationMinutes: Int = 10,
-        val category: SessionCategory = SessionCategory.MORNING,
+        val category: SessionCategory = SessionCategory.H6_9,
         val isCalibrationReady: Boolean = false,
         val calibrationProgressPercent: Int = 0
     ) : SubTestScreenState()
@@ -42,7 +42,7 @@ sealed class SubTestScreenState {
 data class SubTestUiState(
     val screenState: SubTestScreenState = SubTestScreenState.SessionSettings(),
     val selectedDurationMinutes: Int = 10,
-    val selectedCategory: SessionCategory = SessionCategory.MORNING,
+    val selectedCategory: SessionCategory = SessionCategory.H6_9,
     val isCalibrationReady: Boolean = false,
     val calibrationProgressPercent: Int = 0,
     val comment: String = "",

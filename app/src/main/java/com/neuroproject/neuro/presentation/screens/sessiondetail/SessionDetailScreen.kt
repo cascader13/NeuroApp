@@ -126,10 +126,15 @@ internal fun SessionDetailContent(
                         InfoCard("Метаданные") {
                             DetailRow("Длительность (мин)", s.durationMinutes)
                             DetailRow("Категория", s.category?.let { when(it) {
-                                SessionCategory.MORNING -> "Утро"
-                                SessionCategory.DAY -> "День"
-                                SessionCategory.EVENING -> "Вечер"
-                                SessionCategory.TECHNICAL -> "Технический"
+                                SessionCategory.H24_3 -> "0-3"
+                                SessionCategory.H3_6 -> "3-6"
+                                SessionCategory.H6_9 -> "6-9"
+                                SessionCategory.H9_12 -> "9-12"
+                                SessionCategory.H12_15 -> "12-15"
+                                SessionCategory.H15_18 -> "15-18"
+                                SessionCategory.H18_21 -> "18-21"
+                                SessionCategory.H21_24 -> "21-24"
+                                SessionCategory.TECHNICAL -> "Техническая"
                             } } ?: "—")
                         }
 
@@ -196,7 +201,7 @@ fun PreviewSessionDetailScreen() {
             userId = "0",
             expeditionId = "0",
             durationMinutes = 10,
-            category = SessionCategory.EVENING,
+            category = SessionCategory.H18_21,
             comment = "Тестовый комментарий. Было интересно, но немного устал.",
             subjectiveResult = SubjectiveResult(85, 72, 68, 75),
             objectiveResult = ObjectiveFatigueResult(80, 70, 65, 72, "Среднее", "Низкий"),

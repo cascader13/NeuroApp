@@ -396,7 +396,7 @@ private fun createMockSession(offsetDays: Int, totalIndex: Int, totalCog: Int, t
         userId = "test_user",
         startTime = now - offsetDays * 86_400_000L,
         durationMinutes = 15,
-        category = SessionCategory.MORNING,
+        category = SessionCategory.H6_9,
         totalResult = TotalFatigueResult(
             cognitiveIndex = totalCog,
             psychologicalIndex = totalPsy,
@@ -464,8 +464,13 @@ private fun PreviewHistoryError() {
 
 
 fun SessionCategory.getDisplayName(): String = when (this) {
-    SessionCategory.MORNING -> "Утро"
-    SessionCategory.DAY -> "День"
-    SessionCategory.EVENING -> "Вечер"
+    SessionCategory.H24_3 -> "0-3"
+    SessionCategory.H3_6 -> "3-6"
+    SessionCategory.H6_9 -> "6-9"
+    SessionCategory.H9_12 -> "9-12"
+    SessionCategory.H12_15 -> "12-15"
+    SessionCategory.H15_18 -> "15-18"
+    SessionCategory.H18_21 -> "18-21"
+    SessionCategory.H21_24 -> "21-24"
     SessionCategory.TECHNICAL -> "Техническая"
 }
