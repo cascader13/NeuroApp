@@ -431,12 +431,11 @@ class SubTestViewModel @Inject constructor(
         isTimerExpired = true
         _uiState.update { it.copy(isTimerExpired = true) }
         when (_uiState.value.screenState) {
-            is SubTestScreenState.Waiting,
-            is SubTestScreenState.Comment -> {
+            is SubTestScreenState.Waiting-> {
                 finishTest()
             }
             else -> {
-                // Пользователь ещё на экране вопросов — даём завершить
+                // Пользователь ещё на экране вопросов или комментария — даём завершить
             }
         }
     }
