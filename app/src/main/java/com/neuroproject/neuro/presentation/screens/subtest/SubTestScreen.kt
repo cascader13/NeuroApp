@@ -114,7 +114,18 @@ fun SubTestScreen(
     val isDeviceDisconnected by viewModel.isDeviceDisconnected.collectAsState()
 
     BackHandler {
-        onFinish()
+        when(uiState.screenState){
+            is SubTestScreenState.Question -> {
+                viewModel.goToPreviousQuestion()
+            }
+            is SubTestScreenState.Result -> {
+                onFinish()
+            }
+            is SubTestScreenState.Waiting -> {
+                viewModel.goToComment()
+            }
+            else -> {}
+        }
     }
 
     if (isDeviceDisconnected) {
@@ -165,6 +176,7 @@ fun SubTestScreen(
         onSaveAnswer = { viewModel.onSaveAnswer() },
         onGoToPreviousQuestion = { viewModel.goToPreviousQuestion() },
         onCommentChanged = { viewModel.onCommentChanged(it) },
+        goToComment = { viewModel.goToComment()},
         onFinishTestClick = { viewModel.onFinishTestClick() },
         onRetakeTest = { viewModel.retakeTest() },
         onForceStop = { viewModel.forceStopTest() },
@@ -189,6 +201,7 @@ fun SubTestScreenContent(
     onSaveAnswer: () -> Unit,
     onGoToPreviousQuestion: () -> Unit,
     onCommentChanged: (String) -> Unit,
+    goToComment: () -> Unit,
     onFinishTestClick: () -> Unit,
     onRetakeTest: () -> Unit,
     onForceStop: () -> Unit,
@@ -206,7 +219,9 @@ fun SubTestScreenContent(
     }
 
     Surface(
-        modifier = modifier.fillMaxSize().systemBarsPadding(),
+        modifier = modifier
+            .fillMaxSize()
+            .systemBarsPadding(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -268,7 +283,8 @@ fun SubTestScreenContent(
                             totalDurationMillis = screenState.totalDurationMillis,
                             hasRetaken = screenState.hasRetaken,
                             onRetakeTest = onRetakeTest,
-                            onForceStop = onForceStop
+                            onForceStop = onForceStop,
+                            goToComment = goToComment
                         )
                     }
                     is SubTestScreenState.Result -> {
@@ -678,7 +694,7 @@ fun CommentContent(
     onCommentChange: (String) -> Unit,
     onFinishClick: () -> Unit
 ) {
-    val maxLength = 500
+    val maxLength = 1000
     val isMaxLength = comment.length >= maxLength
 
     Column(
@@ -775,7 +791,8 @@ fun WaitingContent(
     totalDurationMillis: Long,
     hasRetaken: Boolean,
     onRetakeTest: () -> Unit,
-    onForceStop: () -> Unit
+    onForceStop: () -> Unit,
+    goToComment: () -> Unit
 ) {
     var showStopDialog by remember { mutableStateOf(false) }
 
@@ -906,6 +923,9 @@ fun WaitingContent(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+
+            //!!! Нужна ли здесь доп кнопка для возврата к коментарию? может сделать 2 малых кнопки и 1 большую
+
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = { showStopDialog = true },
@@ -1397,7 +1417,7 @@ fun PreviewSessionSettingsLight() {
             durationMinutes = 10,
             selectedCategory = SessionCategory.H6_9,
             isCalibrationReady = true,
-            calibrationProgressPercent = 100,
+            calibrationProgressPercent = 90,
             onDurationChange = {},
             onCategoryChange = {},
             onNext = {}
@@ -1438,5 +1458,16 @@ fun PreviewResult() {
             ),
             onFinish = {}
         )
+    }
+}
+
+@Preview(name = "Комментарий")
+@Composable
+fun PreviewComment(){
+    NeuroApplicationTheme(themeMode = ThemeMode.LIGHT, dynamicColor = false) {
+        CommentContent(
+            comment = "dont woory be happy",
+            onCommentChange = { }
+        ) { }
     }
 }
