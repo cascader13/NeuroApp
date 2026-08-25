@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.presentation.screens.sessiondetail
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,9 +27,34 @@ class SessionDetailViewModel @Inject constructor(
     private val _session = MutableStateFlow<Session?>(null)
     val session: StateFlow<Session?> = _session.asStateFlow()
 
+    private val _isMarked = MutableStateFlow<Boolean?>(null)
+    val isMarked: StateFlow<Boolean?> = _isMarked.asStateFlow()
+
     init {
+        loadSession()
+    }
+
+    private fun loadSession() {
         viewModelScope.launch {
             _session.value = sessionRepository.getSession(sessionId)
+            val marked = sessionRepository.isMarkedSession(sessionId)
+            _isMarked.value = marked
         }
     }
+
+    fun updateComment(comment: String) {
+        viewModelScope.launch {
+            val currentSession = _session.value
+            if (currentSession != null) {
+                val updatedSession = currentSession.copy(comment = comment)
+                sessionRepository.updateSession(updatedSession)
+                _session.value = updatedSession
+            }
+        }
+    }
+    fun refreshSession() {
+        loadSession()
+    }
+
+
 }

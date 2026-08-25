@@ -47,6 +47,9 @@ interface SessionRepository {
     /** Возвращает все сессии. */
     suspend fun getSessions(): List<Session>
 
+    /** Вовзращает результат того была ли отправлена сессия */
+    suspend fun isMarkedSession(sessionId: Long): Boolean
+
     /** Удаляет сессию по ID. */
     suspend fun deleteSession(sessionId: Long)
 

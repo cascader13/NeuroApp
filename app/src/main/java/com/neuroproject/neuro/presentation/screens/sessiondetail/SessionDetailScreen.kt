@@ -2,13 +2,16 @@ package com.neuroproject.neuro.presentation.screens.sessiondetail
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,20 +33,35 @@ fun SessionDetailScreen(
     onBackClick: () -> Unit,
     viewModel: SessionDetailViewModel = hiltViewModel()
 ) {
+
     val session by viewModel.session.collectAsState()
+    val isMarked by viewModel.isMarked.collectAsState()
     SessionDetailContent(
         session = session,
-        onBackClick = onBackClick
+        onBackClick = onBackClick,
+        isMarked = isMarked ?: true,
+        updateComment = {viewModel.updateComment(it)}
     )
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SessionDetailContent(
     session: Session?,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    isMarked: Boolean,
+    updateComment: (String) -> Unit
 ) {
+
     val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
+    var showEditComment by remember { mutableStateOf(false) }
+
+    var tempComment by remember { mutableStateOf("") }
+
+    LaunchedEffect(session?.comment) {
+        tempComment = session?.comment ?: ""
+    }
 
     Scaffold(
         topBar = {
@@ -156,11 +174,124 @@ internal fun SessionDetailContent(
                                 }
                             }
                         }
+                        Button(
+                            onClick = {
+                                tempComment = s.comment ?: ""
+                                showEditComment = true },
+                            enabled = isMarked == false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Редактировать комментарий")
+                        }
+
+                        if (showEditComment) {
+                            MiniCommentDialog(
+                                comment = tempComment,
+                                onCommentChange = {
+                                    tempComment = it },
+                                onFinishClick = {
+                                    updateComment(tempComment)
+                                    showEditComment = false },
+                                onDismiss = {
+                                    tempComment = session?.comment ?: ""
+                                    showEditComment = false
+                                }
+                            )
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
+
+
+@Composable
+fun MiniCommentDialog(
+    comment: String,
+    onCommentChange: (String) -> Unit,
+    onFinishClick: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val maxLength = 1000
+    val isMaxLength = comment.length >= maxLength
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Ваш комментарий",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Закрыть",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = {
+                        if (it.length <= maxLength) onCommentChange(it)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    placeholder = { Text("Поделитесь впечатлениями...") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    maxLines = 5,
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "${comment.length}/$maxLength",
+                        color = if (isMaxLength) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onFinishClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Завершить")
+            }
+        }
+    )
 }
 
 @Composable
@@ -209,7 +340,9 @@ fun PreviewSessionDetailScreen() {
         )
         SessionDetailContent(
             session = mockSession,
-            onBackClick = {}
+            onBackClick = {},
+            isMarked = true,
+            updateComment = {}
         )
     }
 }

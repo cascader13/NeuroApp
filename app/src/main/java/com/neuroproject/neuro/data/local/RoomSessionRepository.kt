@@ -1,5 +1,6 @@
 package com.neuroproject.neuro.data.local
 
+import android.util.Log
 import com.neuroproject.neuro.data.mapper.SessionMapper
 import com.neuroproject.neuro.data.session.SessionDao
 import com.neuroproject.neuro.data.session.SessionEntity
@@ -43,12 +44,22 @@ class RoomSessionRepository @Inject constructor(
     }
 
     override suspend fun updateSession(session: Session) {
+        if (session.sessionId == -1L){
+            return
+        }
         val currentEntity = sessionDao.getSession(session.sessionId) ?: return
         val updatedEntity = SessionMapper.toEntity(session).copy(
             // Сохраняем поля, которые не представлены в domain-модели.
             isMarked = currentEntity.isMarked
         )
+
         sessionDao.update(updatedEntity)
+    }
+
+    override suspend fun isMarkedSession(sessionId: Long): Boolean {
+        val session = sessionDao.getSession(sessionId)
+         return session?.isMarked ?: true
+
     }
 
     override suspend fun getSession(sessionId: Long): Session? {
