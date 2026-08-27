@@ -2,6 +2,7 @@ package com.neuroproject.neuro.data.remote
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 /**
@@ -45,6 +46,7 @@ interface MetricsApiService {
      */
     @POST("/api/metrics/upload")
     suspend fun uploadMetrics(
+        @Header("Idempotency-Key") batchId: String,
         @Body request: UploadRequest
     ): Response<UploadResponse>
 }

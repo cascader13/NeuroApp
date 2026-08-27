@@ -142,14 +142,17 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE isMarked = 0")
     suspend fun getUnmarkedSessionResult(): List<SessionEntity>
 
-    @Query("SELECT COUNT(*) FROM sessions WHERE isMarked = 0")
+    @Query("SELECT COUNT(*) FROM sessions WHERE isMarked = 0 AND id IS NOT NULL AND TRIM(id) != '' AND expedition_id IS NOT NULL AND TRIM(expedition_id) != ''")
     suspend fun getUnmarkedSessionResultCount(): Int
 
     @Query("UPDATE sessions SET isMarked = 1 WHERE sessionId IN (:sessionIDs)")
     suspend fun markSessionResultAsSynced(sessionIDs: List<Long>)
 
-    @Query("SELECT * FROM sessions WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM sessions WHERE isMarked = 0 AND id IS NOT NULL AND TRIM(id) != '' AND expedition_id IS NOT NULL AND TRIM(expedition_id) != '' ORDER BY sessionId LIMIT :limit")
     suspend fun getUnmarkedSessionResultBatch(limit: Int) : List<SessionEntity>
+
+    @Query("SELECT * FROM sessions WHERE isMarked = 0 AND id IS NOT NULL AND TRIM(id) != '' AND expedition_id IS NOT NULL AND TRIM(expedition_id) != '' ORDER BY sessionId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedSessionResultPage(limit: Int, offset: Int): List<SessionEntity>
 
 
     @Transaction
