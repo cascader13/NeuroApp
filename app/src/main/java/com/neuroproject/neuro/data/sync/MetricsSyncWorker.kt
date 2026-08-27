@@ -9,6 +9,7 @@ import com.neuroproject.neuro.data.MetricsUploadRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.CancellationException
 
 /**
  * Фоновая синхронизация метрик через WorkManager.
@@ -26,12 +27,14 @@ class MetricsSyncWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        setForeground(notificationHelper.createForegroundInfo())
         val batchSize = inputData.getInt(KEY_BATCH_SIZE, DEFAULT_BATCH_SIZE)
             .coerceIn(MIN_BATCH_SIZE, MAX_BATCH_SIZE)
         val stopOnError = inputData.getBoolean(KEY_STOP_ON_ERROR, false)
 
         return try {
             var terminalProgress: BatchUploadProgress? = null
+            var totalRecords = 0
 
             uploadRepository.uploadInBatches(
                 batchSize = batchSize,
@@ -39,6 +42,17 @@ class MetricsSyncWorker @AssistedInject constructor(
                 stopOnError = stopOnError
             ).collect { progress ->
                 terminalProgress = progress
+                if (progress is BatchUploadProgress.BatchesCreated) {
+                    totalRecords = progress.totalRecords
+                }
+                if (progress is BatchUploadProgress.BatchCompleted) {
+                    setForeground(
+                        notificationHelper.createForegroundInfo(
+                            progress.totalSentSoFar,
+                            totalRecords
+                        )
+                    )
+                }
             }
 
             terminalProgress?.let { notificationHelper.showSyncResult(it) }
@@ -53,7 +67,8 @@ class MetricsSyncWorker @AssistedInject constructor(
 
                 else -> retryOrFailure()
             }
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
             retryOrFailure()
         }
     }

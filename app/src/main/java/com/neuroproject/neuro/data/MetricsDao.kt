@@ -468,68 +468,121 @@ interface MetricsDao {
     @Query("UPDATE cardio_metrics_compressed SET isMarked = 1 WHERE rowId IN (:rowIds)")
     suspend fun markCardioMetricsCompressedAsSynced(rowIds: List<Long>)
 
-    @Query("SELECT * FROM nfb_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM nfb_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedNFBMetricsBatch(limit: Int): List<NFBMetricEntity>
 
-    @Query("SELECT * FROM nfb_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM nfb_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedNFBMetricsBatchCompressed(limit: Int): List<NFBMetricCompressedEntity>
 
-    @Query("SELECT * FROM EEG_Raw_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM EEG_Raw_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEEGRAWMetricsBatch(limit: Int): List<EEGRawMetricEntity>
 
-    @Query("SELECT * FROM EEG_Raw_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM EEG_Raw_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEEGRAWMetricsBatchCompressed(limit: Int): List<EEGRawMetricCompressedEntity>
 
-    @Query("SELECT * FROM EEG_Proceed_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM EEG_Proceed_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEEGPROCEEDMetricsBatch(limit: Int): List<EEGProceedMetricEntity>
 
-    @Query("SELECT * FROM EEG_Proceed_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM EEG_Proceed_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEEGPROCEEDMetricsBatchCompressed(limit: Int): List<EEGProceedMetricCompressedEntity>
 
-    @Query("SELECT * FROM EEG_Artifacts_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM EEG_Artifacts_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEEGArtifactsMetricsBatch(limit: Int): List<EEGArtifactsMetricEntity>
 
-    @Query("SELECT * FROM EEG_Artifacts_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM EEG_Artifacts_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEEGArtifactsMetricsBatchCompressed(limit: Int): List<EEGArtifactsMetricCompressedEntity>
 
-    @Query("SELECT * FROM physiological_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM physiological_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedPhysiologicalMetricsBatch(limit: Int): List<PhysiologicalMetricEntity>
 
-    @Query("SELECT * FROM physiological_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM physiological_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedPhysiologicalMetricsBatchCompressed(limit: Int): List<PhysiologicalMetricCompressedEntity>
 
-    @Query("SELECT * FROM mems_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM mems_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedMEMSMetricsBatch(limit: Int): List<MEMSMetricEntity>
 
-    @Query("SELECT * FROM mems_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM mems_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedMEMSMetricsBatchCompressed(limit: Int): List<MEMSMetricCompressedEntity>
 
-    @Query("SELECT * FROM productivity_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM productivity_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedProductivityMetricsBatch(limit: Int): List<ProductivityMetricEntity>
 
-    @Query("SELECT * FROM productivity_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM productivity_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedProductivityMetricsBatchCompressed(limit: Int): List<ProductivityMetricCompressedEntity>
 
-    @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedProductivityIndexesBatch(limit: Int): List<ProductivityIndexesEntity>
 
-    @Query("SELECT * FROM productivity_baselines WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM productivity_baselines WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedProductivityBaselineBatch(limit: Int): List<ProductivityBaselinesEntity>
 
-    @Query("SELECT * FROM physiological_baselines WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM physiological_baselines WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedPhysiologicalBaselineBatch(limit: Int): List<PhysiologicalBaselinesEntity>
 
-    @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT COUNT(*) FROM physiological_baselines WHERE isMarked = 0")
+    suspend fun getUnmarkedPhysiologicalBaselineCount(): Int
+
+    @Query("SELECT COUNT(*) FROM productivity_baselines WHERE isMarked = 0")
+    suspend fun getUnmarkedProductivityBaselineCount(): Int
+
+    @Query("SELECT COUNT(*) FROM productivity_indexes WHERE isMarked = 0")
+    suspend fun getUnmarkedProductivityIndexesCount(): Int
+
+    @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEmotionalMetricsBatch(limit: Int): List<EmotionalMetricEntity>
 
-    @Query("SELECT * FROM emotional_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM emotional_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedEmotionalMetricsBatchCompressed(limit: Int): List<EmotionalMetricCompressedEntity>
 
-    @Query("SELECT * FROM cardio_metrics WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM cardio_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedCardioMetricsBatch(limit: Int): List<CardioMetricEntity>
 
-    @Query("SELECT * FROM cardio_metrics_compressed WHERE isMarked = 0 LIMIT :limit")
+    @Query("SELECT * FROM cardio_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit")
     suspend fun getUnmarkedCardioMetricsBatchCompressed(limit: Int): List<CardioMetricCompressedEntity>
+
+    // Stable pages for JSON export. OFFSET is used only for export because rows are not marked there.
+    @Query("SELECT * FROM nfb_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedNFBMetricsPage(limit: Int, offset: Int): List<NFBMetricEntity>
+    @Query("SELECT * FROM physiological_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedPhysiologicalMetricsPage(limit: Int, offset: Int): List<PhysiologicalMetricEntity>
+    @Query("SELECT * FROM EEG_Raw_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEEGRAWMetricsPage(limit: Int, offset: Int): List<EEGRawMetricEntity>
+    @Query("SELECT * FROM EEG_Proceed_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEEGPROCEEDMetricsPage(limit: Int, offset: Int): List<EEGProceedMetricEntity>
+    @Query("SELECT * FROM EEG_Artifacts_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEEGArtifactsMetricsPage(limit: Int, offset: Int): List<EEGArtifactsMetricEntity>
+    @Query("SELECT * FROM mems_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedMEMSMetricsPage(limit: Int, offset: Int): List<MEMSMetricEntity>
+    @Query("SELECT * FROM productivity_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedProductivityMetricsPage(limit: Int, offset: Int): List<ProductivityMetricEntity>
+    @Query("SELECT * FROM emotional_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEmotionalMetricsPage(limit: Int, offset: Int): List<EmotionalMetricEntity>
+    @Query("SELECT * FROM cardio_metrics WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedCardioMetricsPage(limit: Int, offset: Int): List<CardioMetricEntity>
+    @Query("SELECT * FROM nfb_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedNFBMetricsCompressedPage(limit: Int, offset: Int): List<NFBMetricCompressedEntity>
+    @Query("SELECT * FROM physiological_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedPhysiologicalMetricsCompressedPage(limit: Int, offset: Int): List<PhysiologicalMetricCompressedEntity>
+    @Query("SELECT * FROM EEG_Raw_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEEGRAWMetricsCompressedPage(limit: Int, offset: Int): List<EEGRawMetricCompressedEntity>
+    @Query("SELECT * FROM EEG_Proceed_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEEGPROCEEDMetricsCompressedPage(limit: Int, offset: Int): List<EEGProceedMetricCompressedEntity>
+    @Query("SELECT * FROM EEG_Artifacts_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEEGArtifactsMetricsCompressedPage(limit: Int, offset: Int): List<EEGArtifactsMetricCompressedEntity>
+    @Query("SELECT * FROM mems_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedMEMSMetricsCompressedPage(limit: Int, offset: Int): List<MEMSMetricCompressedEntity>
+    @Query("SELECT * FROM productivity_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedProductivityMetricsCompressedPage(limit: Int, offset: Int): List<ProductivityMetricCompressedEntity>
+    @Query("SELECT * FROM emotional_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedEmotionalMetricsCompressedPage(limit: Int, offset: Int): List<EmotionalMetricCompressedEntity>
+    @Query("SELECT * FROM cardio_metrics_compressed WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedCardioMetricsCompressedPage(limit: Int, offset: Int): List<CardioMetricCompressedEntity>
+    @Query("SELECT * FROM physiological_baselines WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedPhysiologicalBaselinePage(limit: Int, offset: Int): List<PhysiologicalBaselinesEntity>
+    @Query("SELECT * FROM productivity_baselines WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedProductivityBaselinePage(limit: Int, offset: Int): List<ProductivityBaselinesEntity>
+    @Query("SELECT * FROM productivity_indexes WHERE isMarked = 0 ORDER BY rowId LIMIT :limit OFFSET :offset")
+    suspend fun getUnmarkedProductivityIndexesPage(limit: Int, offset: Int): List<ProductivityIndexesEntity>
 
     @Query("SELECT COUNT(*) FROM nfb_metrics")
     suspend fun getAllNFBMetricsCount(): Int

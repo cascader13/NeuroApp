@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 @SuppressLint("MissingPermission")
@@ -79,7 +80,7 @@ class NeuroPlayDeviceGateway @Inject constructor(
         disconnect()
         connectionState.value = DeviceConnectionState.connecting
         try {
-            withTimeout(30_000) {
+            withTimeout(30_000.milliseconds) {
                 suspendCancellableCoroutine<Unit> { continuation ->
                     val callback = object : BluetoothGattCallback() {
                         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {

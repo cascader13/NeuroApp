@@ -7,10 +7,12 @@ import com.neuroproject.neuro.data.remote.*
 import com.neuroproject.neuro.data.session.SessionDao
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import java.io.File
+import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -46,7 +48,9 @@ class MetricsUploadRepository @Inject constructor(
         private const val MAX_BATCH_SIZE_BYTES = 1024 * 1024 // 1 MB
         private const val RETRY_DELAY_MS = 2000L // 2 секунды
         private const val MAX_RETRIES = 3
-        private const val BATCH_DELAY_MS = 500L // Задержка между пакетами
+        private const val BATCH_DELAY_MS = 0L // Сеть сама создаёт backpressure; искусственная пауза удлиняла Worker
+        private const val MAX_FAILED_REQUEST_FILES = 20
+        private const val FAILED_REQUEST_RETENTION_MS = 7L * 24 * 60 * 60 * 1000
         private const val TAG = "MetricsUploadRepository"
     }
 
@@ -56,6 +60,237 @@ class MetricsUploadRepository @Inject constructor(
      * и параллельно отправить дубликаты на backend.
      */
     private val syncMutex = Mutex()
+
+    /** Reads, sends and releases one bounded Room page at a time. */
+    suspend fun uploadInBatches(
+        batchSize: Int = DEFAULT_BATCH_SIZE,
+        enableRetry: Boolean = true,
+        stopOnError: Boolean = true,
+        batchDelayMs: Long = BATCH_DELAY_MS
+    ): Flow<BatchUploadProgress> = flow {
+        syncMutex.lock()
+        try {
+            cleanupLegacyFailedRequests()
+            val pageSize = batchSize.coerceIn(1, 500)
+            emit(BatchUploadProgress.Preparing("Подсчёт данных...", 0.05f))
+            val recordsByTable = getUnsyncedRecordCounts()
+            val totalRecords = recordsByTable.sum()
+            if (totalRecords == 0) {
+                emit(BatchUploadProgress.NoData)
+                return@flow
+            }
+
+            val totalBatches = recordsByTable.sumOf { count ->
+                if (count == 0) 0 else (count + pageSize - 1) / pageSize
+            }
+            emit(BatchUploadProgress.BatchesCreated(totalBatches, totalRecords))
+            var sent = 0
+            var batchIndex = 0
+
+            while (sent < totalRecords) {
+                val batch = loadNextBatch(minOf(pageSize, totalRecords - sent)) ?: break
+                batchIndex++
+                emit(BatchUploadProgress.SendingBatch(
+                    batchIndex, totalBatches, batch.recordCount, batch.batchId
+                ))
+
+                when (val result = sendBatchWithRetry(batch, if (enableRetry) MAX_RETRIES else 1)) {
+                    is BatchSendResult.Success -> {
+                        markBatchAsUploaded(batch)
+                        sent += batch.recordCount
+                        emit(BatchUploadProgress.BatchCompleted(
+                            batchIndex, totalBatches, batch.recordCount, sent, batch.batchId
+                        ))
+                        if (batchDelayMs > 0) delay(batchDelayMs)
+                    }
+                    is BatchSendResult.Failure -> {
+                        emit(BatchUploadProgress.BatchFailed(
+                            batchIndex, totalBatches, result.message, batch.batchId, false
+                        ))
+                        // Failed rows stay unmarked. Continuing would fetch this page forever.
+                        if (stopOnError || sent == 0) {
+                            emit(BatchUploadProgress.Stopped(sent, batch.recordCount, result.message))
+                        } else {
+                            emit(BatchUploadProgress.PartialSuccess(sent, totalRecords, 1, batch.recordCount))
+                        }
+                        return@flow
+                    }
+                }
+            }
+            emit(BatchUploadProgress.Completed(sent, batchIndex))
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            emit(BatchUploadProgress.Error("Ошибка отправки: ${error.message}"))
+        } finally {
+            syncMutex.unlock()
+        }
+    }
+
+    private suspend fun loadNextBatch(limit: Int): MetricBatch? {
+        fun batch(request: UploadRequest, count: Int): MetricBatch {
+            var candidate = MetricBatch(request, count, stableBatchId(request))
+            var maxRecords = count
+            while (serializedSize(candidate.request) > MAX_BATCH_SIZE_BYTES && maxRecords > 1) {
+                maxRecords = (maxRecords / 2).coerceAtLeast(1)
+                candidate = splitIntoBatches(request, maxRecords, Int.MAX_VALUE).first()
+                candidate = candidate.copy(batchId = stableBatchId(candidate.request))
+            }
+            return candidate
+        }
+
+        metricsDao.getUnmarkedNFBMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(nfbMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedPhysiologicalMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(physiologicalMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEEGRAWMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(EEGRawMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEEGPROCEEDMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(EEGProceedMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEEGArtifactsMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(EEGArtifactsMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedMEMSMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(memsMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedProductivityMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(productivityMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEmotionalMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(emotionalMetrics = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedCardioMetricsBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(cardioMetrics = it.map { row -> row.toServerDto() }), it.size) }
+
+        metricsDao.getUnmarkedNFBMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(nfbMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedPhysiologicalMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(physiologicalMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEEGRAWMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(EEGRawMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEEGPROCEEDMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(EEGProceedMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEEGArtifactsMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(EEGArtifactsMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedMEMSMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(memsMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedProductivityMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(productivityMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedEmotionalMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(emotionalMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedCardioMetricsBatchCompressed(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(cardioMetricsCompressed = it.map { row -> row.toServerDto() }), it.size) }
+
+        metricsDao.getUnmarkedPhysiologicalBaselineBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(physiologicalBaseline = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedProductivityBaselineBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(productivityBaseline = it.map { row -> row.toServerDto() }), it.size) }
+        metricsDao.getUnmarkedProductivityIndexesBatch(limit).takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(productivityIndex = it.map { row -> row.toServerDto() }), it.size) }
+        sessionDao.getUnmarkedSessionResultBatch(limit)
+            .takeIf { it.isNotEmpty() }
+            ?.let { return batch(UploadRequest(sessionResult = it.map { row -> row.toServerDto() }), it.size) }
+
+        return null
+    }
+
+    private suspend fun getUnsyncedRecordCounts(): List<Int> = listOf(
+        metricsDao.getUnmarkedNFBMetricsCount(),
+        metricsDao.getUnmarkedPhysiologicalMetricsCount(),
+        metricsDao.getUnmarkedEEGRAWMetricsCount(),
+        metricsDao.getUnmarkedEEGPROCEEDMetricsCount(),
+        metricsDao.getUnmarkedEEGArtifactMetricsCount(),
+        metricsDao.getUnmarkedMEMSMetricsCount(),
+        metricsDao.getUnmarkedProductivityMetricsCount(),
+        metricsDao.getUnmarkedEmotionalMetricsCount(),
+        metricsDao.getUnmarkedCardioMetricsCount(),
+        metricsDao.getUnmarkedNFBMetricsCountCompressed(),
+        metricsDao.getUnmarkedPhysiologicalMetricsCountCompressed(),
+        metricsDao.getUnmarkedEEGRAWMetricsCountCompressed(),
+        metricsDao.getUnmarkedEEGPROCEEDMetricsCountCompressed(),
+        metricsDao.getUnmarkedEEGArtifactMetricsCountCompressed(),
+        metricsDao.getUnmarkedMEMSMetricsCountCompressed(),
+        metricsDao.getUnmarkedProductivityMetricsCountCompressed(),
+        metricsDao.getUnmarkedEmotionalMetricsCountCompressed(),
+        metricsDao.getUnmarkedCardioMetricsCountCompressed(),
+        metricsDao.getUnmarkedPhysiologicalBaselineCount(),
+        metricsDao.getUnmarkedProductivityBaselineCount(),
+        metricsDao.getUnmarkedProductivityIndexesCount(),
+        sessionDao.getUnmarkedSessionResultCount()
+    )
+
+    private fun serializedSize(request: UploadRequest): Int =
+        gson.toJson(request).toByteArray(Charsets.UTF_8).size
+
+    private fun stableBatchId(request: UploadRequest): String =
+        UUID.nameUUIDFromBytes(request.toString().toByteArray(Charsets.UTF_8)).toString()
+
+    private fun cleanupLegacyFailedRequests() {
+        val directory = File(context.filesDir, "failed_requests")
+        val files = directory.listFiles()?.sortedByDescending { it.lastModified() }.orEmpty()
+        val cutoff = System.currentTimeMillis() - FAILED_REQUEST_RETENTION_MS
+        files.forEachIndexed { index, file ->
+            if (index >= MAX_FAILED_REQUEST_FILES || file.lastModified() < cutoff) {
+                if (!file.delete()) Log.w(TAG, "Could not delete legacy failed request: ${file.name}")
+            }
+        }
+        if (directory.exists() && directory.listFiles().isNullOrEmpty()) directory.delete()
+    }
+
+    private suspend fun loadExportPage(type: Int, limit: Int, offset: Int): UploadRequest? = when (type) {
+        0 -> metricsDao.getUnmarkedNFBMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(nfbMetrics = it.map { row -> row.toServerDto() }) }
+        1 -> metricsDao.getUnmarkedPhysiologicalMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(physiologicalMetrics = it.map { row -> row.toServerDto() }) }
+        2 -> metricsDao.getUnmarkedEEGRAWMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(EEGRawMetrics = it.map { row -> row.toServerDto() }) }
+        3 -> metricsDao.getUnmarkedEEGPROCEEDMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(EEGProceedMetrics = it.map { row -> row.toServerDto() }) }
+        4 -> metricsDao.getUnmarkedEEGArtifactsMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(EEGArtifactsMetrics = it.map { row -> row.toServerDto() }) }
+        5 -> metricsDao.getUnmarkedMEMSMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(memsMetrics = it.map { row -> row.toServerDto() }) }
+        6 -> metricsDao.getUnmarkedProductivityMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(productivityMetrics = it.map { row -> row.toServerDto() }) }
+        7 -> metricsDao.getUnmarkedEmotionalMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(emotionalMetrics = it.map { row -> row.toServerDto() }) }
+        8 -> metricsDao.getUnmarkedCardioMetricsPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(cardioMetrics = it.map { row -> row.toServerDto() }) }
+        9 -> metricsDao.getUnmarkedNFBMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(nfbMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        10 -> metricsDao.getUnmarkedPhysiologicalMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(physiologicalMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        11 -> metricsDao.getUnmarkedEEGRAWMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(EEGRawMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        12 -> metricsDao.getUnmarkedEEGPROCEEDMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(EEGProceedMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        13 -> metricsDao.getUnmarkedEEGArtifactsMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(EEGArtifactsMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        14 -> metricsDao.getUnmarkedMEMSMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(memsMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        15 -> metricsDao.getUnmarkedProductivityMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(productivityMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        16 -> metricsDao.getUnmarkedEmotionalMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(emotionalMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        17 -> metricsDao.getUnmarkedCardioMetricsCompressedPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(cardioMetricsCompressed = it.map { row -> row.toServerDto() }) }
+        18 -> metricsDao.getUnmarkedPhysiologicalBaselinePage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(physiologicalBaseline = it.map { row -> row.toServerDto() }) }
+        19 -> metricsDao.getUnmarkedProductivityBaselinePage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(productivityBaseline = it.map { row -> row.toServerDto() }) }
+        20 -> metricsDao.getUnmarkedProductivityIndexesPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(productivityIndex = it.map { row -> row.toServerDto() }) }
+        21 -> sessionDao.getUnmarkedSessionResultPage(limit, offset).takeIf { it.isNotEmpty() }?.let { UploadRequest(sessionResult = it.map { row -> row.toServerDto() }) }
+        else -> null
+    }
+
+    /** Writes bounded pages directly to disk instead of materializing the database in memory. */
+    @Suppress("UNUSED_PARAMETER")
+    suspend fun saveToJsonFile(saveAsBatches: Boolean = false): FileSaveResult {
+        return try {
+            val counts = getUnsyncedRecordCounts()
+            val total = counts.sum()
+            if (total == 0) return FileSaveResult.NoData
+            val exportDir = File(context.filesDir, "metrics_exports").apply { mkdirs() }
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val batchDir = File(exportDir, "batch_export_$timestamp").apply { mkdirs() }
+            var fileIndex = 0
+
+            for (type in counts.indices) {
+                var offset = 0
+                while (true) {
+                    val page = loadExportPage(type, DEFAULT_BATCH_SIZE, offset) ?: break
+                    fileIndex++
+                    FileWriter(File(batchDir, "batch_${fileIndex}.json")).use { writer ->
+                        gson.toJson(page, writer)
+                    }
+                    offset += page.totalRecordCount()
+                }
+            }
+
+            FileSaveResult.Success(
+                filePath = batchDir.absolutePath,
+                fileName = batchDir.name,
+                recordsCount = total
+            )
+        } catch (error: Exception) {
+            FileSaveResult.Error("Ошибка сохранения файла: ${error.message}")
+        }
+    }
 
     // ==================== НОВАЯ РЕАЛИЗАЦИЯ С ПАКЕТНОЙ ОТПРАВКОЙ ====================
 
@@ -67,7 +302,7 @@ class MetricsUploadRepository @Inject constructor(
      * @param stopOnError Останавливать отправку при ошибке или продолжать
      * @param batchDelayMs Задержка между пакетами в миллисекундах
      */
-    suspend fun uploadInBatches(
+    private suspend fun uploadInBatchesLegacy(
         batchSize: Int = DEFAULT_BATCH_SIZE,
         enableRetry: Boolean = true,
         stopOnError: Boolean = true,
@@ -201,17 +436,25 @@ class MetricsUploadRepository @Inject constructor(
     ): BatchSendResult {
         var lastException: Exception? = null
 
+        if (serializedSize(batch.request) > MAX_BATCH_SIZE_BYTES) {
+            return BatchSendResult.Failure(
+                batch.batchId,
+                "Одна запись превышает лимит HTTP-пакета ${MAX_BATCH_SIZE_BYTES} байт"
+            )
+        }
+
         for (attempt in 1..maxRetries) {
             try {
                 // ЛОГИРУЕМ РАЗМЕР ПАКЕТА
-                val jsonString = gson.toJson(batch.request)
                 Log.d(TAG, "=== BATCH ${batch.batchId} ===")
-                Log.d(TAG, "JSON size: ${jsonString.length} bytes")
                 Log.d(TAG, "Records: ${batch.recordCount}")
 
-                val response = apiService.uploadMetrics(batch.request)
+                val response = apiService.uploadMetrics(batch.batchId, batch.request)
 
-                if (response.isSuccessful && response.body()?.result == true) {
+                val responseBody = response.body()
+                val acceptedAll = responseBody?.acceptedCount == null ||
+                        responseBody.acceptedCount == batch.recordCount
+                if (response.isSuccessful && responseBody?.result == true && acceptedAll) {
                     Log.i(TAG, "Batch ${batch.batchId} sent successfully")
                     return BatchSendResult.Success(batch.batchId)
                 } else {
@@ -219,15 +462,14 @@ class MetricsUploadRepository @Inject constructor(
                     Log.w(TAG, "Batch ${batch.batchId} FAILED with ${response.code()}")
                     Log.w(TAG, "Error response: $errorBody")
 
-                    // СОХРАНЯЕМ ПРОБЛЕМНЫЙ JSON В ФАЙЛ
-                    saveFailedJson(batch.request, batch.batchId, response.code(), errorBody)
-
                     // АНАЛИЗИРУЕМ СОДЕРЖИМОЕ ПАКЕТА
                     analyzeBatchContent(batch.request)
 
                     val errorMessage = when {
-                        response.isSuccessful -> "Сервер вернул result=false. Сохранён в failed_requests/"
-                        response.code() == 400 -> "Некорректный запрос. Сохранён в failed_requests/"
+                        response.isSuccessful && responseBody?.result == true ->
+                            "Сервер подтвердил ${responseBody.acceptedCount} из ${batch.recordCount} записей"
+                        response.isSuccessful -> "Сервер вернул result=false"
+                        response.code() == 400 -> "Некорректный запрос"
                         else -> "HTTP ${response.code()}: ${response.message()}"
                     }
 
@@ -741,7 +983,7 @@ class MetricsUploadRepository @Inject constructor(
     /**
      * Сохранить данные в JSON файл (для отладки) - обновленная версия с поддержкой пакетов
      */
-    suspend fun saveToJsonFile(saveAsBatches: Boolean = false): FileSaveResult {
+    private suspend fun saveToJsonFileLegacy(saveAsBatches: Boolean = false): FileSaveResult {
         return try {
             val preparationResult = prepareDataForUpload()
 
@@ -1050,6 +1292,17 @@ fun UploadRequest.hasData(): Boolean {
             (productivityIndex?.isNotEmpty() == true) ||
             (sessionResult?.isNotEmpty() == true)
 }
+
+fun UploadRequest.totalRecordCount(): Int = listOf(
+    nfbMetrics, physiologicalMetrics, EEGRawMetrics, EEGProceedMetrics,
+    EEGArtifactsMetrics, memsMetrics, productivityMetrics, emotionalMetrics,
+    cardioMetrics, nfbMetricsCompressed, physiologicalMetricsCompressed,
+    EEGRawMetricsCompressed, EEGProceedMetricsCompressed,
+    EEGArtifactsMetricsCompressed, memsMetricsCompressed,
+    productivityMetricsCompressed, emotionalMetricsCompressed,
+    cardioMetricsCompressed, physiologicalBaseline, productivityBaseline,
+    productivityIndex, sessionResult
+).sumOf { it?.size ?: 0 }
 
 // ==================== СУЩЕСТВУЮЩИЕ КЛАССЫ (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ) ====================
 

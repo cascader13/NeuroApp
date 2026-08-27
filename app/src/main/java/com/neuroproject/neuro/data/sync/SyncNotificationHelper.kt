@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.work.ForegroundInfo
 import androidx.core.content.ContextCompat
 import com.neuroproject.neuro.R
 import com.neuroproject.neuro.data.BatchUploadProgress
@@ -40,6 +41,20 @@ class SyncNotificationHelper @Inject constructor(
 
     init {
         createNotificationChannel()
+    }
+
+    fun createForegroundInfo(sent: Int = 0, total: Int = 0): ForegroundInfo {
+        val progress = if (total > 0) sent.coerceAtMost(total) else 0
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Синхронизация данных")
+            .setContentText(if (total > 0) "Отправлено $sent из $total записей" else "Подготовка данных...")
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setProgress(total.coerceAtLeast(0), progress, total <= 0)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        return ForegroundInfo(NOTIFICATION_ID_FOREGROUND, notification)
     }
 
     /** Создать канал уведомлений для синхронизации */
@@ -195,5 +210,6 @@ class SyncNotificationHelper @Inject constructor(
         private const val NOTIFICATION_ID_NO_DATA = 1003
         private const val NOTIFICATION_ID_ERROR = 1004
         private const val NOTIFICATION_ID_STOPPED = 1005
+        private const val NOTIFICATION_ID_FOREGROUND = 1000
     }
 }

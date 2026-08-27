@@ -1,0 +1,2641 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 5,
+    "identityHash": "e41f4f6080c7b1e3d0e2526e85a17479",
+    "entities": [
+      {
+        "tableName": "nfb_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `alpha` REAL NOT NULL, `beta` REAL NOT NULL, `theta` REAL NOT NULL, `delta` REAL NOT NULL, `smr` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alpha",
+            "columnName": "alpha",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "beta",
+            "columnName": "beta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "theta",
+            "columnName": "theta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "delta",
+            "columnName": "delta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "smr",
+            "columnName": "smr",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_nfb_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nfb_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_nfb_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nfb_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "nfb_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `alpha` REAL NOT NULL, `beta` REAL NOT NULL, `theta` REAL NOT NULL, `delta` REAL NOT NULL, `smr` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alpha",
+            "columnName": "alpha",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "beta",
+            "columnName": "beta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "theta",
+            "columnName": "theta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "delta",
+            "columnName": "delta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "smr",
+            "columnName": "smr",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_nfb_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nfb_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_nfb_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nfb_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "physiological_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `relax` REAL NOT NULL, `fatigue` REAL NOT NULL, `none` REAL NOT NULL, `concentration` REAL NOT NULL, `involvement` REAL NOT NULL, `stress` REAL NOT NULL, `nfbArtifacts` INTEGER NOT NULL, `cardioArtifacts` INTEGER NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relax",
+            "columnName": "relax",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigue",
+            "columnName": "fatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "none",
+            "columnName": "none",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentration",
+            "columnName": "concentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "involvement",
+            "columnName": "involvement",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stress",
+            "columnName": "stress",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nfbArtifacts",
+            "columnName": "nfbArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardioArtifacts",
+            "columnName": "cardioArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_physiological_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_physiological_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_physiological_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_physiological_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "physiological_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `relax` REAL NOT NULL, `fatigue` REAL NOT NULL, `none` REAL NOT NULL, `concentration` REAL NOT NULL, `involvement` REAL NOT NULL, `stress` REAL NOT NULL, `nfbArtifacts` INTEGER NOT NULL, `cardioArtifacts` INTEGER NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relax",
+            "columnName": "relax",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigue",
+            "columnName": "fatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "none",
+            "columnName": "none",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentration",
+            "columnName": "concentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "involvement",
+            "columnName": "involvement",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stress",
+            "columnName": "stress",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nfbArtifacts",
+            "columnName": "nfbArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardioArtifacts",
+            "columnName": "cardioArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_physiological_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_physiological_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_physiological_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_physiological_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "physiological_baselines",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `alpha` REAL NOT NULL, `beta` REAL NOT NULL, `alphaGravity` REAL NOT NULL, `betaGravity` REAL NOT NULL, `concentration` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alpha",
+            "columnName": "alpha",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "beta",
+            "columnName": "beta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alphaGravity",
+            "columnName": "alphaGravity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "betaGravity",
+            "columnName": "betaGravity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentration",
+            "columnName": "concentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_physiological_baselines_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_physiological_baselines_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_physiological_baselines_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_physiological_baselines_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "mems_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `accelerometerX` REAL NOT NULL, `accelerometerY` REAL NOT NULL, `accelerometerZ` REAL NOT NULL, `gyroscopeX` REAL NOT NULL, `gyroscopeY` REAL NOT NULL, `gyroscopeZ` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerX",
+            "columnName": "accelerometerX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerY",
+            "columnName": "accelerometerY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerZ",
+            "columnName": "accelerometerZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeX",
+            "columnName": "gyroscopeX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeY",
+            "columnName": "gyroscopeY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeZ",
+            "columnName": "gyroscopeZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_mems_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mems_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_mems_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mems_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "mems_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `accelerometerX` REAL NOT NULL, `accelerometerY` REAL NOT NULL, `accelerometerZ` REAL NOT NULL, `gyroscopeX` REAL NOT NULL, `gyroscopeY` REAL NOT NULL, `gyroscopeZ` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerX",
+            "columnName": "accelerometerX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerY",
+            "columnName": "accelerometerY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerZ",
+            "columnName": "accelerometerZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeX",
+            "columnName": "gyroscopeX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeY",
+            "columnName": "gyroscopeY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeZ",
+            "columnName": "gyroscopeZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_mems_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mems_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_mems_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mems_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "productivity_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `gravity` REAL NOT NULL, `productivity` REAL NOT NULL, `fatigue` REAL NOT NULL, `reverseFatigue` REAL NOT NULL, `relaxation` REAL NOT NULL, `concentration` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gravity",
+            "columnName": "gravity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productivity",
+            "columnName": "productivity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigue",
+            "columnName": "fatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reverseFatigue",
+            "columnName": "reverseFatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxation",
+            "columnName": "relaxation",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentration",
+            "columnName": "concentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_productivity_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_productivity_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "productivity_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `gravity` REAL NOT NULL, `productivity` REAL NOT NULL, `fatigue` REAL NOT NULL, `reverseFatigue` REAL NOT NULL, `relaxation` REAL NOT NULL, `concentration` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gravity",
+            "columnName": "gravity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productivity",
+            "columnName": "productivity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigue",
+            "columnName": "fatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reverseFatigue",
+            "columnName": "reverseFatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxation",
+            "columnName": "relaxation",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentration",
+            "columnName": "concentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_productivity_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_productivity_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "productivity_indexes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `relaxation` TEXT NOT NULL, `stress` TEXT NOT NULL, `gravityBaseline` REAL NOT NULL, `productivityBaseline` REAL NOT NULL, `fatigueBaseline` REAL NOT NULL, `reverseFatigueBaseline` REAL NOT NULL, `relaxationBaseline` REAL NOT NULL, `concentrationBaseline` REAL NOT NULL, `hasArtifacts` INTEGER NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxation",
+            "columnName": "relaxation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stress",
+            "columnName": "stress",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gravityBaseline",
+            "columnName": "gravityBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productivityBaseline",
+            "columnName": "productivityBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigueBaseline",
+            "columnName": "fatigueBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reverseFatigueBaseline",
+            "columnName": "reverseFatigueBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxationBaseline",
+            "columnName": "relaxationBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentrationBaseline",
+            "columnName": "concentrationBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasArtifacts",
+            "columnName": "hasArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_productivity_indexes_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_indexes_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_productivity_indexes_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_indexes_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "productivity_baselines",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `gravity` REAL NOT NULL, `productivity` REAL NOT NULL, `fatigue` REAL NOT NULL, `reverseFatigue` REAL NOT NULL, `relaxation` REAL NOT NULL, `concentration` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gravity",
+            "columnName": "gravity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productivity",
+            "columnName": "productivity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigue",
+            "columnName": "fatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reverseFatigue",
+            "columnName": "reverseFatigue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxation",
+            "columnName": "relaxation",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concentration",
+            "columnName": "concentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_productivity_baselines_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_baselines_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_productivity_baselines_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productivity_baselines_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "emotional_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `attention` REAL NOT NULL, `relaxation` REAL NOT NULL, `cognitiveLoad` REAL NOT NULL, `cognitiveControl` REAL NOT NULL, `selfControl` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attention",
+            "columnName": "attention",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxation",
+            "columnName": "relaxation",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cognitiveLoad",
+            "columnName": "cognitiveLoad",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cognitiveControl",
+            "columnName": "cognitiveControl",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "selfControl",
+            "columnName": "selfControl",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_emotional_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_emotional_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_emotional_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_emotional_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "emotional_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `attention` REAL NOT NULL, `relaxation` REAL NOT NULL, `cognitiveLoad` REAL NOT NULL, `cognitiveControl` REAL NOT NULL, `selfControl` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attention",
+            "columnName": "attention",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxation",
+            "columnName": "relaxation",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cognitiveLoad",
+            "columnName": "cognitiveLoad",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cognitiveControl",
+            "columnName": "cognitiveControl",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "selfControl",
+            "columnName": "selfControl",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_emotional_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_emotional_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_emotional_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_emotional_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "EEG_Raw_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `channel1` REAL NOT NULL, `channel2` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel1",
+            "columnName": "channel1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel2",
+            "columnName": "channel2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EEG_Raw_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Raw_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_EEG_Raw_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Raw_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "EEG_Raw_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `channel1` REAL NOT NULL, `channel2` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel1",
+            "columnName": "channel1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel2",
+            "columnName": "channel2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EEG_Raw_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Raw_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_EEG_Raw_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Raw_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "EEG_Proceed_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `channel1` REAL NOT NULL, `channel2` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel1",
+            "columnName": "channel1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel2",
+            "columnName": "channel2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EEG_Proceed_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Proceed_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_EEG_Proceed_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Proceed_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "EEG_Proceed_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `channel1` REAL NOT NULL, `channel2` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel1",
+            "columnName": "channel1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel2",
+            "columnName": "channel2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EEG_Proceed_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Proceed_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_EEG_Proceed_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Proceed_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "EEG_Artifacts_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `artifactsChannel1` INTEGER NOT NULL, `artifactsChannel2` INTEGER NOT NULL, `qualityChannel1` REAL NOT NULL, `qualityChannel2` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artifactsChannel1",
+            "columnName": "artifactsChannel1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artifactsChannel2",
+            "columnName": "artifactsChannel2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityChannel1",
+            "columnName": "qualityChannel1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityChannel2",
+            "columnName": "qualityChannel2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EEG_Artifacts_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Artifacts_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_EEG_Artifacts_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Artifacts_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "EEG_Artifacts_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `artifactsChannel1` INTEGER NOT NULL, `artifactsChannel2` INTEGER NOT NULL, `qualityChannel1` REAL NOT NULL, `qualityChannel2` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artifactsChannel1",
+            "columnName": "artifactsChannel1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artifactsChannel2",
+            "columnName": "artifactsChannel2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityChannel1",
+            "columnName": "qualityChannel1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityChannel2",
+            "columnName": "qualityChannel2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EEG_Artifacts_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Artifacts_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_EEG_Artifacts_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EEG_Artifacts_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "cardio_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `heartRate` REAL NOT NULL, `hasArtifacts` INTEGER NOT NULL, `kaplanIndex` REAL NOT NULL, `metricsAvailable` INTEGER NOT NULL, `motionArtifacts` INTEGER NOT NULL, `skinContact` INTEGER NOT NULL, `stressIndex` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heartRate",
+            "columnName": "heartRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasArtifacts",
+            "columnName": "hasArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kaplanIndex",
+            "columnName": "kaplanIndex",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metricsAvailable",
+            "columnName": "metricsAvailable",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motionArtifacts",
+            "columnName": "motionArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skinContact",
+            "columnName": "skinContact",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressIndex",
+            "columnName": "stressIndex",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cardio_metrics_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cardio_metrics_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_cardio_metrics_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cardio_metrics_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "cardio_metrics_compressed",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `id` TEXT NOT NULL, `expedition_id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `heartRate` REAL NOT NULL, `hasArtifacts` INTEGER NOT NULL, `kaplanIndex` REAL NOT NULL, `metricsAvailable` INTEGER NOT NULL, `motionArtifacts` INTEGER NOT NULL, `skinContact` INTEGER NOT NULL, `stressIndex` REAL NOT NULL, `isMarked` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heartRate",
+            "columnName": "heartRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasArtifacts",
+            "columnName": "hasArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kaplanIndex",
+            "columnName": "kaplanIndex",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metricsAvailable",
+            "columnName": "metricsAvailable",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motionArtifacts",
+            "columnName": "motionArtifacts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skinContact",
+            "columnName": "skinContact",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressIndex",
+            "columnName": "stressIndex",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cardio_metrics_compressed_sessionId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "sessionId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cardio_metrics_compressed_sessionId_timestamp` ON `${TABLE_NAME}` (`sessionId`, `timestamp`)"
+          },
+          {
+            "name": "index_cardio_metrics_compressed_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cardio_metrics_compressed_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "subjective_questions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `text` TEXT NOT NULL, `blockType` TEXT NOT NULL, `displayOrder` INTEGER NOT NULL, `isReversed` INTEGER NOT NULL, `minValue` INTEGER NOT NULL, `maxValue` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockType",
+            "columnName": "blockType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayOrder",
+            "columnName": "displayOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isReversed",
+            "columnName": "isReversed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minValue",
+            "columnName": "minValue",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxValue",
+            "columnName": "maxValue",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "Calibration_History",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_id` TEXT, `individualFrequency` REAL NOT NULL, `individualPeakFrequency` REAL NOT NULL, `individualPeakFrequencyPower` REAL NOT NULL, `individualPeakFrequencySuppression` REAL NOT NULL, `individualBandwidth` REAL NOT NULL, `individualNormalizedPower` REAL NOT NULL, `lowerFrequency` REAL NOT NULL, `upperFrequency` REAL NOT NULL, `productivityGravity` REAL, `productivityProductivity` REAL, `productivityFatigue` REAL, `productivityReverseFatigue` REAL, `productivityRelaxation` REAL, `productivityConcentration` REAL, `physiologicalAlpha` REAL, `physiologicalBeta` REAL, `physiologicalAlphaGravity` REAL, `physiologicalBetaGravity` REAL, `physiologicalConcentration` REAL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "user_id",
+            "columnName": "user_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "individualFrequency",
+            "columnName": "individualFrequency",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "individualPeakFrequency",
+            "columnName": "individualPeakFrequency",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "individualPeakFrequencyPower",
+            "columnName": "individualPeakFrequencyPower",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "individualPeakFrequencySuppression",
+            "columnName": "individualPeakFrequencySuppression",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "individualBandwidth",
+            "columnName": "individualBandwidth",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "individualNormalizedPower",
+            "columnName": "individualNormalizedPower",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lowerFrequency",
+            "columnName": "lowerFrequency",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "upperFrequency",
+            "columnName": "upperFrequency",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productivityGravity",
+            "columnName": "productivityGravity",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "productivityProductivity",
+            "columnName": "productivityProductivity",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "productivityFatigue",
+            "columnName": "productivityFatigue",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "productivityReverseFatigue",
+            "columnName": "productivityReverseFatigue",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "productivityRelaxation",
+            "columnName": "productivityRelaxation",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "productivityConcentration",
+            "columnName": "productivityConcentration",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "physiologicalAlpha",
+            "columnName": "physiologicalAlpha",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "physiologicalBeta",
+            "columnName": "physiologicalBeta",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "physiologicalAlphaGravity",
+            "columnName": "physiologicalAlphaGravity",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "physiologicalBetaGravity",
+            "columnName": "physiologicalBetaGravity",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "physiologicalConcentration",
+            "columnName": "physiologicalConcentration",
+            "affinity": "REAL",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_Calibration_History_user_id",
+            "unique": false,
+            "columnNames": [
+              "user_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_Calibration_History_user_id` ON `${TABLE_NAME}` (`user_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "subjective_answers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `questionId` INTEGER NOT NULL, `value` INTEGER NOT NULL, FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`sessionId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "questionId",
+            "columnName": "questionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_subjective_answers_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subjective_answers_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sessionId"
+            ],
+            "referencedColumns": [
+              "sessionId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sessionId` INTEGER NOT NULL, `id` TEXT, `expedition_id` TEXT, `objectiveCognitive` INTEGER, `objectivePsychological` INTEGER, `objectivePhysiological` INTEGER, `subjectiveCognitive` INTEGER, `subjectivePsychological` INTEGER, `subjectivePhysiological` INTEGER, `totalIndex` INTEGER, `averageObjective` INTEGER, `averageSubjective` INTEGER, `totalCognitive` INTEGER, `totalPhysiological` INTEGER, `totalPsychological` INTEGER, `durationMinutes` INTEGER, `endTime` INTEGER, `sessionCategory` TEXT, `comment` TEXT, `passingPrematurely` INTEGER NOT NULL, `objectiveFatigue` TEXT, `objectiveStress` TEXT, `isMarked` INTEGER NOT NULL, PRIMARY KEY(`sessionId`))",
+        "fields": [
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "expedition_id",
+            "columnName": "expedition_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "objectiveCognitive",
+            "columnName": "objectiveCognitive",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "objectivePsychological",
+            "columnName": "objectivePsychological",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "objectivePhysiological",
+            "columnName": "objectivePhysiological",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "subjectiveCognitive",
+            "columnName": "subjectiveCognitive",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "subjectivePsychological",
+            "columnName": "subjectivePsychological",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "subjectivePhysiological",
+            "columnName": "subjectivePhysiological",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalIndex",
+            "columnName": "totalIndex",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "averageObjective",
+            "columnName": "averageObjective",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "averageSubjective",
+            "columnName": "averageSubjective",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalCognitive",
+            "columnName": "totalCognitive",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalPhysiological",
+            "columnName": "totalPhysiological",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalPsychological",
+            "columnName": "totalPsychological",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "endTime",
+            "columnName": "endTime",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "sessionCategory",
+            "columnName": "sessionCategory",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "comment",
+            "columnName": "comment",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "passingPrematurely",
+            "columnName": "passingPrematurely",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "objectiveFatigue",
+            "columnName": "objectiveFatigue",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "objectiveStress",
+            "columnName": "objectiveStress",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isMarked",
+            "columnName": "isMarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sessionId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sessions_id",
+            "unique": false,
+            "columnNames": [
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sessions_id` ON `${TABLE_NAME}` (`id`)"
+          },
+          {
+            "name": "index_sessions_expedition_id",
+            "unique": false,
+            "columnNames": [
+              "expedition_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sessions_expedition_id` ON `${TABLE_NAME}` (`expedition_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "fatigue_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `minuteIndex` INTEGER NOT NULL, `cognitiveResult` REAL NOT NULL, `physiologicalResult` REAL NOT NULL, `psychologicalResult` REAL NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minuteIndex",
+            "columnName": "minuteIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cognitiveResult",
+            "columnName": "cognitiveResult",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "physiologicalResult",
+            "columnName": "physiologicalResult",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "psychologicalResult",
+            "columnName": "psychologicalResult",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_fatigue_results_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fatigue_results_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e41f4f6080c7b1e3d0e2526e85a17479')"
+    ]
+  }
+}

@@ -50,7 +50,7 @@ class MetricsSyncScheduler @Inject constructor(
      */
     fun enqueueManualBackgroundSync(
         batchSize: Int = DEFAULT_BATCH_SIZE,
-        replaceExisting: Boolean = true
+        replaceExisting: Boolean = false
     ) {
         val request = OneTimeWorkRequestBuilder<MetricsSyncWorker>()
             .setConstraints(syncConstraints())
@@ -145,6 +145,7 @@ class MetricsSyncScheduler @Inject constructor(
         return Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .setRequiresBatteryNotLow(true)
+            .setRequiresStorageNotLow(true)
             .build()
     }
 
