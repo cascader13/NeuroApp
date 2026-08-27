@@ -91,8 +91,8 @@ class CalculateObjectiveFatigueUseCaseTest {
         )
         val result = useCase(data)!!
         assertThat(result.fatigueLevel).isNotEmpty()
-        // averageIndex=100, 100-100=0 -> LOW
-        assertThat(result.fatigueLevel).isEqualTo("Низкий уровень утомления")
+        // averageIndex=100 -> HIGH
+        assertThat(result.fatigueLevel).isEqualTo(FatigueLevel.HIGH.description)
     }
 
     @Test

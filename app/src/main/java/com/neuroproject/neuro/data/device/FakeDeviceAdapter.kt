@@ -5,7 +5,7 @@ import com.neuroproject.neuro.domain.model.CalibrationSample
 import com.neuroproject.neuro.domain.model.DeviceConnectionState
 import com.neuroproject.neuro.domain.model.DeviceInfo
 import com.neuroproject.neuro.domain.model.ResistanceData
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +23,7 @@ import javax.inject.Inject
  * - Отключение
  * - Все команды устройства (заглушки)
  */
-class FakeDeviceAdapter @Inject constructor() : DeviceGateway {
+class FakeDeviceAdapter @Inject constructor() : CapsuleDeviceGateway {
 
     // Состояния (для эмуляции)
 
@@ -148,7 +148,7 @@ class FakeDeviceAdapter @Inject constructor() : DeviceGateway {
         betaGravity: Float,
         concentration: Float
     ) {
-        TODO("Not yet implemented")
+        println("FakeDeviceAdapter: importPhysiologicalCalibration")
     }
 
     /** Заглушка: импорт калибровки продуктивности */
@@ -160,13 +160,11 @@ class FakeDeviceAdapter @Inject constructor() : DeviceGateway {
         relaxation: Float,
         concentration: Float
     ) {
-        TODO("Not yet implemented")
+        println("FakeDeviceAdapter: importProductivityCalibration")
     }
 
     /** Заглушка: наблюдение за сопротивлением */
-    override fun observeResistance(): Flow<ResistanceData> {
-        TODO("Not yet implemented")
-    }
+    override fun observeResistance(): Flow<ResistanceData> = flow { }
 
     /** Наблюдение за результатом калибровки (пустой поток) */
     override fun observeCalibrationResult(): Flow<CalibrationSample> = flow {
@@ -175,11 +173,11 @@ class FakeDeviceAdapter @Inject constructor() : DeviceGateway {
 
     /** Заглушка: начало проверки сопротивления */
     override fun startResistanceCheck() {
-        TODO("Not yet implemented")
+        println("FakeDeviceAdapter: startResistanceCheck")
     }
 
     /** Заглушка: остановка проверки сопротивления */
     override fun stopResistanceCheck() {
-        TODO("Not yet implemented")
+        println("FakeDeviceAdapter: stopResistanceCheck")
     }
 }

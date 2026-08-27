@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.neuroproject.neuro.presentation.BaseViewModel
 import com.neuroproject.neuro.domain.model.DeviceInfo
 import com.neuroproject.neuro.domain.model.DeviceConnectionState
+import com.neuroproject.neuro.domain.model.DeviceType
+import com.neuroproject.neuro.data.device.SelectedDeviceGateway
 import com.neuroproject.neuro.domain.usecase.device.ConnectDeviceUseCase
 import com.neuroproject.neuro.domain.usecase.device.DisconnectDeviceUseCase
 import com.neuroproject.neuro.domain.usecase.device.InitDeviceUseCase
@@ -27,7 +29,8 @@ data class DeviceSearchScreenState(
     val foundDevices: List<DeviceInfo> = emptyList(),
     val connectionState: DeviceConnectionState = DeviceConnectionState.disconnected,
     val connectingDeviceId: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val selectedDeviceType: DeviceType? = null
 )
 
 /**
@@ -41,17 +44,24 @@ open class DeviceSearchScreenViewModel @Inject constructor(
     private val searchDevicesUseCase: SearchDevicesUseCase,
     private val connectDeviceUseCase: ConnectDeviceUseCase,
     private val disconnectDeviceUseCase: DisconnectDeviceUseCase,
-    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase
+    private val observeConnectionStateUseCase: ObserveConnectionStateUseCase,
+    private val selectedDeviceGateway: SelectedDeviceGateway
 ) : BaseViewModel<DeviceSearchScreenState>() {
 
     private var searchJob: Job? = null
 
     init {
         setupConnectionStateObserver()
-        initializeCapsule()
     }
 
     override fun createInitialState(): DeviceSearchScreenState = DeviceSearchScreenState()
+
+    fun selectDeviceType(type: DeviceType) {
+        stopSearch()
+        selectedDeviceGateway.select(type)
+        setState { copy(selectedDeviceType = type, foundDevices = emptyList(), isSearchTimeout = false) }
+        initializeDevice()
+    }
 
     override fun handleError(error: Throwable) {
         setState {
@@ -91,7 +101,7 @@ open class DeviceSearchScreenViewModel @Inject constructor(
     /**
      * Инициализация устройства
      */
-    private fun initializeCapsule() {
+    private fun initializeDevice() {
         safeLaunch {
             try {
                 initDeviceUseCase()

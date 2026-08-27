@@ -35,7 +35,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
@@ -114,16 +113,6 @@ class SubTestViewModel @Inject constructor(
     private var isTimerRunning = false
     private var isTimerExpired = false
     val timeLeftMillis: StateFlow<Long> = _timeLeftMillis.asStateFlow()
-
-    /*private fun getDefaultSessionCategory(): SessionCategory {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return when (hour) {
-            in 5..11 -> SessionCategory.MORNING
-            in 12..17 -> SessionCategory.DAY
-            in 18..23 -> SessionCategory.EVENING
-            else -> SessionCategory.TECHNICAL
-        }
-    }*/
 
     init {
         loadQuestions()

@@ -2,7 +2,7 @@ package com.neuroproject.neuro.domain.usecase.sensor
 
 import com.google.common.truth.Truth.assertThat
 import com.neuroproject.neuro.domain.model.BatteryData
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -14,7 +14,7 @@ import org.mockito.kotlin.whenever
 class ObserveBatteryUseCaseTest {
 
     private lateinit var useCase: ObserveBatteryUseCase
-    private val deviceGateway: DeviceGateway = mock()
+    private val deviceGateway: CapsuleDeviceGateway = mock()
 
     @Before
     fun setup() {

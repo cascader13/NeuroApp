@@ -1,154 +1,63 @@
 package com.neuroproject.neuro.domain.repository
 
-
-import com.neuroproject.neuro.domain.model.*
+import com.neuroproject.neuro.domain.model.DeviceConnectionState
+import com.neuroproject.neuro.domain.model.DeviceInfo
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Шлюз взаимодействия с нейро-гарнитурой Capsule.
+ * Базовый шлюз взаимодействия с нейро-устройством.
  *
- * Предоставляет единый интерфейс для управления подключением,
- * калибровкой, записью данных и мониторингом состояния устройства.
+ * Содержит только операции, которые должны быть общими
+ * для разных производителей устройств.
  *
- * Реализуется на уровне data-слоя ([CapsuleDeviceAdapter]).
- *
- * Потоки данных (сопротивление, батарея, состояние калибровки)
- * предоставляются через [Flow] и эмитятся в реальном времени.
+ * Vendor-specific возможности должны находиться
+ * в специализированных интерфейсах, например
+ * [CapsuleDeviceGateway].
  */
 interface DeviceGateway {
 
-    /** Инициализирует менеджер устройства. Вызывать один раз при старте приложения. */
+    /**
+     * Инициализирует SDK / менеджер устройства.
+     *
+     * Обычно вызывается один раз перед началом работы.
+     */
     fun init()
 
     /**
      * Запускает поиск доступных устройств.
      *
-     * @return [Flow] со списком найденных [DeviceInfo].
-     * Эмитит обновления при обнаружении новых устройств или потере старых.
+     * @return поток найденных устройств.
      */
     fun searchDevices(): Flow<List<DeviceInfo>>
 
     /**
-     * Устанавливает соединение с устройством по его идентификатору.
+     * Подключается к устройству.
      *
-     * @param deviceId UUID найденного устройства.
-     * @throws Exception при ошибке подключения.
+     * @param deviceId идентификатор устройства,
+     * формат которого определяется конкретным gateway.
      */
     suspend fun connect(deviceId: String)
 
-    /** Разрывает текущее соединение с устройством. */
+    /**
+     * Отключается от текущего устройства.
+     */
     suspend fun disconnect()
 
     /**
-     * Запускает измерение сопротивления электродов.
-     * Результаты доступны через [observeResistance].
-     */
-    suspend fun startResistance()
-
-    /** Останавливает измерение сопротивления. */
-    suspend fun stopResistance()
-
-    /**
-     * Запускает передачу сигнала ЭЭГ и данных сердечного ритма.
-     * Используется при новой калибровке.
-     */
-    suspend fun startSignalAndHR()
-
-    /** Останавливает передачу сигнала ЭЭГ и данных сердечного ритма. */
-    suspend fun stopSignalAndHR()
-
-    /** Запускает сбор данных продуктивности. */
-    suspend fun startProductivity()
-
-    /**
-     * Запускает основную запись сессии (ЭЭГ, физиология, MEMS и т.д.).
-     * Данные поступают через [SensorStreamGateway].
-     */
-    suspend fun startSession()
-
-    /** Останавливает запись сессии. */
-    suspend fun stopSession()
-
-    /**
-     * Импортирует индивидуальную калибровку ЭЭГ в устройство.
-     *
-     * @param data параметры калибровки, полученные из предыдущей сессии.
-     */
-    suspend fun importCalibration(data: CalibrationSample)
-
-    /**
-     * Импортирует калибровку физиологических метрик.
-     *
-     * @param alpha альфа-ритм
-     * @param beta бета-ритм
-     * @param alphaGravity вес альфа-ритма
-     * @param betaGravity вес бета-ритма
-     * @param concentration концентрация
-     */
-    suspend fun importPhysiologicalCalibration(
-        alpha: Float,
-        beta: Float,
-        alphaGravity: Float,
-        betaGravity: Float,
-        concentration: Float
-    )
-
-    /**
-     * Импортирует калибровку метрик продуктивности.
-     *
-     * @param gravity гравитация (вес показателя)
-     * @param productivity продуктивность
-     * @param fatigue усталость
-     * @param reverseFatigue обратная усталость
-     * @param relaxation расслабление
-     * @param concentration концентрация
-     */
-    suspend fun importProductivityCalibration(
-        gravity: Float,
-        productivity: Float,
-        fatigue: Float,
-        reverseFatigue: Float,
-        relaxation: Float,
-        concentration: Float
-    )
-
-    /**
-     * Наблюдает за состоянием подключения к устройству.
-     *
-     * @return [Flow] с текущим [DeviceConnectionState].
+     * Наблюдает за состоянием подключения.
      */
     fun observeConnectionState(): Flow<DeviceConnectionState>
 
     /**
-     * Наблюдает за прогрессом калибровки.
+     * Запускает основную сессию получения данных.
      *
-     * @return [Flow] с текущим [CalibrationStage].
+     * Конкретная реализация определяет,
+     * какие потоки необходимо активировать.
      */
-    fun observeCalibrationState(): Flow<CalibrationStage>
+    suspend fun startSession()
 
     /**
-     * Наблюдает за уровнем заряда батареи.
-     *
-     * @return [Flow] с данными [BatteryData].
+     * Останавливает текущую сессию получения данных.
      */
-    fun observeBatteryCharge(): Flow<BatteryData>
-
-    /**
-     * Наблюдает за сопротивлением электродов.
-     *
-     * @return [Flow] с данными [ResistanceData] (O1, O2, T3, T4).
-     */
-    fun observeResistance(): Flow<ResistanceData>
-
-    /** Наблюдает за результатом калибровки (параметры ЭЭГ). */
-    fun observeCalibrationResult(): Flow<CalibrationSample>
-
-    /** Запускает проверку сопротивления (непрерывный режим). */
-    fun startResistanceCheck()
-
-    /** Останавливает проверку сопротивления. */
-    fun stopResistanceCheck()
-
-    /** Удаляет все ресурсы устройства (настройки, калибровку). */
-    suspend fun removeAll()
+    suspend fun stopSession()
 }
