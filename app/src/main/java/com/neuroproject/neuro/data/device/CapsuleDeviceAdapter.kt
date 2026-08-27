@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.neuroproject.neuro.domain.model.*
 import com.neuroproject.neuro.domain.repository.AuthRepository
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import com.neuroproject.neuro.domain.repository.DeviceGateway
 import com.neuroproject.neuro.services.CapsuleDeviceManager
 import com.neuroproject.neuro.jni.JniCallbackHandler
@@ -48,7 +49,7 @@ class CapsuleDeviceAdapter @Inject constructor(
     private val capsuleManager: CapsuleDeviceManager,
     private val sensorAdapter: CapsuleSensorStreamAdapter,
     private val authRepository: AuthRepository
-) : DeviceGateway {
+) : CapsuleDeviceGateway {
 
     // Состояния
 

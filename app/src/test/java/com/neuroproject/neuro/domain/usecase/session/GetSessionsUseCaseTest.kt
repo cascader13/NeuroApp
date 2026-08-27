@@ -49,7 +49,7 @@ class GetSessionsUseCaseTest {
                 expeditionId = "exp_001",
                 startTime = 1_728_000_000L,
                 durationMinutes = 15,
-                category = SessionCategory.MORNING,
+                category = SessionCategory.H6_9,
                 comment = "Хорошая сессия",
                 passedPrematurely = false
             ),
@@ -59,7 +59,7 @@ class GetSessionsUseCaseTest {
                 expeditionId = "exp_001",
                 startTime = 1_728_001_200L,
                 durationMinutes = 10,
-                category = SessionCategory.DAY
+                category = SessionCategory.H12_15
             )
         )
 

@@ -1,7 +1,7 @@
 package com.neuroproject.neuro.domain.usecase.calibration
 
 import com.neuroproject.neuro.domain.model.CalibrationStage
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -15,7 +15,7 @@ import com.google.common.truth.Truth.assertThat
 class ObserveCalibrationStageUseCaseTest {
 
     private lateinit var useCase: ObserveCalibrationStageUseCase
-    private val deviceGateway: DeviceGateway = mock()
+    private val deviceGateway: CapsuleDeviceGateway = mock()
 
     @Before
     fun setup() {

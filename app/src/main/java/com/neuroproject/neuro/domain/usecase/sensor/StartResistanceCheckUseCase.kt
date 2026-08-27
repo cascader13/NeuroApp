@@ -1,15 +1,16 @@
 package com.neuroproject.neuro.domain.usecase.sensor
 
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import javax.inject.Inject
 
 /**
- * Запускает проверку сопротивления электродов.
+ * Запускает проверку сопротивления электродов Capsule.
  */
 class StartResistanceCheckUseCase @Inject constructor(
-    private val deviceGateway: DeviceGateway
+    private val deviceGateway: CapsuleDeviceGateway
 ) {
-    suspend operator fun invoke() {
+
+    operator fun invoke() {
         deviceGateway.startResistanceCheck()
     }
 }

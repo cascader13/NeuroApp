@@ -4,7 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.neuroproject.neuro.domain.model.CalibrationSample
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.CalibrationRepository
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -16,7 +16,7 @@ import org.mockito.kotlin.whenever
 class ImportCalibrationUseCaseTest {
 
     private lateinit var useCase: ImportCalibrationUseCase
-    private val deviceGateway: DeviceGateway = mock()
+    private val deviceGateway: CapsuleDeviceGateway = mock()
     private val calibrationRepository: CalibrationRepository = mock()
     private val authRepository: AuthRepository = mock()
 

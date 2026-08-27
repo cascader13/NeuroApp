@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neuroproject.neuro.domain.model.DeviceConnectionState
 import com.neuroproject.neuro.domain.model.DeviceInfo
+import com.neuroproject.neuro.domain.model.DeviceType
 import com.neuroproject.neuro.ui.theme.NeuroApplicationTheme
 import com.neuroproject.neuro.ui.theme.ThemeMode
 
@@ -77,7 +78,9 @@ fun DeviceSearchScreen(
         }
     }
 
-    DeviceSearchScreenContent(
+    if (uiState.selectedDeviceType == null) DeviceTypeListScreenContent(
+        onSelect = vm::selectDeviceType
+    ) else DeviceSearchScreenContent(
         uiState = uiState,
         onStartSearch = { vm.startSearch() },
         onRetrySearch = { vm.retrySearch() },
@@ -89,6 +92,28 @@ fun DeviceSearchScreen(
 // ============================================================
 // PURE UI COMPONENT (для превью и переиспользования)
 // ============================================================
+
+@Composable
+fun DeviceTypeListScreenContent(
+    onSelect: (DeviceType) -> Unit
+){
+    Surface(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Выберите устройство", style = MaterialTheme.typography.headlineLarge)
+            Spacer(Modifier.height(32.dp))
+            DeviceType.entries.forEach { type ->
+                Button(onClick = { onSelect(type) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(type.displayName)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+}
 
 @Composable
 fun DeviceSearchScreenContent(

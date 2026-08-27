@@ -46,7 +46,7 @@ class FinishSessionUseCaseTest {
             expeditionId = "exp_001",
             startTime = 1728000000L,
             durationMinutes = 15,
-            category = SessionCategory.MORNING
+            category = SessionCategory.H6_9
         )
 
         val fatigueSummary = createTestFatigueSummary()

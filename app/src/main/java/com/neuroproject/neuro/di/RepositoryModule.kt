@@ -2,6 +2,8 @@ package com.neuroproject.neuro.di
 
 import com.neuroproject.neuro.data.datasource.LocalAuthDataSource
 import com.neuroproject.neuro.data.device.CapsuleDeviceAdapter
+import com.neuroproject.neuro.data.device.SelectedDeviceGateway
+import com.neuroproject.neuro.data.device.NeuroPlayDeviceGateway
 import com.neuroproject.neuro.data.device.CapsuleSensorStreamAdapter
 import com.neuroproject.neuro.data.local.RoomCalibrationRepository
 import com.neuroproject.neuro.data.local.RoomMetricsRepositoryAdapter
@@ -12,6 +14,7 @@ import com.neuroproject.neuro.data.repository.RoomDatabaseExportRepository
 import com.neuroproject.neuro.data.repository.WorkManagerSyncRepository
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.CalibrationRepository
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import com.neuroproject.neuro.domain.repository.DatabaseExportRepository
 import com.neuroproject.neuro.domain.repository.DeviceGateway
 import com.neuroproject.neuro.domain.repository.MetricsRepository
@@ -34,39 +37,90 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    fun provideSelectedDeviceGateway(
+        neiryGateway: CapsuleDeviceAdapter,
+        neuroPlayGateway: NeuroPlayDeviceGateway
+    ): SelectedDeviceGateway = SelectedDeviceGateway(neiryGateway, neuroPlayGateway)
+
+    @Provides
+    @Singleton
     fun provideAuthRepository(
         localAuthDataSource: LocalAuthDataSource
-    ): AuthRepository = AuthRepositoryImpl(localAuthDataSource)
+    ): AuthRepository =
+        AuthRepositoryImpl(localAuthDataSource)
 
     @Provides
     @Singleton
-    fun provideSessionRepository(repository: RoomSessionRepository): SessionRepository = repository
+    fun provideSessionRepository(
+        repository: RoomSessionRepository
+    ): SessionRepository =
+        repository
 
     @Provides
     @Singleton
-    fun provideSubjectiveTestRepository(repository: RoomSubjectiveTestRepository): SubjectiveTestRepository = repository
+    fun provideSubjectiveTestRepository(
+        repository: RoomSubjectiveTestRepository
+    ): SubjectiveTestRepository =
+        repository
 
     @Provides
     @Singleton
-    fun provideCalibrationRepository(repository: RoomCalibrationRepository): CalibrationRepository = repository
+    fun provideCalibrationRepository(
+        repository: RoomCalibrationRepository
+    ): CalibrationRepository =
+        repository
 
     @Provides
     @Singleton
-    fun provideMetricsRepositoryAdapter(repository: RoomMetricsRepositoryAdapter): MetricsRepository = repository
+    fun provideMetricsRepositoryAdapter(
+        repository: RoomMetricsRepositoryAdapter
+    ): MetricsRepository =
+        repository
+
+    /**
+     * Общий gateway устройства.
+     *
+     * Сейчас его реализацией является CapsuleDeviceAdapter.
+     * Позже здесь может появиться выбор активного устройства.
+     */
+    @Provides
+    @Singleton
+    fun provideDeviceGateway(
+        adapter: SelectedDeviceGateway
+    ): DeviceGateway =
+        adapter
+
+    /**
+     * Capsule-specific gateway.
+     *
+     * Используется только кодом, которому действительно
+     * нужны возможности Capsule.
+     */
+    @Provides
+    @Singleton
+    fun provideCapsuleDeviceGateway(
+        adapter: CapsuleDeviceAdapter
+    ): CapsuleDeviceGateway =
+        adapter
 
     @Provides
     @Singleton
-    fun provideDeviceGateway(adapter: CapsuleDeviceAdapter): DeviceGateway = adapter
+    fun provideSensorStreamGateway(
+        adapter: CapsuleSensorStreamAdapter
+    ): SensorStreamGateway =
+        adapter
 
     @Provides
     @Singleton
-    fun provideSensorStreamGateway(adapter: CapsuleSensorStreamAdapter): SensorStreamGateway = adapter
+    fun provideSyncRepository(
+        repository: WorkManagerSyncRepository
+    ): SyncRepository =
+        repository
 
     @Provides
     @Singleton
-    fun provideSyncRepository(repository: WorkManagerSyncRepository): SyncRepository = repository
-
-    @Provides
-    @Singleton
-    fun provideDatabaseExportRepository(repository: RoomDatabaseExportRepository): DatabaseExportRepository = repository
+    fun provideDatabaseExportRepository(
+        repository: RoomDatabaseExportRepository
+    ): DatabaseExportRepository =
+        repository
 }

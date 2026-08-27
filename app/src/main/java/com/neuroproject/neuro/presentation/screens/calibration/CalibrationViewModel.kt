@@ -9,7 +9,7 @@ import com.neuroproject.neuro.domain.model.CalibrationStage
 import com.neuroproject.neuro.domain.model.DeviceConnectionState
 import com.neuroproject.neuro.domain.repository.AuthRepository
 import com.neuroproject.neuro.domain.repository.CalibrationRepository
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import com.neuroproject.neuro.domain.usecase.calibration.CancelCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.CheckPreviousCalibrationUseCase
 import com.neuroproject.neuro.domain.usecase.calibration.ImportCalibrationUseCase
@@ -47,7 +47,7 @@ class CalibrationViewModel @Inject constructor(
     private val observeResistanceUseCase: ObserveResistanceUseCase,
     private val startResistanceCheckUseCase: StartResistanceCheckUseCase,
     private val stopResistanceCheckUseCase: StopResistanceCheckUseCase,
-    private val deviceGateway: DeviceGateway,
+    private val capsuleDeviceGateway: CapsuleDeviceGateway,
     private val calibrationRepository: CalibrationRepository,
     private val authRepository: AuthRepository,
     private val observeConnectionStateUseCase: ObserveConnectionStateUseCase
@@ -116,7 +116,7 @@ class CalibrationViewModel @Inject constructor(
     }
 
     private fun observeCalibrationResult() {
-        deviceGateway.observeCalibrationResult()
+        capsuleDeviceGateway.observeCalibrationResult()
             .catch { error ->
                 Log.e("Calibration", "Error observing calibration result", error)
             }

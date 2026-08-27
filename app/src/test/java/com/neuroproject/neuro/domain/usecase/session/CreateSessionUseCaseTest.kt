@@ -41,7 +41,7 @@ class CreateSessionUseCaseTest {
     fun `given valid data when invoke then creates session with correct parameters`() = runTest {
         // Given
         val duration = 15
-        val category = SessionCategory.MORNING
+        val category = SessionCategory.H6_9
         val userId = "user_123"
         val expeditionId = "exp_001"
         val expectedSession = Session(
@@ -77,7 +77,7 @@ class CreateSessionUseCaseTest {
     @Test
     fun `given empty userId when invoke then still creates session`() = runTest {
         val duration = 10
-        val category = SessionCategory.DAY
+        val category = SessionCategory.H12_15
 
         whenever(authRepository.getUserId()).thenReturn("")
         whenever(authRepository.getExpeditionId()).thenReturn("")

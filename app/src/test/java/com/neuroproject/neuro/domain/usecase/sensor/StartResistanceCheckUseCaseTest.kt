@@ -1,6 +1,6 @@
 package com.neuroproject.neuro.domain.usecase.sensor
 
-import com.neuroproject.neuro.domain.repository.DeviceGateway
+import com.neuroproject.neuro.domain.repository.CapsuleDeviceGateway
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -10,7 +10,7 @@ import org.mockito.kotlin.verify
 class StartResistanceCheckUseCaseTest {
 
     private lateinit var useCase: StartResistanceCheckUseCase
-    private val deviceGateway: DeviceGateway = mock()
+    private val deviceGateway: CapsuleDeviceGateway = mock()
 
     @Before
     fun setup() {
